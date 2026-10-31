@@ -18,8 +18,8 @@ describe("SystemTabs", () => {
   expect(screen.getByText("second")).toBeInTheDocument();
  });
  it("preserves document links and their destinations", () => {
-  render(<SystemTabs role="navigation" aria-label="資料"><a href="?tab=guide" aria-current="page">操作マニュアル</a><a href="?tab=admin">管理</a></SystemTabs>);
-  expect(screen.getByRole("link", { name: "操作マニュアル" })).toHaveAttribute("href", "?tab=guide");
+  render(<SystemTabs role="navigation" aria-label="資料"><a href="?tab=guide" aria-current="page">使い方</a><a href="?tab=admin">管理</a></SystemTabs>);
+  expect(screen.getByRole("link", { name: "使い方" })).toHaveAttribute("href", "?tab=guide");
  });
  it("puts line-icon actions at the right end of the tab row, outside the tablist", () => {
   const onClick = vi.fn();
@@ -32,9 +32,11 @@ describe("SystemTabs", () => {
  });
 });
 
-it.each([0, 1])("hides %i visible tabs together with actions", count => {
+it.each([0, 1])("hides %i visible tab labels but retains the action row", count => {
  const { container } = render(<SystemTabs actions={<button>設定</button>}>{null}{false}{Array.from({length: count}, (_, key) => <button role="tab" key={key}>内容</button>)}</SystemTabs>);
- expect(container).toBeEmptyDOMElement();
+ expect(screen.queryByRole("tablist")).toBeNull();
+ expect(screen.getByRole("button", { name: "設定" })).toBeInTheDocument();
+ expect(screen.getByRole("button", { name: "並べ替え" })).toBeDisabled();
 });
 it("counts visible children after removing null and false", () => {
  render(<SystemTabs>{false}<button role="tab">一覧</button>{null}<button role="tab">集計</button></SystemTabs>);

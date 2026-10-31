@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useState } from "react";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
@@ -44,7 +46,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
   }} fiscalStart={data?.account.fiscal_start_date} years={data?.fiscalYears ?? []} />;
   return <div className={styles.pageShell}>
     <SystemBreadcrumb root={{ label:"Bud", href:"/bud/dashboard" }} items={[{ label:"口座残高・カード利用", href:card ? "/bud/bank?tab=card" : "/bud/bank" },{ label:name }]} />
-    <h1>{name || " "}</h1>
+    <div className="garden-help-heading"><h1>{name || " "}</h1><HelpButton /></div><SystemTabs />
     {error && <p role="alert">{error}</p>}
     <span role="status">{loading ? "読み込み中…" : ""}</span>
     {!data && error && <div className={styles.toolbar}>{periodControl}</div>}

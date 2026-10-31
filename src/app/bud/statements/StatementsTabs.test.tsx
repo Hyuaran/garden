@@ -9,7 +9,7 @@ vi.mock("../_components/BudShell", () => ({ BudShell: ({ children }: { children:
 vi.mock("./StatementsContent", () => ({ default: () => <p>一覧の内容</p> }));
 vi.mock("./summary/StatementsSummaryContent", () => ({ default: () => <p>集計の内容</p> }));
 vi.mock("./imports/StatementsImportsContent", () => ({ default: () => <p>履歴の内容</p> }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), redirect: (url: string) => { throw new Error(url); } }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ refresh: vi.fn() }), redirect: (url: string) => { throw new Error(url); } }));
 beforeEach(() => window.history.replaceState(null, "", "/bud/statements"));
 
 it("restores a bookmarked tab, updates the URL, and follows browser navigation", () => {
@@ -33,7 +33,7 @@ it("shows only the permitted content and moves its gear into the heading", () =>
   expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   expect(screen.getByText("履歴の内容")).toBeInTheDocument();
   expect(screen.queryByText("集計の内容")).not.toBeInTheDocument();
-  expect(screen.getByRole("heading", { level: 1 })).toContainElement(screen.getByRole("button", { name: "見られる人の設定" }));
+  expect(screen.getByRole("button", { name: "見られる人の設定" }).closest("[data-system-tabs]")).toBeTruthy();
 });
 
 it.each(["summary", "imports"])("redirects the old %s bookmark", async tab => {

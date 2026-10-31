@@ -1,4 +1,5 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import { useEffect, useState } from "react";
 import SystemTabs, { TabActionButton } from "../_components/SystemTabs/SystemTabs";
 import StepProgress from "../_components/StepProgress/StepProgress";
@@ -24,7 +25,7 @@ export default function BoardClient({userId}:{userId?:string}) {
  const waiting=selected.filter(q=>q.status==="open").length,working=selected.filter(q=>q.status==="answered" || q.status==="in_progress").length;
  const progressName=waiting+working===0?"すべて完了しています":(waiting?"残り "+waiting+"件（回答待ち）":"回答待ちなし")+"・対応中 "+working+"件";
  const columns:DataColumn<Question>[]=[{id:"module",label:"モジュール",type:"text",value:q=>moduleName(q.module),render:q=><span className={styles.module}><Icon id={q.module}/>{moduleName(q.module)}</span>},{id:"title",label:"質問",type:"text",value:q=>q.title},{id:"status",label:"状態",type:"text",value:q=>statuses[q.status]},...([['created_at','作成日'],['answered_at','回答日'],['done_at','完了日']] as const).map(([id,label])=>({id,label,type:"date" as const,value:(q:Question)=>q[id]||"",render:(q:Question)=>date(q[id])}))];
- return <section className={styles.board}><SystemBreadcrumb items={[{label:"開発ボード"}]}/><header><h1>開発ボード</h1></header>
+ return <section className={styles.board}><SystemBreadcrumb items={[{label:"開発ボード"}]}/><header><div className="garden-help-heading"><h1>開発ボード</h1><HelpButton /></div></header>
  <SystemTabs aria-label="モジュール" variant="icons" actions={<TabActionButton label="質問を足す" icon="plus" pressed={adding} onClick={()=>setAdding(true)}/>}>{[{id:"all",name:"一覧"},...modules].map(m=><button role="tab" aria-selected={tab===m.id} key={m.id} disabled={m.id!=="all" && !rows.some(q=>q.module===m.id)} title={m.id==="system"?"社内システム":m.id==="common"?"共通（外部連携・インフラ）":m.id==="all"?"一覧":MODULE_META[m.id as GardenModuleId].role} onClick={()=>setTab(m.id)}><Icon id={m.id}/><small>{m.name}</small></button>)}</SystemTabs>
  {error && <p role="alert">{error}</p>}
  {tab==="all"?<DataTable rows={visible} columns={columns} rowKey={q=>q.id} searchText={q=>`${moduleName(q.module)} ${q.title} ${q.body} ${statuses[q.status]}`} defaultSort={{id:"created_at",direction:"desc"}} searchPlaceholder="モジュール・質問・状態" onRowClick={q=>{setTab(q.module);setTarget(q.id);}}/>:<><div className={styles.progress}><StepProgress total={waiting+working} value={working} name={progressName} label={waiting+working===0?"すべて完了しています":<>{waiting?<>残り <strong>{waiting}</strong>件（回答待ち）</>:"回答待ちなし"}・対応中 <strong>{working}</strong>件</>}/></div>

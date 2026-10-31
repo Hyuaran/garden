@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
   useAuthUnifiedMock: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({
     replace: mocks.replaceMock,
     push: vi.fn(),

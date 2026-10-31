@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
@@ -128,11 +129,11 @@ export default function WorkboardDashboard() {
       <ShellLayoutStyle />
       <div className={styles.page}>
         <PageHeader
-          titleAddon={<span style={{ display: "inline-flex" }}><SystemViewButton /></span>}
+          titleAddon={<span style={{ display: "inline-flex" }}></span>}
           title="ワークボード"
           titleJp="今日の動きを、見える化"
           subtitle="業務の作業状況・優先度・進捗を一望"
-        />
+        /><SystemTabs actions={<SystemViewButton />} />
 
         <div className={styles.topActions} aria-label="workboard actions">
           <button type="button" className={styles.actionPill}><span>♕</span> 東海林・社内向け</button>

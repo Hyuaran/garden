@@ -1,4 +1,5 @@
 "use client";
+
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -221,7 +222,7 @@ export default function ContractsPage() {
     } catch { setMessage("ひな形を作成できませんでした。管理者へ連絡してください。"); } finally { setLoading(null); }
   }
   return <div className={styles.pageShell}><div className={styles.main}>
-    <header className={styles.header}><div><SystemBreadcrumb items={[{ label: "契約書管理" }]} /><SystemViewHeading showActions={["browse", "register"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={tab} />}><h1>契約書管理</h1></SystemViewHeading></div></header>
+    <header className={styles.header}><div><SystemBreadcrumb items={[{ label: "契約書管理" }]} /><SystemViewHeading  ><h1>契約書管理</h1></SystemViewHeading></div></header>
     {message && <p role="status" className={styles.message}>{message}</p>}
     <SystemTabs actions={<SystemViewButton tabKey={tab} />}>
       {allowedTab("browse") && <button role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")}>契約書を見る</button>}

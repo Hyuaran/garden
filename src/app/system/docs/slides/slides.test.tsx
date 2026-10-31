@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ loadSlideDecks: vi.fn(), loadSlideDeck: vi.fn(), notFound: vi.fn(), requireDocsUser: vi.fn() }));
 vi.mock("../_lib/slides.server", () => ({ loadSlideDecks: mocks.loadSlideDecks, loadSlideDeck: mocks.loadSlideDeck }));
 vi.mock("../_lib/company-doc.server", () => ({ requireDocsUser: mocks.requireDocsUser }));
-vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), notFound: mocks.notFound }));
 import DocsPage from "../page";
 import SlidesPage from "./page";
 import SlideDeckPage from "./[deck]/page";

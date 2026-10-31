@@ -8,7 +8,7 @@ vi.mock("./actions", () => ({ loadSprout: m.load, loadApplicantDetail: m.detail,
 vi.mock("./sprout-shell", () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 import Sprout from "./sprout";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ refresh: vi.fn() }) }));
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/sprout");
@@ -68,9 +68,9 @@ it("uses header filters for status and month while initially showing this month"
  expect(screen.getByRole("button",{name:"佐藤 太郎"})).toBeInTheDocument();
 });
 
-it("hides a single permitted tab and keeps the gear beside the heading", async () => {
+it("hides a single permitted tab and keeps the gear on the action row", async () => {
  render(<SystemViewProvider value={{ pageKey: "sprout", admin: true, canAdd: false, tabs: ["applicants", "interviews", "training"].map(key => ({key, label: key, allowed: key === "applicants", canAdd: false})) }}><Sprout /></SystemViewProvider>);
  await screen.findByRole("button", {name:"山田 花子"});
  expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
- expect(screen.getByRole("heading", {name:"採用管理"})).toContainElement(screen.getByRole("button", {name:"見られる人の設定"}));
+ expect(screen.getByRole("button", {name:"見られる人の設定"}).closest("[data-system-tabs]")).toBeTruthy();
 });

@@ -1,5 +1,6 @@
 "use client";
-import { Children, cloneElement, isValidElement, createContext, useContext, type ReactNode } from "react";
+import { Children, isValidElement, createContext, useContext, type ReactNode } from "react";
+import HelpButton from "../HelpButton/HelpButton";
 import ViewPermissionButton from "./ViewPermissionButton";
 import styles from "./view-permission.module.css";
 
@@ -19,6 +20,6 @@ export function SystemViewButton({ tabKey = "" }: { tabKey?: string }) {
   if (!state.admin && !(tab?.canAdd ?? state.canAdd)) return null;
   return <ViewPermissionButton key={`${state.pageKey}:${tabKey}`} pageKey={state.pageKey} tabKey={tabKey} tabLabel={tab?.label ?? ""} admin={state.admin} canAdd={tab?.canAdd ?? state.canAdd} />;
 }
-export function SystemViewHeading({ children, actions, showActions = true }: { children: ReactNode; actions?: ReactNode; showActions?: boolean }) {
-  return <div className={styles.headingRow}>{Children.map(children, child => isValidElement<{ children?: ReactNode }>(child) && child.type === "h1" ? cloneElement(child, {}, child.props.children, showActions && <span className={styles.headingAction}>{actions ?? <SystemViewButton />}</span>) : child)}</div>;
+export function SystemViewHeading({ children }: { children: ReactNode; actions?: ReactNode; showActions?: boolean }) {
+  return <div className={styles.headingRow}>{Children.map(children, child => isValidElement(child) && child.type === "h1" ? <>{child}<HelpButton /></> : child)}</div>;
 }

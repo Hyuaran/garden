@@ -7,7 +7,7 @@ import { SystemViewProvider } from "@/app/system/_components/ViewPermissionButto
 
 vi.mock("./BudGate", () => ({ BudGate: ({ children }: { children: ReactNode }) => children }));
 vi.mock("../_state/BudStateContext", () => ({ useBudState: () => ({ budRole: "admin" }) }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ refresh: vi.fn() }) }));
 beforeEach(() => window.history.replaceState(null, "", "/bud/transfers"));
 
 it.each(["transfers", "audit", "invoices", "journal", "settings", "profit", "masters", "payroll"])("%s switches actual injected panels and restores URL selection", route => {
@@ -29,13 +29,13 @@ it.each(["transfers", "audit", "invoices", "journal", "settings", "profit", "mas
   expect(document.getElementById(`tab-${target}`)).not.toHaveClass("active");
 });
 
-it("removes denied navigation and panels, keeps category filters, and moves settings to the heading", () => {
+it("removes denied navigation and panels, keeps category filters, and keeps settings on the action row", () => {
   window.history.replaceState(null, "", "?tab=denied");
   const html = '<nav class="tab-nav"><button class="tab-item active" data-tab="allowed">一覧</button><button class="tab-item" data-tab="denied">秘密</button></nav><div class="tab-content active" id="tab-allowed"><button class="category-chip">カテゴリ</button></div><div class="tab-content" id="tab-denied">秘密の内容</div>';
   render(<SystemViewProvider value={{ pageKey: "bud-transfers", admin: true, canAdd: false, tabs: [{ key: "allowed", label: "一覧", allowed: true, canAdd: false }, { key: "denied", label: "秘密", allowed: false, canAdd: false }] }}><BudFaithfulFrame route="/bud/transfers" title="振込" titleJp="" subtitle="" sourceCss="" sourceHtml={html} /></SystemViewProvider>);
   expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   expect(screen.queryByText("秘密の内容")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "カテゴリ" })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { level: 1 }).parentElement).toContainElement(screen.getByRole("button", { name: "見られる人の設定" }));
+  expect(screen.getByRole("button", { name: "見られる人の設定" }).closest("[data-system-tabs]")).toBeTruthy();
   expect(document.getElementById("tab-allowed")).toHaveClass("active");
 });

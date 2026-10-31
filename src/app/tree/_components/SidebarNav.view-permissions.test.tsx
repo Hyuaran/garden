@@ -4,7 +4,7 @@ import { GARDEN_ROLE_ORDER, type GardenRole } from '@/app/root/_constants/types'
 import { resolveCanView, type ViewPermission } from '@/lib/auth/view-permission';
 import { bloomTreePageKey } from '@/lib/auth/bloom-tree-view-scopes';
 const state=vi.hoisted(()=>({role:'toss' as GardenRole,rows:[] as ViewPermission[]}));
-vi.mock('next/navigation',()=>({usePathname:()=>'/tree/dashboard',useRouter:()=>({push:vi.fn()})}));
+vi.mock('next/navigation',()=>({ useSearchParams: () => new URLSearchParams(window.location.search),usePathname:()=>'/tree/dashboard',useRouter:()=>({push:vi.fn()})}));
 vi.mock('../_state/TreeStateContext',()=>({useTreeState:()=>({role:state.role==='toss'?'sprout':state.role==='closer'?'branch':'manager',treeUser:null,menuOrder:[],tossWaitCount:0,confirmWaitCount:0,fbRemaining:0,alertCount:0,isAway:false})}));
 vi.mock('@/lib/auth/bloom-tree-view.client',()=>({useBloomTreeView:()=>((href:string,defaults?:boolean)=>resolveCanView(state.rows,bloomTreePageKey(href)!,'',{role:state.role,employeeId:'employee'},defaults))}));
 import { SidebarNav } from './SidebarNav';

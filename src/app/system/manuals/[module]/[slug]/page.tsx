@@ -45,7 +45,7 @@ async function ManualDetailPage({
   const { viewer } = await viewPermissionContext();
   const defaultDocs = getVisibleManualDocs(manual, role);
   const access = await Promise.all(manual.docs.map(doc => canView("system-manuals", manualDocPermissionKey(doc.key), viewer, defaultDocs.includes(doc))));
-  const visibleDocs = manual.docs.filter((_, index) => access[index]);
+  const visibleDocs = manual.docs.filter((doc, index) => access[index] && (doc.key !== "flow" || defaultDocs.includes(doc)));
   if (!visibleDocs.length) {
     return <ManualDetailClient module={manualModule} manual={{ ...manual, docs: visibleDocs }} docs={[]} />;
   }

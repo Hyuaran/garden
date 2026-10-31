@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 /**
  * Garden-Tree ルート（/tree）
@@ -33,7 +35,7 @@ export default function TreeHomePage() {
         }}
       >
         <div style={{ fontSize: 64 }}>🌳</div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h1
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div className="garden-help-heading"><h1
           style={{
             fontSize: 28,
             fontWeight: 800,
@@ -47,7 +49,7 @@ export default function TreeHomePage() {
             toastTitle="新しい画面に切り替え予定"
             toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
           />
-        </h1><SystemViewButton /></div>
+        </h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />
         <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.7 }}>
           架電アプリ — プロトタイプから移植中です。
           <br />

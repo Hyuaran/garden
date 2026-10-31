@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
@@ -31,7 +33,7 @@ const KIND_FILTERS: Array<{ value: "all" | RoadmapEntryKind; label: string }> = 
 ];
 
 export default function RoadmapPage() {
-  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:24}}><h1>ロードマップ</h1><SystemViewButton /></div><RoadmapContent /></>;
+  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:24}}><div className="garden-help-heading"><h1>ロードマップ</h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} /><RoadmapContent /></>;
 }
 function RoadmapContent() {
   const [entries, setEntries] = useState<RoadmapEntry[]>([]);

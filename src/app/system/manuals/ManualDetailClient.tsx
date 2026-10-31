@@ -1,4 +1,5 @@
 "use client";
+
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { manualDocPermissionKey } from "./_lib/manuals-registry";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -235,7 +236,7 @@ export default function ManualDetailClient({
     <header className={styles.header}>
       <div>
         <SystemBreadcrumb items={[{ label: "マニュアル", href: "/system/manuals" }, { label: module.name, href: `/system/manuals/${module.slug}` }, { label: manual.name }]} />
-        <SystemViewHeading showActions={docs.length <= 1} actions={<SystemViewButton tabKey={selectedDoc ? manualDocPermissionKey(selectedDoc.key) : undefined} />}><h1>{manual.name}</h1></SystemViewHeading>
+        <SystemViewHeading  ><h1>{manual.name}</h1></SystemViewHeading>
       </div>
     </header>
 

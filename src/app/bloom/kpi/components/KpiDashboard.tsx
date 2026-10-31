@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
 import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
@@ -123,13 +124,13 @@ export default function KpiDashboard() {
 
         <div className={styles.periodChip}>対象月: 2026年4月</div>
 
-        <nav className={styles.entityTabs} aria-label="entity tabs">
+        <SystemTabs aria-label="entity tabs" actions={<SystemViewButton tabKey={activeEntity} />}>
           {entityTabs.filter(e => allowedEntity(e)).map((entity) => (
             <button key={entity} type="button" className={cx(styles.entityTab, activeEntity === entity && styles.entityTabActive)} onClick={() => setActiveEntity(entity)}>
               {entity}
             </button>
           ))}
-        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton tabKey={activeEntity} /></span></nav>
+        </SystemTabs>
 
         <ScopedTabs items={subTabs} active={activeSubTab} onChange={key => setActiveSubTab(key as KpiSubTab)} label="kpi sections" />
 

@@ -1,4 +1,5 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -86,8 +87,8 @@ export function NoticeList() {
         {!managed.length ? <p>{statusFilter === "draft" ? "未決定のお知らせはありません。" : "該当するお知らせはありません。"}</p> : managed.map(notice => <div key={notice.id} className={styles.managed}><span className={`${styles.statusBadge} ${styles[`status_${notice.status}`]}`}>{NOTICE_STATUS_LABELS[notice.status]}</span><NoticeCard notice={notice}/>{publishControl(notice)}</div>)}
     </section>;
 
-    return <section className={styles.page}><SystemBreadcrumb items={[{ label: "お知らせ" }]} /><h1>お知らせ</h1>
-        {isAdmin && <SystemTabs aria-label="お知らせの表示">{([["list", "お知らせ"], ["manage", `公開の管理（未決定 ${count("draft")}）`]] as const).map(([key, label]) => <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? styles.tabOn : undefined} onClick={() => setTab(key)}>{label}</button>)}</SystemTabs>}
+    return <section className={styles.page}><SystemBreadcrumb items={[{ label: "お知らせ" }]} /><div className="garden-help-heading"><h1>お知らせ</h1><HelpButton /></div>
+        {<SystemTabs aria-label="お知らせの表示">{(isAdmin ? [["list", "お知らせ"], ["manage", `公開の管理（未決定 ${count("draft")}）`]] as const : []).map(([key, label]) => <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? styles.tabOn : undefined} onClick={() => setTab(key)}>{label}</button>)}</SystemTabs>}
         {isAdmin && tab === "manage" ? manageView : listView}
         {confirming && <NoticeDialog title="本当に公開しますか？" onClose={() => setConfirming(null)} footer={<div className={styles.buttons}><button onClick={() => setConfirming(null)}>やめる</button><button className={styles.primary} onClick={() => { const n = confirming; setConfirming(null); void change(n, "published"); }}>公開する</button></div>}><p>公開すると、次に Garden を開いた対象の人にお知らせのモーダルが出ます。</p><NoticeCard notice={confirming}/></NoticeDialog>}
         {preview && <NoticeDialog title="Garden からのお知らせ（見え方の確認）" onClose={() => setPreview(null)} footer={<button onClick={() => setPreview(null)}>閉じる</button>}><NoticeCard notice={preview}/></NoticeDialog>}

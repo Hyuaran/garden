@@ -54,7 +54,7 @@ export function BudFaithfulFrame({
         <div data-bud-managed-tabs className={styles.pageStack}>
           <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: title }]} />
           <PageHeader
-            titleAddon={injected.count <= 1 ? injected.headingAction : undefined}
+            
             title={title}
             titleJp={titleJp}
             subtitle={subtitle}

@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -524,11 +526,11 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
       {!embedded && (
         <>
           <header style={{ marginBottom: 18 }}>
-            <h1 style={{ fontSize: 22, color: "var(--text-main)", margin: 0 }}>経費精算 — 完了待ち</h1>
+            <div className="garden-help-heading"><h1 style={{ fontSize: 22, color: "var(--text-main)", margin: 0 }}>経費精算 — 完了待ち</h1><HelpButton /></div>
             <p style={{ color: "var(--text-sub)", fontSize: 13, margin: "4px 0 0" }}>
               経理承認済みの申請を最終チェックし、仕訳待ちへ送ります。
             </p>
-          </header>
+          </header><SystemTabs />
           <CorpFilter value={corpFilter} corps={sortedCorps} onChange={setCorpFilter} />
         </>
       )}

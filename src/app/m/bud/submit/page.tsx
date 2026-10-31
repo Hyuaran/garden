@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { MobileIcon } from "../../_components/MobileIcon";
 
 import { useEffect, useRef, useState } from "react";
@@ -333,7 +335,7 @@ export default function MobileExpenseSubmit() {
       <main style={budPage}>
         <section style={successCard}>
           <div style={successMark}><MobileIcon name="check"/></div>
-          <h1 style={{ ...budTitle, textAlign: "center" }}>送信しました</h1>
+          <div className="garden-help-heading"><h1 style={{ ...budTitle, textAlign: "center" }}>送信しました</h1><HelpButton /></div><SystemTabs />
           <p style={{ ...budLead, textAlign: "center", marginTop: 10 }}>
             {sentCount}件の領収書を経理へ送りました。
             <br />
@@ -385,10 +387,10 @@ export default function MobileExpenseSubmit() {
           <MobileIcon name="left"/>
         </button>
         <div>
-          <h1 style={budTitle}>経費申請</h1>
+          <div className="garden-help-heading"><h1 style={budTitle}>経費申請</h1><HelpButton /></div>
           <p style={budLead}>領収書を撮って、送る分だけ選びます。</p>
         </div>
-      </header>
+      </header><SystemTabs />
 
       {showLeaveConfirm && (
         <div style={modalOverlay}>

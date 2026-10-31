@@ -5,7 +5,7 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), redirect: mocks.redirect }));
 import ManualsHubPage from "./page";
 
 function client(role = "staff") {
@@ -40,11 +40,11 @@ describe("manuals hub page", () => {
     expect(screen.getByRole("tab", { name: "Bud" })).toBeInTheDocument();
   });
 
-  it("filters modules below staff", async () => {
+  it("shows operation manuals to my-page roles", async () => {
     mocks.createServerClient.mockResolvedValue(client("cs"));
 
     render(await ManualsHubPage({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.queryByRole("tab", { name: "System" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "System" })).toBeInTheDocument();
   });
 });

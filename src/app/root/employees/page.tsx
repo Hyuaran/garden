@@ -862,7 +862,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "従業員を編集" : "従業員を追加"} width={860}>
         {editTarget && (
           <div>
-            <SystemTabs>{[['basic','基本'],['address','住所・連絡先'],['bank','口座・通勤'],['employment','雇用の条件']].map(([id,label])=><button type="button" role="tab" aria-selected={editTab===id} key={id} onClick={()=>setEditTab(id)}>{label}</button>)}</SystemTabs>
+            <SystemTabs pageActions={false}>{[['basic','基本'],['address','住所・連絡先'],['bank','口座・通勤'],['employment','雇用の条件']].map(([id,label])=><button type="button" role="tab" aria-selected={editTab===id} key={id} onClick={()=>setEditTab(id)}>{label}</button>)}</SystemTabs>
             {editTarget.created_at && (
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }} onClick={(ev) => ev.stopPropagation()}>
         <Button variant="secondary" onClick={() => openHistory(editTarget)}>履歴を見る</Button>

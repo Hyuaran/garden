@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
@@ -95,7 +97,7 @@ export default function ScriptManagePage() {
   return (
     <div style={{ padding: "24px 40px 80px", maxWidth: 900, margin: "0 auto" }}>
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>📜 スクリプト管理</h1><SystemViewButton /></div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1 style={{fontSize:18,margin:0}}>📜 スクリプト管理</h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />
         <div style={{ paddingTop: 8 }} />
       </div>
 

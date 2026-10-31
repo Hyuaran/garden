@@ -23,7 +23,7 @@ export const SYSTEM_VIEW_SCOPES: SystemViewScope[] = [
   ...([ ["employees", "従業員ごと"], ["lists", "リストごと"], ["definitions", "定義方法"], ["webinbound", "WEBインバウンド"] ] as const).map(([key, label]) => scope("call-metrics", label, staff, key)),
   ...([ ["kanri", "管理表"], ["jisseki", "実績管理"], ["aporan", "アポラン"], ["houhan", "訪問販売"], ["incentive", "インセ計算"], ["settings", "設定"] ] as const).map(([key, label]) => scope("kanri", label, manager, key)),
   scope("kanri", "給与試算", staff, "payroll"),
-  ...([ ["operation", "操作マニュアル", staff], ["summary", "要点", ["super_admin"]], ["overview", "仕組み", ["super_admin"]], ["engineer", "仕様", ["super_admin"]], ["claude", "Claude 用", ["super_admin"]] ] as const).map(([key, label, roles]) => scope("manuals", label, roles, key)),
+  ...([ ["operation", "使い方", all], ["summary", "要点", ["super_admin"]], ["overview", "仕組み", ["super_admin"]], ["engineer", "仕様", ["super_admin"]], ["claude", "Claude 用", ["super_admin"]] ] as const).map(([key, label, roles]) => scope("manuals", label, roles, key)),
 ];
 
 export function systemPageKey(href: string) {

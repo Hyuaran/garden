@@ -17,7 +17,7 @@ describe("NhkVisitClient", () => {
     await screen.findByText("まだありません");
 
     expect(screen.getByRole("link", { name: "使い方ガイドを見る" })).toHaveAttribute("href", "/system/manuals/system/nhk-visit?tab=operation");
-    expect(screen.queryByRole("button", { name: /使い方/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "この画面の使い方" })).toBeInTheDocument();
   });
 
   it("updates totals with plus and minus buttons", async () => {

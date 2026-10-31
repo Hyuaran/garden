@@ -1,3 +1,4 @@
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
@@ -17,7 +18,7 @@ async function SlideDeckPage({ params }: { params: Promise<{ deck: string }> }) 
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド", href: "/system/docs/slides" }, { label: deck.title }]} />
       <SystemViewHeading><h1>{deck.title}</h1></SystemViewHeading>
-    </header>
+    </header><SystemTabs />
     <div className={styles.presentationEntry}>
       <Link href={`/system/docs/slides/${deck.id}/present`} className={styles.presentationButton}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18M5 4v12h14V4M12 16v5M8 21l4-3 4 3" /><path d="m10 8 5 3-5 3z" /></svg>

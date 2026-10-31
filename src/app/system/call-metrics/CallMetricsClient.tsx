@@ -1,4 +1,5 @@
 "use client";
+
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -120,7 +121,7 @@ export default function CallMetricsClient() {
     <div className={styles.pageShell} data-testid="call-metrics-page-shell">
       <div className={styles.main}>
       <header className={styles.header}>
-        <div><SystemBreadcrumb items={[{ label: "テレマ コール集計" }]} /><SystemViewHeading showActions={["employees", "lists", "definitions", "webinbound"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={activeTab} />}><h1>テレマ コール集計</h1></SystemViewHeading></div>
+        <div><SystemBreadcrumb items={[{ label: "テレマ コール集計" }]} /><SystemViewHeading  ><h1>テレマ コール集計</h1></SystemViewHeading></div>
       </header>
       {data && <UpdatedStampRow><UpdatedStamp label="コール履歴" date={data.lastImportedAt} emptyText="データなし" /></UpdatedStampRow>}
 

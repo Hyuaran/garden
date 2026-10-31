@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const push=vi.hoisted(()=>vi.fn());
-vi.mock("next/navigation",()=>({useRouter:()=>({push})}));
+vi.mock("next/navigation",()=>({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),useRouter:()=>({push})}));
 import GlobalSearch, { GlobalSearchButton } from "./GlobalSearch";
 beforeEach(()=>{vi.useFakeTimers();push.mockClear();vi.spyOn(HTMLDialogElement.prototype,"showModal").mockImplementation(function(this: HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,"close").mockImplementation(function(this: HTMLDialogElement){this.open=false;});});
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();});

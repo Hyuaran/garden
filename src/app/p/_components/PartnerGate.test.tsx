@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   fetchPartnerOrStaff: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search),
   usePathname: () => mocks.pathname,
   useRouter: () => ({ replace: mocks.replace }),
 }));

@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
@@ -151,11 +152,11 @@ export default function MonthlyDigestDashboard() {
       <div className={styles.page}>
         <div className={styles.headerWrap}>
           <PageHeader
-          titleAddon={<span style={{ display: "inline-flex" }}><SystemViewButton /></span>}
+          titleAddon={<span style={{ display: "inline-flex" }}></span>}
             title="月次まとめ"
             titleJp="一月の歩みを、振り返る"
             subtitle="Garden Series / Bloom 配信"
-          />
+          /><SystemTabs actions={<SystemViewButton />} />
           <div className={styles.headerActions} aria-label="monthly digest actions">
             <span className={styles.monthSelect}>対象月：2026 年 4 月⌄</span>
             <a className={styles.primaryLink} href={`/bloom/monthly-digest/${digestMonth}/export`} target="_blank" rel="noreferrer">▣ PDF 出力</a>

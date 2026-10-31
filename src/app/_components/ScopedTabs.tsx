@@ -28,14 +28,11 @@ export function useUrlTab<T extends string>(fallback: T) {
   return [tab, select] as const;
 }
 export function TabHeadingAction({ items, active }: { items: Item[]; active?: string }) {
-  const { allowedTab } = useSystemView();
-  if (items.filter(item => allowedTab(item.key)).length > 1) return null;
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><SystemViewButton tabKey={active} /></span>;
+  return null;
 }
 export default function ScopedTabs({ items, active, onChange, label }: { items: Item[]; active?: string; onChange: (key: string) => void; label: string }) {
   const { allowedTab } = useSystemView();
   const visible = items.filter(item => allowedTab(item.key));
-  if (visible.length <= 1) return null;
   return <div className={styles.scoped}><SystemTabs aria-label={label} actions={<SystemViewButton tabKey={active} />}>
     {visible.map(item => <button key={item.key} type="button" role="tab" aria-selected={active === item.key} onClick={() => onChange(item.key)}>{item.label}</button>)}
   </SystemTabs></div>;

@@ -1,4 +1,5 @@
 "use client";
+
 import SiteNotifyEditor, { useSiteNotify } from "./_components/SiteNotifyEditor";
 import type { NotifyState } from "@/lib/sites/notify";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -376,7 +377,7 @@ function SitesHubContent({ data, role }: { data: CorporateSitesData; role: Garde
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "コーポレートサイト" }]} />
-      <SystemViewHeading showActions={["sites", "news"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={tab} />}><h1>コーポレートサイト</h1></SystemViewHeading>
+      <SystemViewHeading  ><h1>コーポレートサイト</h1></SystemViewHeading>
     </header>
 
     <SystemTabs aria-label="コーポレートサイト表示" actions={<SystemViewButton tabKey={tab} />}>

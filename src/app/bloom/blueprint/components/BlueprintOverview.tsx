@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import type { CSSProperties } from "react";
 
 import { blueprintOverview } from "../_data/overview";
@@ -8,7 +10,7 @@ export function BlueprintOverview() {
       <div style={eyebrowStyle}>{blueprintOverview.eyebrow}</div>
       <div style={heroGridStyle}>
         <div>
-          <h1 style={titleStyle}>{blueprintOverview.title}</h1>
+          <div className="garden-help-heading"><h1 style={titleStyle}>{blueprintOverview.title}</h1><HelpButton /></div><SystemTabs />
           <p style={leadStyle}>{blueprintOverview.lead}</p>
         </div>
         <div style={referenceBoxStyle}>

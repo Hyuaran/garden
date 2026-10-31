@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 
@@ -131,9 +133,9 @@ export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Pr
     <InnoveraProcessingOverlay open={loading === "apply"} />
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "INNOVERA番号の同期" }]} />
-      <h1>INNOVERA番号の同期</h1>
+      <div className="garden-help-heading"><h1>INNOVERA番号の同期</h1><HelpButton /></div>
       <UpdatedStampRow><UpdatedStamp label="INNOVERA番号" date={checkedAt ?? latest?.ranAt} emptyText="まだ反映履歴がありません" /></UpdatedStampRow>
-    </header>
+    </header><SystemTabs />
 
     <section className={styles.lastBox} aria-label="最後の反映">
       <h2>最後の反映</h2>

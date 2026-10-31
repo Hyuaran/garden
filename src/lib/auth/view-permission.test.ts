@@ -3,6 +3,13 @@ import { resolveCanView, type ViewPermission, type Viewer } from "./view-permiss
 const viewer: Viewer = {employeeId:"EMP-1",role:"staff"};
 const page = "system-onboarding";
 const setting = (tab_key: string, roles: string[] = [], employee_ids: string[] = []): ViewPermission => ({page_key:page,tab_key,roles,employee_ids,viewers_can_add:false,updated_by:"admin",updated_at:"2026-10-26T00:00:00Z"});
+
+it.each(["toss", "closer", "cs", "outsource"] as const)("keeps operation readable for %s despite legacy restrictions", role => {
+  const rows = [{ ...setting(""), page_key: "system-manuals" }, { ...setting("operation"), page_key: "system-manuals" }];
+  expect(resolveCanView(rows, "system-manuals", "operation", { ...viewer, role }, false)).toBe(true);
+  expect(resolveCanView(rows, "system-manuals", "", { ...viewer, role }, false)).toBe(true);
+  expect(resolveCanView(rows, "system-manuals", "summary", { ...viewer, role })).toBe(false);
+});
 describe("画面とタブの閲覧設定", () => {
   it("設定が無ければ登録済みの既定に従う", () => {
     expect(resolveCanView([],page,"self",viewer)).toBe(true);

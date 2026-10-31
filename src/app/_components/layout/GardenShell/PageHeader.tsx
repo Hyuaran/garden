@@ -1,5 +1,6 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 
@@ -152,7 +153,7 @@ export default function PageHeader({
       </button>
       <div className="page-title-block">
         <div className="page-title-row">
-          <h1 className="page-title">
+          <div className="garden-help-heading"><h1 className="page-title">
             {title}
             {titleJp && (
               <>
@@ -245,7 +246,7 @@ export default function PageHeader({
               )}
             </span>
             {titleAddon}
-          </h1>
+          </h1><HelpButton /></div>
         </div>
         {subtitle && <p className="page-subtitle">{subtitle}</p>}
       </div>

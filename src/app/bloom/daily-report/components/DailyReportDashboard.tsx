@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
@@ -148,11 +149,11 @@ export default function DailyReportDashboard() {
       <div className={styles.page}>
         <div className={styles.headerWrap}>
           <PageHeader
-          titleAddon={<span style={{ display: "inline-flex" }}><SystemViewButton /></span>}
+          titleAddon={<span style={{ display: "inline-flex" }}></span>}
             title="日報"
             titleJp="一日の積み重ねを綴る"
             subtitle="自分と業務記録 / PDF 出力（記録/集計）"
-          />
+          /><SystemTabs actions={<SystemViewButton />} />
           <div className={styles.headerActions} aria-label="daily report actions">
             <span className={styles.datePill}>日付：2026年5月20日(水)</span>
             <button type="button" className={styles.primaryButton}>✐ 新規作成</button>

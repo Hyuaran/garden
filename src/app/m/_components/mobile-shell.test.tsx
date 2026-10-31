@@ -6,7 +6,7 @@ vi.mock("@/app/_lib/auth-unified", () => ({ useAuthUnified: () => ({ role: "staf
 vi.mock("@/app/_components/notices/NoticeBell", () => ({ NoticeBell: () => <span /> }));
 vi.mock("@/app/_components/notices/NoticeProvider", () => ({ useNotices: () => ({ unreadCount: 2 }) }));
 vi.mock("../_lib/mobile-expenses", () => ({ getMyEmployee: vi.fn().mockResolvedValue({ name: "確認 太郎" }), getMobileTodoCounts: mocks.counts }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/m/todo" }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => "/m/todo" }));
 import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import Home from "../page";

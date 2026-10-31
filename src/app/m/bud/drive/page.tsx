@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { MobileIcon } from "../../_components/MobileIcon";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -124,10 +126,10 @@ export default function MyExpenseStatusPage() {
           <MobileIcon name="left"/>
         </Link>
         <div>
-          <h1 style={budTitle}>申請状況</h1>
+          <div className="garden-help-heading"><h1 style={budTitle}>申請状況</h1><HelpButton /></div>
           <p style={budLead}>Driveと同じ感覚で、自分の経費申請をたどります。</p>
         </div>
-      </header>
+      </header><SystemTabs />
 
       {!loaded && <div style={budNotice}>読み込み中...</div>}
       {message && <div style={{ ...budNotice, padding: 12, marginBottom: 14, color: budMobile.colors.gold }}>{message}</div>}

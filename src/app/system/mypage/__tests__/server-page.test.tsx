@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), redirect: mocks.redirect }));
 vi.mock("../_lib/mypage-profile.server", () => ({ buildMyPageProfile: async (row: Record<string, unknown>) => ({ name: row.name, birthday: null, bankName: null, branchName: null, commuteDailyAllowance: null, commuteMonthlyCap: null, mynaSubmitted: false }) }));
 import MyPageSectionPage from "../_components/MyPageSectionPage";
 

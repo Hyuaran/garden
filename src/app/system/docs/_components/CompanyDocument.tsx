@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -37,7 +39,7 @@ function ChapterHeading({ index }: { index: number }) {
 export default function CompanyDocument({ members, photos = {}, presentation = false }: { members: Member[]; photos?: Record<string, string>; presentation?: boolean }) {
   const visible = visibleMembers(members);
   return <div className={styles.pageShell} data-company-document>
-    <header className={presentation ? styles.presentationHeader : styles.header}>{!presentation && <SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: companyDocument.title }]} />}<h1>{companyDocument.title}</h1></header>
+    <header className={presentation ? styles.presentationHeader : styles.header}>{!presentation && <SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: companyDocument.title }]} />}<div className="garden-help-heading"><h1>{companyDocument.title}</h1><HelpButton /></div></header><SystemTabs />
     {!presentation && <div className={styles.presentationEntry}>
       <Link href="/system/docs/company/present" className={styles.presentationButton}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18M5 4v12h14V4M12 16v5M8 21l4-3 4 3"/><path d="m10 8 5 3-5 3z"/></svg>

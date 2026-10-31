@@ -9,7 +9,7 @@ import styles from "./shacho-shell.module.css";
 
 const mocks = vi.hoisted(() => ({ signOut: vi.fn(), pathname: "/system" }));
 vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }) }));
-vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => mocks.pathname }));
 
 const manager = { name: "責任者A", company: "株式会社A", role: "manager" as const };
 function renderShell(activePath = "/system", user: ComponentProps<typeof ShachoShell>["user"] = manager) {

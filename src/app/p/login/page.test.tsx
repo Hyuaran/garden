@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   signInUnified: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname,
   useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
   useSearchParams: () => new URLSearchParams(mocks.searchParams),
 }));

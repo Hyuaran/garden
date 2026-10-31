@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 /**
  * Garden-Bud — 07_Shiwakechou 仕訳帳ダッシュボード
@@ -33,7 +35,7 @@ function ShiwakechouPageContent() {
       <header className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "仕訳帳" }]} />
-          <div className="flex items-center justify-between gap-3"><h1 className="text-2xl font-bold text-gray-800">仕訳帳</h1></div>
+          <div className="flex items-center justify-between gap-3"><div className="garden-help-heading"><h1 className="text-2xl font-bold text-gray-800">仕訳帳</h1><HelpButton /></div></div>
           <p className="text-sm text-gray-500 mt-1">
             仕訳一覧 + 弥生エクスポート連動
           </p>
@@ -51,7 +53,7 @@ function ShiwakechouPageContent() {
         >
           📤 弥生エクスポート（alpha 未実装）
         </button>
-      </header>
+      </header><SystemTabs />
 
       <JournalSummaryBar summary={summary} />
 

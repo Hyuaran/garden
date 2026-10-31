@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import "server-only";
 import type { ReactNode } from "react";
 import { cache } from "react";
@@ -49,11 +51,11 @@ export async function budWriteResponse() {
 export async function BudView({ pageKey, tabKey, children }: { pageKey: string; tabKey?: string; children: ReactNode }) {
   try {
     const context = await budViewContext();
-    if (!await canViewBud(pageKey, tabKey)) return <main><h1>閲覧権限がありません</h1></main>;
+    if (!await canViewBud(pageKey, tabKey)) return <main><div className="garden-help-heading"><h1>閲覧権限がありません</h1><HelpButton /></div><SystemTabs /></main>;
     const tabs = await Promise.all((BUD_TABS[pageKey.slice(4)] ?? []).map(async ([key, label]) => ({ key, label, allowed: await canViewBud(pageKey, key), canAdd: false })));
     return <SystemViewProvider value={{ pageKey, admin: context.viewer.role === "super_admin", tabs, canAdd: false }}><BudViewChrome tabKey={tabKey}>{children}</BudViewChrome></SystemViewProvider>;
   } catch (error) {
-    if (error instanceof ViewPermissionError && error.status < 500) return <main><h1>{error.message}</h1><a href="/bud/login">ログイン</a></main>;
+    if (error instanceof ViewPermissionError && error.status < 500) return <main><div className="garden-help-heading"><h1>{error.message}</h1><HelpButton /></div><SystemTabs /><a href="/bud/login">ログイン</a></main>;
     throw error;
   }
 }

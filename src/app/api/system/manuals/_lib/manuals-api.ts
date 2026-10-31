@@ -83,6 +83,7 @@ export async function requireManualDocAccess(
   if (!employee || !isEmployeeActive(employee)) return { ok: false, response: jsonError(403, "manual access denied") };
 
   const role = validRole(employee.garden_role);
+  if (doc.key === "flow" && !isRoleAtLeast(role, doc.minRole)) return { ok: false, response: jsonError(403, "manual access denied") };
   const requiredRole = options.superAdminOnly ? "super_admin" : doc.minRole;
   if (options.superAdminOnly ? !isRoleAtLeast(role, requiredRole) : !await canView("system-manuals", manualDocPermissionKey(doc.key), (await viewPermissionContext()).viewer, isRoleAtLeast(role, requiredRole))) return { ok: false, response: jsonError(403, "manual access denied") };
 

@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
@@ -168,9 +170,9 @@ export default function CallingSproutPage() {
     >
       {/* ワイヤーフレームラベル */}
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1 style={{fontSize:18,margin:0}}>
           架電画面（Sprout / Breeze）
-        </h1><SystemViewButton /></div>
+        </h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />
         <div style={{ paddingTop: 8 }} />
       </div>
 

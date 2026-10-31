@@ -20,7 +20,8 @@ describe('form-kit', () => {
     expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
     expect(screen.getByText('長い名前の送信者 さん')).toHaveAttribute('data-clarity-mask', 'true');
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'この画面の使い方' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '設定' })).not.toBeInTheDocument();
     expect(screen.queryByText(/1234/)).not.toBeInTheDocument();
   });
   it('renders a numbered row with an associated input label', () => {

@@ -1,3 +1,4 @@
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
@@ -12,7 +13,7 @@ export const metadata = { title: "スライド | Garden" };
 async function SlidesPage() {
   const decks = await loadSlideDecks();
   return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド" }]} /><SystemViewHeading><h1>スライド</h1></SystemViewHeading></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド" }]} /><SystemViewHeading><h1>スライド</h1></SystemViewHeading></header><SystemTabs />
     <div className={slideStyles.library}>{groupSlideDecks(decks).map((group, index) => <section key={group.category} aria-labelledby={`slide-category-${index}`}>
       <h2 id={`slide-category-${index}`}>{group.category}</h2>
       <div className={slideStyles.deckList}>{group.decks.map(deck => <Link className={slideStyles.deckCard} href={`/system/docs/slides/${deck.id}`} key={deck.id} aria-labelledby={`slide-deck-${deck.id}`}>

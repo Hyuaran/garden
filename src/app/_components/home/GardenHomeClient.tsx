@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Image from "next/image";
 import { ModuleIcon, RailIcon } from "../ModuleIcon/ModuleIcon";
 import Link from "next/link";
@@ -210,7 +212,7 @@ export default function GardenHomeClient({ visibleModules, employeeName }: Props
     </header>
 
     <section className={styles.greeting} aria-labelledby="home-greeting">
-      <h1 id="home-greeting">{displayName}さん、{greeting}</h1>
+      <div className="garden-help-heading"><h1 id="home-greeting">{displayName}さん、{greeting}</h1><HelpButton /></div><SystemTabs />
       <p>今日の業務をここから始めましょう。よく使うものは★を押すとお気に入りに並びます。</p>
     </section>
 

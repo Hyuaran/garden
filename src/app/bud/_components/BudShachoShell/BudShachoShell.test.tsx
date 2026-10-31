@@ -5,7 +5,7 @@ import { resolveBudActivePath } from "./bud-navigation";
 
 const mocks = vi.hoisted(() => ({ pathname: "/bud/expenses/review", signOut: vi.fn(), toggleTheme: vi.fn(), rpc: vi.fn().mockResolvedValue({data:true,error:null}) }));
 vi.mock("@/app/_lib/supabase/browser",()=>({createBrowserClient:()=>({rpc:mocks.rpc})}));
-vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => mocks.pathname }));
 vi.mock("../BudGate", () => ({ BudGate: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("@/app/_components/notices/NoticeProvider", () => ({ useNotices: () => ({ unreadCount: 0 }) }));
 vi.mock("next/image", () => ({ default: ({ unoptimized: _, ...props }: Record<string, unknown>) => <img {...props} /> }));

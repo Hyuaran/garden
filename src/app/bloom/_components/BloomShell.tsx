@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 /**
  * Garden-Bloom 全体のシェル（ヘッダー + ナビ + 本文領域）
  *
@@ -63,9 +65,9 @@ export function BloomShell({ children }: { children: ReactNode }) {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1b4332", margin: 0 }}>
+          <div className="garden-help-heading"><h1 style={{ fontSize: 22, fontWeight: 800, color: "#1b4332", margin: 0 }}>
             🌸 Garden Bloom
-          </h1>
+          </h1><HelpButton /></div>
           <p style={{ fontSize: 12, color: "#6b8e75", margin: 0 }}>
             作業可視化・ロードマップ・月次ダイジェスト
           </p>

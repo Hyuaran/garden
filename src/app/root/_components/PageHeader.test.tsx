@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PageHeader } from "./PageHeader";
 
 const route = vi.hoisted(() => ({ pathname: "/root/companies" }));
-vi.mock("next/navigation", () => ({ usePathname: () => route.pathname }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => route.pathname }));
 
 describe("Root の見出し", () => {
   it("現在地と30pxの見出しを表示し、説明文を出さない", () => {

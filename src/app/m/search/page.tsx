@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { MobileIcon } from "../_components/MobileIcon";
@@ -58,9 +60,9 @@ export default function MobileSearchPage() {
   return (
     <main style={page}>
       <header style={head}>
-        <h1 style={title}>検索</h1>
+        <div className="garden-help-heading"><h1 style={title}>検索</h1><HelpButton /></div>
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="モジュール、店名、金額、状態" style={input} autoFocus />
-      </header>
+      </header><SystemTabs />
 
       {!loaded && <div style={notice}>読み込み中...</div>}
       {loaded && results.length === 0 && <div style={notice}>見つかりませんでした。</div>}

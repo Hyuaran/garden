@@ -1,4 +1,5 @@
 'use client';
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import {useRef,useState} from 'react';
 import {useSearchParams,useRouter,usePathname} from 'next/navigation';
 import DataTable,{type DataColumn} from '@/app/system/_components/DataTable/DataTable';
@@ -28,7 +29,7 @@ export default function MyNumbers({rows:initial}: {rows:MyNumberRow[]}) {
   }catch{if(current===generation.current)setMessage('操作を完了できませんでした。');}finally{lock.current=false;setBusy(false);}
  }
  const columns:DataColumn<MyNumberRow>[]=[{id:'employee_number',label:'社員番号',type:'text',align:'fixed',value:row=>row.employee_number||row.employee_id},{id:'name',label:'氏名',type:'text',value:row=>row.name||'記録なし'},{id:'submitted_at',label:'提出日時',type:'date',align:'fixed',value:row=>row.submitted_at,render:row=>date(row.submitted_at)},{id:'number',label:'番号',type:'text',align:'fixed',value:row=>row.last4?'****-****-'+row.last4:'未提出'}];
- return <main className={styles.pageShell}><SystemBreadcrumb root={{label:'Root',href:'/root'}} items={[{label:'マイナンバー'}]}/><h1>マイナンバー</h1>
+ return <main className={styles.pageShell}><SystemBreadcrumb root={{label:'Root',href:'/root'}} items={[{label:'マイナンバー'}]}/><div className="garden-help-heading"><h1>マイナンバー</h1><HelpButton /></div>
  <SystemTabs>{Object.entries(labels).map(([key,label])=><button key={key} type="button" role="tab" aria-selected={tab===key} onClick={()=>{const next=new URLSearchParams(params);next.set('tab',key);router.replace(pathname+'?'+next.toString(),{scroll:false});}}>{label} <span>{rows.filter(row=>row.status===key).length}</span></button>)}</SystemTabs>
  <ResultMessage>{message}</ResultMessage><DataTable rows={rows.filter(row=>row.status===tab)} columns={columns} rowKey={row=>row.employee_id} searchText={row=>`${row.employee_number} ${row.name}`} searchPlaceholder="社員番号・氏名" defaultSort={{id:'submitted_at',direction:'desc'}} onRowClick={row=>{if(busy)return;setSelected(row);setNumber('');setPhoto('');setReason('');setMessage('');if(row.last4)void action('detail',row);}}/>
  {selected&&<Modal title={selected.name||'マイナンバー'} onClose={close} actions={selected.last4&&<><button disabled={busy} className={styles.danger} onClick={()=>void action('reject')}>差し戻す</button><button disabled={busy} className={styles.primary} onClick={()=>void action('confirm')}>確認しました</button></>}><div data-clarity-mask="true"><p>提出日時：{date(selected.submitted_at)}</p><p>番号：{number||(selected.last4?'****-****-'+selected.last4:'未提出')}</p>{selected.last4&&<button disabled={busy} onClick={()=>void action('display')}>表示する</button>}

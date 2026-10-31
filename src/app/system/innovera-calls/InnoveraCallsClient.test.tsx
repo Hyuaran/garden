@@ -95,7 +95,7 @@ describe("InnoveraCallsClient", () => {
     expect(screen.getByRole("tab", { name: "通話・録音" })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByLabelText("変更後の発信番号")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "並べ替え" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "並べ替え" }).parentElement).toHaveAttribute("title", "このタブは並べ替えがありません");
+    expect(screen.getByRole("tooltip", { name: "この画面は並べ替えがありません" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "発信番号" }));
     await screen.findByRole("option", { name: "代表回線" });
     expect(screen.getByRole("group", { name: "代表番号" }).tagName).toBe("OPTGROUP");
@@ -117,7 +117,7 @@ describe("InnoveraCallsClient", () => {
     expect(await screen.findByLabelText("変更後の発信番号")).toBeInTheDocument();
     expect(window.location.pathname + window.location.search).toBe("/my?tab=calls");
     expect(screen.getByRole("button", { name: "並べ替え" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "並べ替え" }).parentElement).toHaveAttribute("title", "並べ替えは管理者だけが使えます");
+    expect(screen.getByRole("tooltip", { name: "並べ替えは管理者だけが使えます" })).toBeInTheDocument();
   });
 
   it("loads all circuits on reorder entry, hides line controls and reloads personal choices on exit", async () => {

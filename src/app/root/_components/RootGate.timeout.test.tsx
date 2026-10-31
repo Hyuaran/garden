@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ loading: false, isAuthenticated: false }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/root/employees" }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => "/root/employees" }));
 vi.mock("../../_components/ModuleGate", () => ({
   ModuleGate: ({ children }: { children: React.ReactNode }) => children,
 }));

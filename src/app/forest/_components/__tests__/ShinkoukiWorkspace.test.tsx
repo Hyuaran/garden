@@ -11,7 +11,7 @@ import {
 import { ShinkoukiWorkspace } from "../ShinkoukiWorkspace";
 import { useForestState } from "../../_state/ForestStateContext";
 
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }));
 

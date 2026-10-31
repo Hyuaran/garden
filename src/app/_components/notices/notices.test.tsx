@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { Notice } from "@/lib/notices";
 const mocks = vi.hoisted(() => ({ path: "/system", role: "toss", state: null as unknown, ack: vi.fn(), snooze: vi.fn(), publish: vi.fn(), unpublish: vi.fn(), replace: vi.fn() }));
 vi.mock("@/app/_lib/auth-unified", () => ({ useAuthUnified: () => ({ role: mocks.role, userId: "user", loading: false, isAuthenticated: true }) }));
-vi.mock("next/navigation", () => ({ usePathname: () => mocks.path, useRouter: () => ({ replace: mocks.replace }) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => mocks.path, useRouter: () => ({ replace: mocks.replace }) }));
 vi.mock("./NoticeProvider", () => ({ useNotices: () => mocks.state }));
 import NoticeModal from "./NoticeModal";
 import { NoticeList } from "./NoticeList";

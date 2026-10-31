@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import "server-only";
 import type { ReactNode } from "react";
 import { canView, viewPermissionContext, ViewPermissionError } from "./view-permission.server";
@@ -18,7 +20,7 @@ export async function requireRecruitMailRead(page: string, tab?: string) {
 }
 export async function RecruitMailView({ page, children, fallback }: { page: string; children: ReactNode; fallback?: ReactNode }) {
   const context = await viewPermissionContext();
-  if (!await canViewRecruitMail(page)) return fallback ?? <main><h1>閲覧権限がありません</h1></main>;
+  if (!await canViewRecruitMail(page)) return fallback ?? <main><div className="garden-help-heading"><h1>閲覧権限がありません</h1><HelpButton /></div><SystemTabs /></main>;
   const tabs = await Promise.all(SPROUT_RILL_TABS[page].map(async ([key, label]) => ({ key, label, allowed: await canViewRecruitMail(page, key), canAdd: false })));
   return <SystemViewProvider key={page + tabs.map(tab => `${tab.key}:${tab.allowed}`).join(",")} value={{ pageKey: page, admin: context.viewer.role === "super_admin", tabs, canAdd: false }}>{children}</SystemViewProvider>;
 }

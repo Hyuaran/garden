@@ -1,4 +1,5 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 
@@ -99,9 +100,9 @@ function TransferDetailContent() {
 
       <div className="flex items-center justify-between mb-4">
         <div>
-          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "振込管理", href: "/bud/transfers" }, { label: transfer.transfer_id }]} /><h1 className="text-2xl font-bold text-gray-800 font-mono">
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "振込管理", href: "/bud/transfers" }, { label: transfer.transfer_id }]} /><div className="garden-help-heading"><h1 className="text-2xl font-bold text-gray-800 font-mono">
             {transfer.transfer_id}
-          </h1>
+          </h1><HelpButton /></div>
           <div className="mt-2 flex items-center gap-2 text-sm">
             <span className="text-gray-500">状態:</span>
             <StatusBadge status={transfer.status} size="md" />

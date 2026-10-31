@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useState } from "react";
 import { usePolling } from "@/lib/hooks/usePolling";
 import type { KanriDisplayPayload } from "@/app/system/kanri/_lib/kanri-display";
@@ -43,7 +45,7 @@ export default function DisplayClient({ initialData }: { initialData: DisplayDat
 
   return <main className={styles.shell}>
     <section className={styles.board} aria-label="ディスプレイ用成績">
-      <h1>{data.title}</h1>
+      <div className="garden-help-heading"><h1>{data.title}</h1><HelpButton /></div><SystemTabs />
       <table className={styles.scoreTable}>
         <thead>
           <tr>

@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 /**
@@ -89,7 +91,7 @@ export default function ShiwakechouTopPage() {
   return (
     <div style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}><h1
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}><div className="garden-help-heading"><h1
           style={{
             fontSize: 22,
             fontWeight: 600,
@@ -98,7 +100,7 @@ export default function ShiwakechouTopPage() {
           }}
         >
           仕訳帳
-        </h1><span style={{ marginLeft: "auto" }}><SystemViewButton /></span></div>
+        </h1><HelpButton /></div><span style={{ marginLeft: "auto" }}></span></div><SystemTabs actions={<SystemViewButton />} />
         <div
           style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}
         >

@@ -1,4 +1,5 @@
 "use client";
+
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -148,7 +149,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
     <header className={styles.header}>
       <div>
         <SystemBreadcrumb items={[{ label: "業務管理ツール" }]} />
-        <SystemViewHeading showActions={sections.length <= 1} actions={<SystemViewButton tabKey={active?.key} />}><h1>業務管理ツール</h1></SystemViewHeading>
+        <SystemViewHeading  ><h1>業務管理ツール</h1></SystemViewHeading>
       </div>
     </header>
 

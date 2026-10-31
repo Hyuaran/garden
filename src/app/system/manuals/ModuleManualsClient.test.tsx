@@ -4,7 +4,7 @@ import ModuleManualsClient from "./ModuleManualsClient";
 import { getVisibleManualDocs, MANUAL_MODULES, SYSTEM_MANUALS } from "./_lib/manuals-registry";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ push }) }));
 
 describe("ModuleManualsClient", () => {
   it("lists manuals with the readable document labels", () => {
@@ -13,7 +13,7 @@ describe("ModuleManualsClient", () => {
 
     expect(screen.getByRole("heading", { name: "System のマニュアル" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "勤怠打刻と KING OF TIME 取込" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "操作マニュアル" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "使い方" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "開く" })).toHaveAttribute("href", "/system/manuals/system/kot-attendance");
   });
 

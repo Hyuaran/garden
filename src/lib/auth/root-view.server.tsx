@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import "server-only";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
@@ -23,6 +25,6 @@ export async function RootView({ pageKey, children }: { pageKey: string; childre
     if (error instanceof ViewPermissionError && error.status === 401) redirect(`/login?returnTo=${encodeURIComponent(pageKey === "root-home" ? "/root" : `/root/${pageKey.slice(5)}`)}`);
     throw error;
   }
-  if (!await canView(pageKey, "", context.viewer)) return <main style={{ padding: 32 }}><h1>閲覧権限がありません</h1></main>;
+  if (!await canView(pageKey, "", context.viewer)) return <main style={{ padding: 32 }}><div className="garden-help-heading"><h1>閲覧権限がありません</h1><HelpButton /></div><SystemTabs /></main>;
   return <SystemViewProvider value={{ pageKey, admin: context.viewer.role === "super_admin", tabs: [], canAdd: false }}>{children}</SystemViewProvider>;
 }

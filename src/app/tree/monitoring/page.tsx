@@ -1,4 +1,5 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
 import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 const monitoringTabs = [{ key: "list", label: "一覧" }, { key: "seat", label: "座席表" }];
@@ -180,7 +181,7 @@ export default function MonitoringPage() {
   return (
     <div style={{ padding: "24px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>📊 モニタリング</h1><TabHeadingAction items={monitoringTabs} active={activeTab} /></div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1 style={{fontSize:18,margin:0}}>📊 モニタリング</h1><HelpButton /></div><TabHeadingAction items={monitoringTabs} active={activeTab} /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

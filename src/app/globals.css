@@ -3634,3 +3634,5 @@ button[data-modal-action="danger"], [data-garden-modal="panel"] button[data-moda
 [data-garden-modal="panel"] button:disabled, button[data-modal-action]:disabled { opacity: .5; cursor: not-allowed; }
 [data-garden-modal="panel"] :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 @media (max-width: 600px) { :where(dialog), [data-garden-modal="panel"] { padding: 18px !important; } }
+.garden-help-heading { display:flex; align-items:center; min-width:0; }
+.garden-help-heading > h1 { min-width:0; }

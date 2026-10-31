@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/re
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), ack: vi.fn(), snooze: vi.fn(), path: "/system" }));
 vi.mock("@/app/_lib/auth-unified", () => ({ useAuthUnified: () => ({ userId: "u", role: "toss", loading: false }) }));
-vi.mock("next/navigation", () => ({ usePathname: () => mocks.path }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => mocks.path }));
 vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({}) }));
 vi.mock("@/lib/notices", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/notices")>(), fetchNotices: mocks.fetch, acknowledgeNotices: mocks.ack, snoozeNotices: mocks.snooze }));
 import { NoticeProvider, useNotices } from "./NoticeProvider";

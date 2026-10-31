@@ -445,7 +445,7 @@ export default function InnoveraCallsClient({
         <UpdatedStampRow><UpdatedStamp label="INNOVERA" date={loading ? null : lastLoadedAt} emptyText={loading ? "取得中..." : "未取得"} busy={loading} onRefresh={() => void loadCalls(true)} refreshLabel="INNOVERA から取り直す" title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"} /></UpdatedStampRow>
       </header>
 
-      <SystemTabs aria-label="INNOVERA表示" actions={<span title={role !== "super_admin" ? "並べ替えは管理者だけが使えます" : tab !== "line" ? "このタブは並べ替えがありません" : "並べ替え"}><TabActionButton icon="sort" label="並べ替え" title={role !== "super_admin" ? "並べ替えは管理者だけが使えます" : tab !== "line" ? "このタブは並べ替えがありません" : "並べ替え"} pressed={reordering} disabled={tab !== "line" || role !== "super_admin" || orderBusy} onClick={() => { if (reordering) void loadLine(); setReordering(!reordering); }} /></span>}>
+      <SystemTabs aria-label="INNOVERA表示" actions={<TabActionButton icon="sort" label="並べ替え" title={role !== "super_admin" ? "並べ替えは管理者だけが使えます" : tab !== "line" ? "この画面は並べ替えがありません" : "並べ替え"} pressed={reordering} disabled={tab !== "line" || role !== "super_admin" || orderBusy} onClick={() => { if (reordering) void loadLine(); setReordering(!reordering); }} />}>
         <button type="button" role="tab" id="innovera-tab-calls" aria-controls="innovera-panel-calls" aria-selected={tab === "calls"} onClick={() => changeTab("calls")}>通話・録音</button>
         <button type="button" role="tab" id="innovera-tab-line" aria-controls="innovera-panel-line" aria-selected={tab === "line"} onClick={() => changeTab("line")}>発信番号</button>
       </SystemTabs>

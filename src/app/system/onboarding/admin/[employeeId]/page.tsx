@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
 import { listMinimumWages } from "@/lib/minimum-wages.server";
 import type { MinimumWage } from "@/lib/minimum-wages";
@@ -30,8 +32,8 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding?tab=all" }, { label: record?.values.name || record?.employee.name || "入社手続き" }]} />
-      <h1 {...CLARITY_MASK}>{record ? `${record.values.name || record.employee.name}さんの入社手続き` : "入社手続き"}</h1>
-    </header>
+      <div className="garden-help-heading"><h1 {...CLARITY_MASK}>{record ? `${record.values.name || record.employee.name}さんの入社手続き` : "入社手続き"}</h1><HelpButton /></div>
+    </header><SystemTabs />
     <div className={styles.detailActions}><Link className={styles.button} href="/system/onboarding?tab=all">戻る</Link>
     {record?.status === "draft" && <Link className={styles.button} href={`/system/onboarding/admin/${encodeURIComponent(employeeId)}/proxy`}>本人の代わりに入力する</Link>}</div>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>

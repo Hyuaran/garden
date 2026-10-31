@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
@@ -21,7 +23,7 @@ async function ContractsLayout({ children }: { children: ReactNode }) {
     .is("deleted_at", null)
     .maybeSingle();
   if (!employee || !isEmployeeActive(employee)) {
-    return <main style={{ padding: 32 }}><h1>閲覧権限がありません</h1><p>この画面は責任者以上が利用できます。</p></main>;
+    return <main style={{ padding: 32 }}><div className="garden-help-heading"><h1>閲覧権限がありません</h1><HelpButton /></div><SystemTabs /><p>この画面は責任者以上が利用できます。</p></main>;
   }
   return children;
 }

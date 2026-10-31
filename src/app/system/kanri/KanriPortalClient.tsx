@@ -1,4 +1,5 @@
 "use client";
+
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -666,7 +667,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "管理表ポータル" }]} />
-      <SystemViewHeading showActions={["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={activeTab} />}><h1>管理表ポータル</h1></SystemViewHeading>
+      <SystemViewHeading  ><h1>管理表ポータル</h1></SystemViewHeading>
     </header>
     <div className={styles.monitorEntry}>
       <Link href="/system/kanri/display" target="_blank" rel="noreferrer" className={styles.monitorButton}>モニター表示</Link>

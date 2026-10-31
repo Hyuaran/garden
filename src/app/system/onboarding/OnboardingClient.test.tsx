@@ -6,7 +6,7 @@ import { BANK_NAME_LEDGER_HINT, CODE_LOOKUP_NOT_FOUND, emptyInput, POSTAL_NOT_FO
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
 
 const refresh = vi.hoisted(() => vi.fn());
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ refresh }) }));
 
 const initial = (): OnboardingRecord => ({ values: emptyInput(), status: "draft", ndaAgreedAt: null, submittedAt: null });
 let requests: { action: string; values: OnboardingRecord["values"] }[];

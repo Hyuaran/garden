@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 
@@ -104,13 +105,13 @@ export default function LeafOverview() {
   return (
     <LeafShell active="overview">
       <div className={styles.pageStack}>
-        <PageHeader titleAddon={<SystemViewButton />}
+        <PageHeader 
           title="Leaf"
           subtitle="事業部ごとの業務アプリを束ねる入口です。現在は関電プロトタイプの閲覧を先行して公開しています。"
           accessBadge={{ icon: "🌿", label: "Leaf" }}
           moduleMark="leaf"
           favoriteIcon="/themes/garden-shell/images/icons_bloom/orb_leaf.png"
-        />
+        /><SystemTabs actions={<SystemViewButton />} />
 
         <section className={styles.overviewLead}>
           <div>

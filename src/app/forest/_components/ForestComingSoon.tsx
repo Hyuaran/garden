@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 
@@ -14,13 +15,13 @@ type Props = {
 export function ForestComingSoon({ title, description }: Props) {
   return (
     <div className={styles.pageStack}>
-      <PageHeader titleAddon={<SystemViewButton />}
+      <PageHeader 
         title={title}
         subtitle={description}
         accessBadge={{ icon: "\ud83c\udf31", label: "\u6e96\u5099\u4e2d" }}
         moduleMark="forest"
         favoriteIcon="/themes/garden-shell/images/icons_bloom/orb_forest.png"
-      />
+      /><SystemTabs actions={<SystemViewButton />} />
       <section className={styles.comingSoonPanel}>
         <div className={styles.comingSoonMark} aria-hidden="true">
           \ud83c\udf3f

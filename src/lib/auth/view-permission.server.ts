@@ -29,6 +29,7 @@ export const readViewPermissions = cache(async (): Promise<ViewPermission[]> => 
   return (data ?? []) as ViewPermission[];
 });
 export async function canView(pageKey: string, tabKey: string, viewer: Viewer, defaultAllowed?: boolean) {
+  if (pageKey === "system-manuals" && (tabKey === "operation" || tabKey === "")) return true;
   if (pageKey === "system-dev-board") return viewer.employeeId === "EMP-0008";
   if (!permissionEntry(pageKey, tabKey)) return false;
   if (viewer.role === "super_admin") return true;

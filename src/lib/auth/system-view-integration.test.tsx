@@ -39,7 +39,7 @@ describe("全対象の既定と継承", () => {
         expect(resolveCanView([], scope.pageKey, scope.tabKey, viewer)).toBe(scope.defaultRoles.includes(role));
         expect(resolveCanView([setting(scope.pageKey, "", [], ["EMP-1"])], scope.pageKey, scope.tabKey, viewer)).toBe(true);
         expect(resolveCanView([setting(scope.pageKey, "", [role])], scope.pageKey, scope.tabKey, viewer)).toBe(true);
-        expect(resolveCanView([setting(scope.pageKey, "", [role]), setting(scope.pageKey, scope.tabKey)], scope.pageKey, scope.tabKey, viewer)).toBe(scope.tabKey === "" || role === "super_admin");
+        expect(resolveCanView([setting(scope.pageKey, "", [role]), setting(scope.pageKey, scope.tabKey)], scope.pageKey, scope.tabKey, viewer)).toBe(scope.tabKey === "" || role === "super_admin" || (scope.pageKey === "system-manuals" && scope.tabKey === "operation"));
       }
     });
   }
@@ -102,7 +102,7 @@ describe("実際のページ・API の読み取りと書き込みの分離", () 
   it("全対象で設定によるAPI拒否と未ログインを扱う", async () => {
     for (const scope of SYSTEM_VIEW_SCOPES) {
       state.rows = [setting(scope.pageKey, scope.tabKey)];
-      expect((await systemViewResponse(scope.pageKey, scope.tabKey))?.status).toBe(403);
+      expect((await systemViewResponse(scope.pageKey, scope.tabKey))?.status).toBe(scope.pageKey === "system-manuals" && ["", "operation"].includes(scope.tabKey) ? undefined : 403);
     }
     state.user = false;
     expect((await systemViewResponse("system-mypage"))?.status).toBe(401);
@@ -116,7 +116,7 @@ describe("実際のページ・API の読み取りと書き込みの分離", () 
 
 it("SQL の全 scope・既定役職が registry と一致し、全変更RPCが未知keyを先に拒否する", () => {
   // 後から足した画面の scope は、その画面の migration に入っている
-  const sql = readFileSync("supabase/migrations/20261026000005_system_view_scopes.sql", "utf8") + readFileSync("supabase/migrations/20261029000466_system_expense_report.sql", "utf8");
+  const sql = readFileSync("supabase/migrations/20261026000005_system_view_scopes.sql", "utf8") + readFileSync("supabase/migrations/20261029000466_system_expense_report.sql", "utf8") + readFileSync("supabase/migrations/20261031000501_manual_operation_help_scope.sql", "utf8");
   for (const scope of SYSTEM_VIEW_SCOPES) {
     const roles = scope.defaultRoles.map(role => `'${role}'`).join(",");
     expect(sql).toContain(`('${scope.pageKey}','${scope.tabKey}','${permissionEntry(scope.pageKey, scope.tabKey)!.label}',array[${roles}]::text[])`);

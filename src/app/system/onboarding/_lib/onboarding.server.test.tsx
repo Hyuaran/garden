@@ -5,7 +5,7 @@ afterEach(()=>vi.unstubAllEnvs());
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect, useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), redirect: mocks.redirect, useRouter: () => ({ refresh: vi.fn() }) }));
 import { databaseError, needsOnboarding, onboardingEmployee, readOnboarding, saveOnboarding } from "./onboarding.server";
 import { emptyInput, PREPARING_MESSAGE } from "./onboarding";
 import OnboardingPage from "../page";

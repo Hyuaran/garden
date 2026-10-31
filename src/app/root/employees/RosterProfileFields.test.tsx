@@ -15,7 +15,7 @@ it('renders compact grouped fields in the shared responsive grid', () => {
 });
 it('uses SystemTabs with local selection and no URL mutation', () => {
   const page = readFileSync('src/app/root/employees/page.tsx','utf8');
-  expect(page).toContain('<SystemTabs>');
+  expect(page).toContain('<SystemTabs pageActions={false}>');
   expect(page).toContain('onClick={()=>setEditTab(id)}');
   expect(page).not.toContain("searchParams.set('tab'");
   expect(page).not.toContain("get('tab')");

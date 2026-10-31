@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { formatDocumentDate } from "../_data/company-doc";
@@ -83,8 +85,8 @@ export default function HikariBasicsDocument({ figures = [] }: { figures?: Hikar
   return <div className={styles.pageShell} data-hikari-basics-document>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: hikariBasicsDocument.title }]} />
-      <h1>{hikariBasicsDocument.title}</h1>
-    </header>
+      <div className="garden-help-heading"><h1>{hikariBasicsDocument.title}</h1><HelpButton /></div>
+    </header><SystemTabs />
     <div className={styles.hero}>
       <p className={styles.eyebrow}>{hikariBasicsDocument.eyebrow}</p>
       <p className={styles.heroTitle}>{hikariBasicsDocument.heroTitle}</p>

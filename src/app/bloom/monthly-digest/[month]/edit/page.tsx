@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -20,7 +22,7 @@ const PAGE_KINDS: Array<{ value: DigestPageKind; label: string; icon: string }> 
 ];
 
 export default function EditDigestPage() {
-  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1>月次まとめの編集</h1><SystemViewButton /></div><EditDigestContent /></>;
+  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1>月次まとめの編集</h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} /><EditDigestContent /></>;
 }
 function EditDigestContent() {
   const router = useRouter();

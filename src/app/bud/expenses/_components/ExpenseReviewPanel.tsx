@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Modal from "@/app/system/_components/Modal/Modal";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
@@ -1036,8 +1038,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         <>
           <header style={{ marginBottom: 18 }}>
             <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "経費精算", href: "/bud/expenses" }, { label: "承認待ち（経理）" }]} />
-            <h1 style={{ fontSize: 30, color: "var(--heading)", margin: 0 }}>承認待ち（経理）</h1>
-          </header>
+            <div className="garden-help-heading"><h1 style={{ fontSize: 30, color: "var(--heading)", margin: 0 }}>承認待ち（経理）</h1><HelpButton /></div>
+          </header><SystemTabs />
           <CorpFilter value={corpFilter} corps={sortedCorps} onChange={setCorpFilter} />
         </>
       )}

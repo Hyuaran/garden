@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 /**
@@ -144,7 +146,7 @@ export default function TransactionReviewPage() {
         }}
       >
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}><h1
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}><div className="garden-help-heading"><h1
             style={{
               fontSize: 22,
               fontWeight: 600,
@@ -153,7 +155,7 @@ export default function TransactionReviewPage() {
             }}
           >
             取引確認 ({corpId})
-          </h1><span style={{ marginLeft: "auto" }}><SystemViewButton /></span></div>
+          </h1><HelpButton /></div><span style={{ marginLeft: "auto" }}></span></div><SystemTabs actions={<SystemViewButton />} />
           <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>
             期間: {data.period_from} 〜 {data.period_to} / 合計 {data.total_count} 件
           </div>

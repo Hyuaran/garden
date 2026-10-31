@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { redirect } from "next/navigation";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import OnboardingClient from "../../../OnboardingClient";
@@ -13,7 +15,7 @@ export default async function ProxyPage({ params }: { params: Promise<{ employee
     const initial = await readProxyOnboarding(context);
     const name = initial.values.name || context.employee.name || "";
     // 代行入力の画面にも場所の表示と見出しを出す（無いと入力の枠が右上のボタンに重なったため 2026-10-26）
-    return <main className={styles.pageShell} {...CLARITY_MASK}><header className={styles.header}><SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding?tab=all" }, { label: name || "入社手続き", href: `/system/onboarding/admin/${encodeURIComponent(employeeId)}` }, { label: "代行入力" }]} /><h1>{name ? `${name}さんの入社手続き（代行入力）` : "入社手続き（代行入力）"}</h1></header><OnboardingClient initial={initial} proxy={{ employeeId,
+    return <main className={styles.pageShell} {...CLARITY_MASK}><header className={styles.header}><SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding?tab=all" }, { label: name || "入社手続き", href: `/system/onboarding/admin/${encodeURIComponent(employeeId)}` }, { label: "代行入力" }]} /><div className="garden-help-heading"><h1>{name ? `${name}さんの入社手続き（代行入力）` : "入社手続き（代行入力）"}</h1><HelpButton /></div></header><SystemTabs /><OnboardingClient initial={initial} proxy={{ employeeId,
       employeeName: initial.values.name || context.employee.name || "", actorName: context.actor.name, sensitive: context.sensitive }} /></main>;
   } catch (error) {
     const status = (error as { status?: number }).status;

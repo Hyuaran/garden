@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 /**
  * Coming Soon ページ 共通 component（dispatch v7-E）
@@ -37,7 +39,7 @@ export function LeafForestPlaceholder({ moduleName, nameJa, description, phase }
         textAlign: "center",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}><h1
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}><div className="garden-help-heading"><h1
         style={{
           fontSize: 36,
           fontWeight: 700,
@@ -47,7 +49,7 @@ export function LeafForestPlaceholder({ moduleName, nameJa, description, phase }
       >
         {moduleName}
         <span style={{ fontSize: 22, color: "#6B8E75", marginLeft: 12 }}>/ {nameJa}</span>
-      </h1><SystemViewButton /></div>
+      </h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />
       <p style={{ fontSize: 16, color: "#6B8E75", margin: "0 0 8px", maxWidth: 480, lineHeight: 1.6 }}>
         {description}
       </p>

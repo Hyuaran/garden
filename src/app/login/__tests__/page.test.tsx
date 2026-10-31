@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   fetchBloomUser: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname,
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.searchParams),
 }));

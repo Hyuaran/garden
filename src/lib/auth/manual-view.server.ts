@@ -9,7 +9,7 @@ export async function visibleManuals(role: GardenRole) {
   const access = await Promise.all(available.map(doc => canView("system-manuals", manualDocPermissionKey(doc.key), viewer, isRoleAtLeast(role, doc.minRole))));
   const allowed = new Set(available.filter((_, index) => access[index]).map(doc => doc.key));
   return SYSTEM_MANUALS.map(manual => {
-    const docs = manual.docs.filter(doc => allowed.has(doc.key));
+    const docs = manual.docs.filter(doc => allowed.has(doc.key) && (doc.key !== "flow" || isRoleAtLeast(role, doc.minRole)));
     return { ...manual, docs, visibleDocs: docs };
   }).filter(manual => manual.docs.length);
 }

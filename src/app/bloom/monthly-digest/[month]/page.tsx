@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -27,7 +29,7 @@ const STATUS_LABEL: Record<
 };
 
 export default function MonthDigestPage() {
-  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1>月次まとめ</h1><SystemViewButton /></div><MonthDigestContent /></>;
+  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1>月次まとめ</h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} /><MonthDigestContent /></>;
 }
 function MonthDigestContent() {
   const router = useRouter();

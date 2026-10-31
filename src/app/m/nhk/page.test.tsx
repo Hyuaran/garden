@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), redirect: mocks.redirect }));
 vi.mock("@/app/system/forms/nhk-visit/NhkVisitClient", () => ({
   default: ({ submitterName, employeeNumber, mobile }: { submitterName: string; employeeNumber: string; mobile?: boolean }) => (
     <div data-testid="nhk-visit-client" data-mobile={String(mobile)}>

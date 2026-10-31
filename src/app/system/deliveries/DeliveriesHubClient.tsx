@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
@@ -52,7 +53,7 @@ export default function DeliveriesHubClient({ deliveries }: { deliveries: System
         <SystemBreadcrumb items={[{ label: "自動配信" }]} />
         <SystemViewHeading><h1>自動配信</h1></SystemViewHeading>
       </div>
-    </header>
+    </header><SystemTabs />
 
     <div className={styles.listHeading}>
       <h2>自動配信の一覧</h2>

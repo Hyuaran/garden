@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
 import Modal from "@/app/system/_components/Modal/Modal";
 import { useEffect, useRef, useState } from "react";
@@ -86,9 +88,9 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
   return <div className={`${styles.shell} ${embedded ? styles.shellEmbedded : ""}`}>
     <main className={`${styles.main} ${embedded ? styles.mainEmbedded : ""}`}>
       <header className={styles.header}>
-        <div>{!embedded && <><SystemBreadcrumb items={[{ label: "勤怠打刻" }]} /><h1>勤怠打刻</h1></>}{employeeName && <p className={styles.employeeName} {...CLARITY_MASK}>{employeeName}さん</p>}</div>
+        <div>{!embedded && <><SystemBreadcrumb items={[{ label: "勤怠打刻" }]} /><div className="garden-help-heading"><h1>勤怠打刻</h1><HelpButton /></div></>}{employeeName && <p className={styles.employeeName} {...CLARITY_MASK}>{employeeName}さん</p>}</div>
         <div className={styles.headerActions}>{canViewSync && <Link className={styles.adminLink} href="/system/attendance/sync-status">同期状況</Link>}</div>
-      </header>
+      </header>{!embedded && <SystemTabs />}
       {!registered ? <section className={styles.notice} role="status">
         <h2>打刻できません</h2><p>打刻対象の従業員として登録されていません（管理者にご連絡ください）</p>
       </section> : <>

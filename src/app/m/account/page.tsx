@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useMemo, useState } from "react";
 
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -32,9 +34,9 @@ export default function MobileAccountPage() {
   return (
     <main style={page}>
       <header style={head}>
-        <h1 style={title}>アカウント</h1>
+        <div className="garden-help-heading"><h1 style={title}>アカウント</h1><HelpButton /></div>
         <p style={lead}>ログイン中のユーザー情報です。</p>
-      </header>
+      </header><SystemTabs />
 
       <section style={card} {...CLARITY_MASK}>
         <div style={avatar}>G</div>

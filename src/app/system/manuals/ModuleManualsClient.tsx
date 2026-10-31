@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
@@ -18,7 +19,7 @@ export default function ModuleManualsClient({ module, manuals }: { module: Manua
         <SystemBreadcrumb items={[{ label: "マニュアル", href: "/system/manuals" }, { label: module.name }]} />
         <SystemViewHeading><h1>{module.name} のマニュアル</h1></SystemViewHeading>
       </div>
-    </header>
+    </header><SystemTabs />
 
     <ModuleManualsList module={module} manuals={manuals} />
   </div>;

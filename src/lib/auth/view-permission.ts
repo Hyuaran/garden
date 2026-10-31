@@ -23,6 +23,7 @@ export function effectivePermission(rows: ViewPermission[], page: string, tab = 
     ?? rows.find(row => row.page_key === page && row.tab_key === "");
 }
 export function resolveCanView(rows: ViewPermission[], page: string, tab: string, viewer: Viewer, defaultAllowed?: boolean) {
+  if (page === "system-manuals" && (tab === "operation" || tab === "")) return true;
   if (page === "system-dev-board") return viewer.employeeId === "EMP-0008";
   if (!permissionEntry(page, tab)) return false;
   if (viewer.role === "super_admin") return true;

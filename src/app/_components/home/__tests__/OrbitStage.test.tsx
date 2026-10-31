@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 
 let stageRect = { width: 900, height: 640 };
 
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ push: mocks.push }),
 }));
 

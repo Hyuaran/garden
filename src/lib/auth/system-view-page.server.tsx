@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import "server-only";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
@@ -26,7 +28,7 @@ export function withSystemView<Args extends unknown[]>(pageKey: string, Page: (.
       if (error instanceof ViewPermissionError && error.status === 401) redirect(`/login?returnTo=${encodeURIComponent(href ?? (pageKey === "system-home" ? "/system" : `/system/${pageKey.slice(7)}`))}`);
       throw error;
     }
-    if (!state.allowed || (tabKey !== undefined && !await canView(pageKey, tabKey, (await viewPermissionContext()).viewer))) return <main style={{ padding: 32 }}><h1>閲覧権限がありません</h1></main>;
+    if (!state.allowed || (tabKey !== undefined && !await canView(pageKey, tabKey, (await viewPermissionContext()).viewer))) return <main style={{ padding: 32 }}><div className="garden-help-heading"><h1>閲覧権限がありません</h1><HelpButton /></div><SystemTabs /></main>;
     return <SystemViewProvider value={state}>{await Page(...args)}</SystemViewProvider>;
   };
 }

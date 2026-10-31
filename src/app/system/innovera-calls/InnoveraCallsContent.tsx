@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { redirect } from "next/navigation";
 import { CallAccessError, requireCallAccess } from "@/lib/innovera/calls.server";
 import InnoveraCallsClient from "./InnoveraCallsClient";
@@ -17,7 +19,7 @@ export default async function InnoveraCallsContent({ embedded = false }: { embed
   if (denied || !ctx) {
     return (
       <main style={{ padding: 32 }}>
-        <h1>この画面へアクセスする権限がありません</h1>
+        <div className="garden-help-heading"><h1>この画面へアクセスする権限がありません</h1><HelpButton /></div><SystemTabs />
         <p>管理者へ問い合わせてください。</p>
       </main>
     );

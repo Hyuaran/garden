@@ -1,4 +1,5 @@
 "use client";
+
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { useSystemView, SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -103,7 +104,7 @@ export default function Sprout() {
     try { const result = await sendToHire(a.kintone_record_id); setMessage(result.message); if (result.ok) setData(d => ({ ...d, sent: [...d.sent, a.kintone_record_id] })); }
     catch { setMessage("送れませんでした。時間をおいてお試しください"); } finally { setBusy(false); }
   }
-  return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><SystemViewHeading showActions={["applicants", "interviews", "training"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={tab} />}><h1>採用管理</h1></SystemViewHeading><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy || !loaded} refreshLabel="採用情報を取り込む" /></div>
+  return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><SystemViewHeading  ><h1>採用管理</h1></SystemViewHeading><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy || !loaded} refreshLabel="採用情報を取り込む" /></div>
       <SystemTabs actions={<SystemViewButton tabKey={tab} />}>{[["applicants", "応募者"], ["interviews", "面接予定"], ["training", "研修予定"]].filter(([id]) => allowedTab(id)).map(([id,label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => { if (tab === id) return; setSelected(null); setLoaded(false); setData({applicants:[],hearings:[],sent:[],updated:null}); setTab(id); }}>{label}</button>)}</SystemTabs>
       <><FilterRow className={styles.filters}>
         <FilterBox label="名前・電話で探す" search><input type="search" value={search} onChange={e => setSearch(e.target.value)} /></FilterBox>

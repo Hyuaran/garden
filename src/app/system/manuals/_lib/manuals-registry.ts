@@ -23,14 +23,15 @@ export type ManualDefinition = {
   slug: string;
   name: string;
   description: string;
+  paths: string[];
   storagePrefix: string;
   docs: ManualDoc[];
   extraDocs?: ManualDoc[];
 };
 
-// タブの並びと権限（全機能で共通）。①操作マニュアル＝社員以上、⓪②③④＝全権管理者のみ
+// 使い方はログイン中の在籍者全員、⓪②③④は全権管理者のみ。
 export const MANUAL_DOCS: ManualDoc[] = [
-  { key: "operation", label: "操作マニュアル", file: "1_operation.html", kind: "html", minRole: "staff" },
+  { key: "operation", label: "使い方", file: "1_operation.html", kind: "html", minRole: "toss" },
   { key: "summary", label: "要点", file: "0_summary.html", kind: "html", minRole: "super_admin" },
   { key: "overview", label: "仕組み", file: "2_overview.html", kind: "html", minRole: "super_admin" },
   { key: "engineer", label: "仕様", file: "3_engineer.html", kind: "html", minRole: "super_admin" },
@@ -43,8 +44,110 @@ export const MANUAL_MODULES: ManualModule[] = [
   { slug: "root", name: "Root", description: "組織台帳", icon: "person" },
 ];
 
+const MANUAL_PATHS: Record<string, string[]> = {
+  "system/docs": [
+    "/system/docs"
+  ],
+  "system/onboarding": [
+    "/system/onboarding"
+  ],
+  "system/mypage": [
+    "/system/mypage",
+    "/my",
+    "/m/account"
+  ],
+  "system/kot-attendance": [
+    "/system/attendance",
+    "/my?tab=attendance"
+  ],
+  "system/shift": [
+    "/system/shift",
+    "/my?tab=shift"
+  ],
+  "system/zenkaku": [
+    "/system/zenkaku", "/my?tab=zenkaku"
+  ],
+  "system/call-metrics": [
+    "/system/call-metrics"
+  ],
+  "system/shukkin": [
+    "/system/forms/shukkin"
+  ],
+  "system/payroll-notice": [
+    "/system/payroll-notice",
+    "/system/forms/payroll-notice"
+  ],
+  "system/nhk-visit": [
+    "/system/forms/nhk-visit", "/m/nhk"
+  ],
+  "system/expense": [
+    "/system/forms/expense", "/m/expense"
+  ],
+  "system/ap-daily": [
+    "/my?tab=report",
+    "/my?tab=review"
+  ],
+  "system/line": [
+    "/system/line"
+  ],
+  "system/global-search": [],
+  "system/innovera": [
+    "/system/innovera"
+  ],
+  "system/host-relay": [],
+  "system/vercel-usage": [],
+  "system/innovera-calls": [
+    "/system/innovera-calls", "/my?tab=calls"
+  ],
+  "system/pl-payments": [],
+  "system/mail-payment-check": [],
+  "system/mail-ndr-watch": [],
+  "system/notices": [
+    "/system/notices",
+    "/my?tab=notices"
+  ],
+  "system/doc-save-check": [],
+  "system/transfer-duplicate-check": [
+    "/bud/transfers"
+  ],
+  "system/manuals-screen": [
+    "/system/manuals"
+  ],
+  "system/contracts": [
+    "/system/contracts"
+  ],
+  "system/sites": [
+    "/system/sites"
+  ],
+  "system/toss": [
+    "/p/toss"
+  ],
+  "system/deliveries": [
+    "/system/deliveries"
+  ],
+  "system/kanri": [
+    "/system/kanri"
+  ],
+  "system/list": [
+    "/system/list"
+  ],
+  "bud/expense": [
+    "/bud/expenses",
+    "/m/bud"
+  ],
+  "bud/broadband": [
+    "/bud/profit/broadband"
+  ],
+  "bud/bank": [
+    "/bud/bank"
+  ],
+  "root/mail-forwarding": [
+    "/root/mail-forwarding"
+  ]
+};
+
 function manual(moduleSlug: string, slug: string, name: string, description: string, extraDocs: ManualDoc[] = []): ManualDefinition {
-  return { moduleSlug, slug, name, description, storagePrefix: `${moduleSlug}/${slug}`, extraDocs, docs: [MANUAL_DOCS[0], ...extraDocs, ...MANUAL_DOCS.slice(1)] };
+  return { moduleSlug, slug, name, description, paths: MANUAL_PATHS[`${moduleSlug}/${slug}`], storagePrefix: `${moduleSlug}/${slug}`, extraDocs, docs: [MANUAL_DOCS[0], ...extraDocs, ...MANUAL_DOCS.slice(1)] };
 }
 
 // 並びは System の左メニューと同じ。資料の本体は Storage（system-manuals）の storagePrefix 配下に置く
@@ -114,7 +217,21 @@ export function findManualDoc(manual: ManualDefinition, file: string) {
   return manual.docs.find((doc) => doc.file === file) ?? null;
 }
 
-// 追加資料は操作マニュアルの閲覧設定を引き継ぐ。
+// 追加資料は使い方の閲覧設定を引き継ぐ。
 export function manualDocPermissionKey(key: ManualDocKey) {
   return key === "flow" ? "operation" : key;
+}
+
+/** Prefer the most specific route and query match; match route segments, not similar names. */
+export function findManualForPath(path: string, manuals: ManualDefinition[] = SYSTEM_MANUALS) {
+  const current = new URL(path, "https://garden.invalid");
+  let best: ManualDefinition | null = null;
+  let longest = -1;
+  for (const manual of manuals) for (const prefix of manual.paths) {
+    const candidate = new URL(prefix, current.origin);
+    const routeMatches = current.pathname === candidate.pathname || current.pathname.startsWith(`${candidate.pathname}/`);
+    const queryMatches = [...candidate.searchParams].every(([key, value]) => current.searchParams.get(key) === value);
+    if (routeMatches && queryMatches && prefix.length > longest) { best = manual; longest = prefix.length; }
+  }
+  return best;
 }

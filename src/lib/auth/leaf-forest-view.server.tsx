@@ -1,3 +1,5 @@
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import "server-only";
 import { cache, type ReactNode } from "react";
 import { canView, viewPermissionContext, ViewPermissionError } from "./view-permission.server";
@@ -29,10 +31,10 @@ export async function requireForestDataRead(page: string, tab?: string) {
 export async function LeafForestLayout({ module, children }: { module: string; children: ReactNode }) {
   try {
     const entries = await Promise.all(LEAF_FOREST_PAGES.filter(([key]) => key.startsWith(module + "-")).map(async ([key]) => [key, await canViewLeafForest(key)] as const));
-    if (!entries.some(([, allowed]) => allowed)) return <main><h1>閲覧権限がありません</h1></main>;
+    if (!entries.some(([, allowed]) => allowed)) return <main><div className="garden-help-heading"><h1>閲覧権限がありません</h1><HelpButton /></div><SystemTabs /></main>;
     return <LeafForestNavigation allowed={Object.fromEntries(entries)}>{children}</LeafForestNavigation>;
   } catch (error) {
-    if (error instanceof ViewPermissionError && error.status < 500) return <main><h1>{error.message}</h1><a href="/login">ログイン</a></main>;
+    if (error instanceof ViewPermissionError && error.status < 500) return <main><div className="garden-help-heading"><h1>{error.message}</h1><HelpButton /></div><SystemTabs /><a href="/login">ログイン</a></main>;
     throw error;
   }
 }
@@ -42,7 +44,7 @@ export async function LeafForestView({ page, children }: { page: string; childre
     const tabs = await Promise.all((LEAF_FOREST_TABS[page] ?? []).map(async ([key, label]) => ({ key, label, allowed: await canViewLeafForest(page, key), canAdd: false })));
     return <SystemViewProvider value={{ pageKey: page, admin: viewer.role === "super_admin", tabs, canAdd: false }}>{children}</SystemViewProvider>;
   } catch (error) {
-    if (error instanceof ViewPermissionError && error.status < 500) return <main><h1>{error.message}</h1><a href="/login">ログイン</a></main>;
+    if (error instanceof ViewPermissionError && error.status < 500) return <main><div className="garden-help-heading"><h1>{error.message}</h1><HelpButton /></div><SystemTabs /><a href="/login">ログイン</a></main>;
     throw error;
   }
 }

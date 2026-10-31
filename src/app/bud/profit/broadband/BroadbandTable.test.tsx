@@ -64,7 +64,7 @@ it("shows fee, actual bank details and server supplied Kintone link",()=>{
  expect(screen.getByText("差 手数料 440 円")).toBeTruthy();expect(screen.getByText("確認済み").closest("p")!.getAttribute("data-tone")).toBe("ok");expect(screen.getByText(/楽天銀行/)).toBeTruthy();expect(screen.getByRole("link").getAttribute("href")).toBe("https://example.cybozu.com/k/174/show#record=12");
 });
 
-vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn()})}));
+vi.mock("next/navigation",()=>({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),useRouter:()=>({refresh:vi.fn()})}));
 beforeEach(()=>{vi.stubGlobal("ResizeObserver",class {observe(){} disconnect(){}});localStorage.clear();window.history.replaceState(null,"","/");});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const sample=(partner:string,amount:number,business="事業")=>({kintone_record_id:business+partner,business,partner,profit_net:amount,scheduled_date:"2026-04-30",recon_status:"matched",confirmation:"",updated_at:""} as TableRecord);
@@ -148,7 +148,7 @@ it("names the page and tabs by business and shows SES as in preparation",()=>{
  expect(screen.getByRole("tab",{name:"ブロードバンド事業"}).getAttribute("aria-selected")).toBe("true");
  fireEvent.click(screen.getByRole("tab",{name:"SES事業"}));
  expect(screen.getByRole("tabpanel")).toHaveTextContent("SES事業の収支は、現在作成中です。");
- expect(screen.queryByRole("table")).toBeNull();expect(screen.queryByRole("button",{name:"並べ替え"})).toBeNull();
+ expect(screen.queryByRole("table")).toBeNull();expect(screen.getByRole("button",{name:"並べ替え"})).toBeDisabled();
  fireEvent.click(screen.getByRole("tab",{name:"ブロードバンド事業"}));
  expect(screen.getByRole("table")).toBeTruthy();
 });

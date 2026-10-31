@@ -52,7 +52,7 @@ export function BudFaithfulFrame({
         <div data-bud-managed-tabs className={`${expenseStyles.pageStack} ${expenseStyles.pageShell}`}>
           <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "経費精算" }]} />
           <PageHeader
-            titleAddon={injected.count <= 1 ? injected.headingAction : undefined}
+            
             title={title}
             accessBadge={{ label: formatBudRoleLabel(budRole) }}
             moduleMark="bud"

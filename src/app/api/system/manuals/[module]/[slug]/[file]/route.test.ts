@@ -88,6 +88,15 @@ describe("system manuals route", () => {
     expect(await response.text()).toBe("manual");
   });
 
+  it.each(["toss", "closer", "cs", "outsource"])("serves operation to an active %s without granting privileged documents", async role => {
+    const admin = adminClient();
+    mocks.createServerClient.mockResolvedValue(sessionClient(role));
+    mocks.getSupabaseAdmin.mockReturnValue(admin);
+    const { GET } = await import("./route");
+    expect((await GET(new Request("http://localhost/manual"), ctx())).status).toBe(200);
+    expect((await GET(new Request("http://localhost/manual"), ctx("0_summary.html"))).status).toBe(403);
+  });
+
   it("rejects a staff user for super admin tabs without downloading content", async () => {
     const download = vi.fn();
     mocks.createServerClient.mockResolvedValue(sessionClient("staff"));

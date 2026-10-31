@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useEffect, useMemo, useState } from "react";
@@ -139,9 +141,9 @@ function CsvExportContent() {
           ← 一覧に戻る
         </button>
       </div>
-      <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "振込 CSV 出力" }]} /><h1 className="text-2xl font-bold text-gray-800 mb-4">
+      <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "振込 CSV 出力" }]} /><div className="garden-help-heading"><h1 className="text-2xl font-bold text-gray-800 mb-4">
         CSV 出力（全銀協フォーマット）
-      </h1>
+      </h1><HelpButton /></div><SystemTabs />
 
       {loading ? (
         <div className="text-center py-8 text-gray-500">読み込み中…</div>

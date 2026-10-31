@@ -31,7 +31,7 @@ it.each(["toss", "manager", "super_admin"])("%sのタブと本人の進捗を表
   render(await Page({}));
   if (role === "toss") {
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", {name: "入社手続き"})).toContainElement(screen.getByRole("button", {name: "見られる人の設定"}));
+    expect(screen.getByRole("button", {name: "見られる人の設定"}).closest("[data-system-tabs]")).toBeTruthy();
   } else {
     expect(screen.getAllByRole("tab")).toHaveLength(role === "manager" ? 2 : 4);
     expect(screen.getByRole("tab", { name: "自分の入社手続き", selected: true })).toHaveAttribute("href", "/system/onboarding?tab=self");

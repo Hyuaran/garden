@@ -1,4 +1,5 @@
 "use client";
+
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
@@ -16,7 +17,7 @@ export default function StatementsTabs() {
   const active = tabs.some(tab => tab.key === requested) ? requested : tabs[0]?.key;
   return <BudGate><BudShell><div data-bud-managed-tabs className="p-6 max-w-7xl mx-auto">
     <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "明細" }]} />
-    <SystemViewHeading showActions={tabs.length <= 1} actions={<SystemViewButton tabKey={active} />}><h1 style={{ fontSize: 30 }}>明細</h1></SystemViewHeading>
+    <SystemViewHeading  ><h1 style={{ fontSize: 30 }}>明細</h1></SystemViewHeading>
     <SystemTabs aria-label="明細" actions={<SystemViewButton tabKey={active} />}>{tabs.map(tab => <button key={tab.key} type="button" role="tab" aria-selected={tab.key === active} onClick={() => select(tab.key)}>{tab.label}</button>)}</SystemTabs>
     {active === "list" && <StatementsContent />}
     {active === "summary" && <SummaryContent />}

@@ -1,4 +1,5 @@
 "use client";
+
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -25,7 +26,7 @@ export default function ManualsHubClient({ modules, manuals = [], conceptHtml = 
   return <div className={styles.pageShell}>
     <header className={styles.header}><div>
       <SystemBreadcrumb items={[{ label: "マニュアル" }]} />
-      <SystemViewHeading showActions={tabs.length <= 1} actions={<SystemViewButton />}><h1>マニュアル</h1></SystemViewHeading>
+      <SystemViewHeading  ><h1>マニュアル</h1></SystemViewHeading>
     </div></header>
     <SystemTabs variant="icons" actions={<SystemViewButton />} aria-label="マニュアルタブ">
       {tabs.map(tab => {

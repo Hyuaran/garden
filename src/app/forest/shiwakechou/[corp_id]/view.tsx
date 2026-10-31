@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 /**
@@ -130,7 +132,7 @@ export default function CorporationDashboardPage() {
         {corp.name_short}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}><h1
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}><div className="garden-help-heading"><h1
         style={{
           fontSize: 22,
           fontWeight: 600,
@@ -139,7 +141,7 @@ export default function CorporationDashboardPage() {
         }}
       >
         {corp.name_full}
-      </h1><span style={{ marginLeft: "auto" }}><SystemViewButton /></span></div>
+      </h1><HelpButton /></div><span style={{ marginLeft: "auto" }}></span></div><SystemTabs actions={<SystemViewButton />} />
       <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>
         {accounts.length} 口座 / 銀行明細アップロード + 仕訳確認
       </div>

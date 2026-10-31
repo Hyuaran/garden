@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -25,9 +27,9 @@ export default function TossPortalPage() {
     <main className={styles.page}>
       <header>
         <nav className={styles.headerNav}><p>Garden toss portal</p><PartnerHeaderActions /></nav>
-        <h1>{partner ? `${partner.partner_name}さん` : "ようこそ"}</h1>
+        <div className="garden-help-heading"><h1>{partner ? `${partner.partner_name}さん` : "ようこそ"}</h1><HelpButton /></div>
         <span>お取次ぎありがとうございます！</span>
-      </header>
+      </header><SystemTabs />
       <section className={styles.actions} aria-label="トスポータルメニュー">
         <Link href="/p/toss/new" className={styles.actionLink}>
           <i>01</i><h2>トスアップ入力</h2>

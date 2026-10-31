@@ -1,0 +1,2 @@
+.help { display:inline-flex; vertical-align:middle; margin-inline-start:8px; font-size:15px; font-weight:400; }
+.document { display:block; width:100%; border:0; background:var(--card); }

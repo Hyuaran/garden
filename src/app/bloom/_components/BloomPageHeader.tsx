@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 
@@ -25,7 +27,7 @@ export default function BloomPageHeader() {
   const toggle = useCallback(() => setPressed((p) => !p), []);
 
   return (
-    <div className="page-header">
+    <><div className="page-header">
       <button
         type="button"
         className="page-favorite-btn"
@@ -49,7 +51,7 @@ export default function BloomPageHeader() {
 
       <div className="page-title-block">
         <div className="page-title-row">
-          <h1 className="page-title">
+          <div className="garden-help-heading"><h1 className="page-title">
             Bloom{" "}
             <span style={{ color: "var(--text-muted)", fontSize: "1.6rem" }}>—</span>
             <span className="page-title-jp">花咲く業務の庭</span>
@@ -70,10 +72,10 @@ export default function BloomPageHeader() {
               toastTitle="新しい画面に切り替え予定"
               toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
             />
-          </h1><SystemViewButton />
+          </h1><HelpButton /></div>
         </div>
         <p className="page-subtitle">グループの動きを、咲かせる。</p>
       </div>
-    </div>
+    </div><SystemTabs actions={<SystemViewButton />} /></>
   );
 }

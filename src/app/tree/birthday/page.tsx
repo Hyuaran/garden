@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 
@@ -126,7 +128,7 @@ export default function TreeBirthdayPage() {
       <div style={{ position: "relative" }}>
         <WireframeLabel>画面1-β: 初回ログイン・誕生日入力</WireframeLabel>
         <GlassPanel style={{ width: 420, padding: 40, textAlign: "center" }}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h1
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div className="garden-help-heading"><h1
             style={{
               fontSize: 22,
               fontWeight: 800,
@@ -135,7 +137,7 @@ export default function TreeBirthdayPage() {
             }}
           >
             はじめてのログイン
-          </h1><SystemViewButton /></div>
+          </h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />
           <p
             style={{
               fontSize: 13,

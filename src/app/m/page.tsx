@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
 import { ModuleIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
 
@@ -9,9 +11,9 @@ export default function MobileHomePage() {
   return (
     <main style={page}>
       <header style={header}>
-        <h1 style={brand}>ホーム</h1>
+        <div className="garden-help-heading"><h1 style={brand}>ホーム</h1><HelpButton /></div>
         <div style={sub}>必要な場所へ、すぐに入る</div>
-      </header>
+      </header><SystemTabs />
 
       <Link href="/m/nhk" style={nhkLink}>NHK訪問業務 報告</Link>
       <Link href="/p/toss/board" style={tossLink}>トスアップ一覧を見る</Link>

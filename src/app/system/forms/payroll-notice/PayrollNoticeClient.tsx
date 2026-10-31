@@ -1,5 +1,7 @@
 "use client";
 
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -167,10 +169,10 @@ export default function PayrollNoticeClient({
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "給与計算連絡" }]} />
-      <h1>給与計算連絡</h1>
+      <div className="garden-help-heading"><h1>給与計算連絡</h1><HelpButton /></div>
       <p className={styles.lead}>営業部のみなさま、今月も業務お疲れ様でした！ 入力して送信すると、Chatwork に投稿されます。</p>
       <p className={styles.sender} {...CLARITY_MASK}>送信者：{submitterName}{registered && status.accountName ? `（Chatwork：${status.accountName} で投稿します）` : ""}</p>
-    </header>
+    </header><SystemTabs />
 
     {!status.loading && !status.registered && (
       <div className={styles.warning} role="alert">

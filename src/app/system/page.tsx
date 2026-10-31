@@ -1,3 +1,4 @@
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { canView, canViewSystemMenu, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { systemPageKey } from "@/lib/auth/system-view-scopes";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
@@ -27,7 +28,7 @@ async function SystemHomePage() {
   const visible = SYSTEM_MENU_ITEMS.filter((_, index) => menuAccess[index]);
   const showOnboarding = await canView("system-onboarding", "", viewer) && await needsOnboarding(supabase, employee.employee_id);
   return <>
-    <header className={styles.header}><SystemBreadcrumb /><SystemViewHeading><h1>ホーム</h1></SystemViewHeading></header>
+    <header className={styles.header}><SystemBreadcrumb /><SystemViewHeading><h1>ホーム</h1></SystemViewHeading></header><SystemTabs />
     {showOnboarding && <section className={styles.onboardingNotice} aria-label="入社手続きのご案内"><p>入社手続きの入力がまだ終わっていません</p><Link href="/system/onboarding">入力する</Link></section>}
     <div className={styles.sectionTitle}>使えるもの</div>
     <div className={styles.grid}>{visible.filter((item) => item.href && item.href !== "/system").map((item) => <Link className={styles.card} href={item.href!} key={item.label}><div className={styles.cardHeader}><span className={styles.badge}><MenuIcon icon={item.icon}/></span><h2>{item.label}</h2></div><p>{item.description}</p><div className={styles.meta}>開く →</div></Link>)}</div>

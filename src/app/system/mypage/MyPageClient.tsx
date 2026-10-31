@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 import { useEffect, useState } from "react";
@@ -27,7 +28,7 @@ export default function MyPageClient({ initialTab, embedded = false, registered,
   const [profile, setProfile] = useState<MyPageProfile | null>(initialProfile);
   const title = MY_PAGE_TITLES[activeTab];
   return <div className={styles.pageContent}>
-    {!embedded && <header className={styles.header}><SystemBreadcrumb items={[{ label: title }]} /><SystemViewHeading><h1>{title}</h1></SystemViewHeading>{activeTab === "profile" && <EmployeeLink />}</header>}
+    {!embedded && <><header className={styles.header}><SystemBreadcrumb items={[{ label: title }]} /><SystemViewHeading><h1>{title}</h1></SystemViewHeading>{activeTab === "profile" && <EmployeeLink />}</header><SystemTabs /></>}
     <div className={styles.standalonePanel}>
       {activeTab === "profile" && <ProfileTab registered={registered} birthdayRegistered={birthdayRegistered} profile={profile} onUnlocked={setProfile} />}
       {activeTab === "attendance" && <AttendanceTab registered={registered} employeeName={employeeName} canViewSync={canViewSync} needsExtension={needsExtension} />}

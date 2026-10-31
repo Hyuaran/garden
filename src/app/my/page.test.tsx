@@ -1,6 +1,6 @@
 import {describe,it,expect,vi,beforeEach} from "vitest";
 const mocks=vi.hoisted(()=>({user:{id:"u"} as {id:string}|null,active:true,hire:"2026-10-28" as string|null,pending:true,needs:vi.fn(),redirect:vi.fn((url:string)=>{throw Error(url)})}));
-vi.mock("next/navigation",()=>({redirect:mocks.redirect}));
+vi.mock("next/navigation",()=>({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),redirect:mocks.redirect}));
 vi.mock("@/app/_lib/supabase/server",()=>({createServerClient:async()=>({auth:{getUser:async()=>({data:{user:mocks.user}})},from:()=>({select(){return this},eq(){return this},is(){return this},maybeSingle:async()=>({data:{employee_id:"e",name:"社員A",hire_date:mocks.hire,is_active:mocks.active}})})})}));
 vi.mock("@/app/system/onboarding/_lib/onboarding.server",()=>({needsOnboarding:mocks.needs}));
 vi.mock("@/app/system/mypage/_components/MyPageSectionPage",()=>({default:()=>null}));

@@ -1,4 +1,5 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
 import SystemTabs, { TabActionButton } from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -214,7 +215,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "出勤表・シフトLINE連絡テキスト生成" }]} />
-      <h1>出勤表・シフトLINE連絡テキスト生成</h1>
+      <div className="garden-help-heading"><h1>出勤表・シフトLINE連絡テキスト生成</h1><HelpButton /></div>
       <p className={styles.lead}>KING OF TIME の日別データ（出力の型「Garden管理表ポータル（日）」）を読み込むと、文面を作ります。</p>
     </header>
 
@@ -232,7 +233,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
       <p className={styles.hint}>KING OF TIME ログイン＞エクスポート インポート＞データ出力 日別データCSV＞日付指定＞日付を本日/明日選択＞出力レイアウト Garden選択＞データ出力</p>
     </section>
 
-    <SystemTabs aria-label="文面" actions={tab === "members" && canEditMembers ? <TabActionButton icon="sort" label="並び替え" pressed={reordering} onClick={()=>setReordering(!reordering)} /> : undefined}>
+    <SystemTabs sortUnavailableReason={tab === "members" ? "並べ替えは管理者だけが使えます" : "この画面は並べ替えがありません"} aria-label="文面" actions={tab === "members" && canEditMembers ? <TabActionButton icon="sort" label="並び替え" pressed={reordering} onClick={()=>setReordering(!reordering)} /> : undefined}>
       <button type="button" role="tab" aria-selected={tab === "attendance"} onClick={() => setTab("attendance")}>出勤表</button>
       <button type="button" role="tab" aria-selected={tab === "line"} onClick={() => setTab("line")}>シフト連絡（LINE）</button>
       <button type="button" role="tab" aria-selected={tab === "members"} onClick={() => setTab("members")}>並びの設定</button>

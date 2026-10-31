@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { MobileIcon } from "../_components/MobileIcon";
 
 import { useEffect, useMemo, useState } from "react";
@@ -64,10 +66,10 @@ export default function MobileBudHome() {
           <MobileIcon name="left"/>
         </Link>
         <div>
-          <h1 style={budTitle}>Bud</h1>
+          <div className="garden-help-heading"><h1 style={budTitle}>Bud</h1><HelpButton /></div>
           <p style={budLead}>日々の経費を、庭の帳面へ静かに整えます。</p>
         </div>
-      </header>
+      </header><SystemTabs />
 
       <section style={hero}>
         <div style={heroMark}>Bud</div>

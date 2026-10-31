@@ -8,6 +8,8 @@
  */
 
 import Link from "next/link";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 export type ComingSoonProps = {
   /** Garden 正式名（例: "Seed"）*/
@@ -36,7 +38,7 @@ export function ComingSoonPage({ moduleName, nameJa, description, phase }: Comin
         textAlign: "center",
       }}
     >
-      <h1
+      <div className="garden-help-heading"><h1
         style={{
           fontSize: 36,
           fontWeight: 700,
@@ -46,7 +48,8 @@ export function ComingSoonPage({ moduleName, nameJa, description, phase }: Comin
       >
         {moduleName}
         <span style={{ fontSize: 22, color: "#6B8E75", marginLeft: 12 }}>/ {nameJa}</span>
-      </h1>
+      </h1><HelpButton /></div>
+      <SystemTabs />
       <p style={{ fontSize: 16, color: "#6B8E75", margin: "0 0 8px", maxWidth: 480, lineHeight: 1.6 }}>
         {description}
       </p>

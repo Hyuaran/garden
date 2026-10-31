@@ -4,7 +4,7 @@ import OnboardingAdminDetailClient from "./OnboardingAdminDetailClient";
 import { ADMIN_SELECT_OPTIONS, initialAdminRecord } from "../../_lib/onboarding-admin";
 
 const refresh = vi.hoisted(() => vi.fn());
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ refresh }) }));
 
 describe("入社手続きの事務詳細", () => {
   let fetchMock: ReturnType<typeof vi.fn>;

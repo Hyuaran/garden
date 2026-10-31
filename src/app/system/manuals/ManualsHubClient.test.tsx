@@ -6,7 +6,7 @@ import ManualsHubClient from "./ManualsHubClient";
 import { getManualModules, getVisibleManuals, getVisibleManualDocs } from "./_lib/manuals-registry";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { renderMarkdown } from "./_lib/render-markdown";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ refresh: vi.fn() }) }));
 const modules = getManualModules("staff");
 const manuals = getVisibleManuals("staff").map(manual => ({ ...manual, visibleDocs: getVisibleManualDocs(manual, "staff") }));
 const conceptHtml = renderMarkdown(readFileSync("src/app/system/manuals/_content/garden-concept.md", "utf8"));

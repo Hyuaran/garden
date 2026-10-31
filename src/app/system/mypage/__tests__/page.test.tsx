@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   signOut: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
 }));
 vi.mock("../../attendance/AttendanceClient", () => ({

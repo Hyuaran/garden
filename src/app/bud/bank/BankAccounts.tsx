@@ -1,4 +1,5 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
 import { visibleAccounts } from "@/lib/bud/mf/balances";
 import Link from "next/link";
@@ -131,13 +132,13 @@ export default function BankAccounts() {
   const cards = permitted.filter(a => a.kind === "card" && !a.hidden);
 
   return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="マネーフォワード" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="マネーフォワードに届いている分を読み直す（銀行からの取り直しは マネーフォワードの［一括更新］）" onRefresh={async () => {
+    <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><div className="garden-help-heading"><h1>口座残高・カード利用</h1><HelpButton /></div><UpdatedStampRow><UpdatedStamp label="マネーフォワード" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="マネーフォワードに届いている分を読み直す（銀行からの取り直しは マネーフォワードの［一括更新］）" onRefresh={async () => {
       setRefreshing(true); setError("");
       try { await api("/api/bud/mf-accounts/refresh", { method: "POST" }); await load(); }
       catch(e) { setError(e instanceof Error ? e.message : "読み込めませんでした"); }
       finally { setRefreshing(false); }
     }} ><span className={styles.mfRetrieve}><a href="https://accounting.moneyforward.com/accounts" target="_blank" rel="noopener noreferrer">マネーフォワードで再取得<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M14 3h7v7M21 3 10 14M10 3H3v18h18v-7" /></svg></a><span role="tooltip">マネーフォワードの画面を開きます。［一括更新］で銀行から取り直したあと、↻ で Garden に読み込みます</span></span></UpdatedStamp></UpdatedStampRow></header>
-    <div className={styles.tabToolbar}><SystemTabs aria-label="表示内容" actions={snapshot.admin ? <><TabActionButton icon="sort" label={reordering ? "並び替えを終える" : "並び替え"} pressed={reordering} disabled={refreshing} onClick={() => setReordering(!reordering)} /><TabActionButton icon="settings" label={settings ? "設定を終える" : "設定"} pressed={settings} disabled={refreshing} onClick={() => { setSettings(!settings); setSelected(null); }} /></> : undefined}>{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</SystemTabs>
+    <div className={styles.tabToolbar}><SystemTabs sortUnavailableReason="並べ替えは管理者だけが使えます" aria-label="表示内容" actions={snapshot.admin ? <><TabActionButton icon="sort" label={reordering ? "並び替えを終える" : "並び替え"} pressed={reordering} disabled={refreshing} onClick={() => setReordering(!reordering)} /><TabActionButton icon="settings" label={settings ? "設定を終える" : "設定"} pressed={settings} disabled={refreshing} onClick={() => { setSettings(!settings); setSelected(null); }} /></> : undefined}>{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</SystemTabs>
       <small role="status">{saveCount > 0 ? "並び順を保存中…" : loading ? "読み込み中…" : ""}</small>
     </div>
     {error && <p role="alert" className={styles.error}>{error}</p>}

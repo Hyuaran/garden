@@ -24,7 +24,7 @@ export function useInjectedBudTabs(sourceHtml: string) {
     root,
     html: nav ? sourceHtml.replace(nav, "") : sourceHtml,
     count: tabs.length,
-    headingAction: <SystemViewButton tabKey={selected} />,
+
     navigation: <SystemTabs aria-label="表示切替" actions={<SystemViewButton tabKey={selected} />}>{tabs.map(tab => <button key={tab.key} type="button" role="tab" data-tab={tab.key} aria-selected={selected === tab.key} onClick={() => select(tab.key)}>{tab.label}{tab.badge && <span>{tab.badge}</span>}</button>)}</SystemTabs>,
   };
 }

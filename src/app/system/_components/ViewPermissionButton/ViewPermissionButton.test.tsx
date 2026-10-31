@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn()})}));
+vi.mock("next/navigation",()=>({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search),useRouter:()=>({refresh:vi.fn()})}));
 import ViewPermissionButton from "./ViewPermissionButton";
 beforeEach(()=>{
   Object.defineProperty(HTMLDialogElement.prototype,"showModal",{configurable:true,value:function(this:HTMLDialogElement){this.setAttribute("open","");}});

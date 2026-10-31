@@ -1,4 +1,6 @@
 "use client";
+import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -466,11 +468,11 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     <div style={shell}>
       <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
       {!embedded && (
-        <header style={{ marginBottom: 18 }}>
-          <h1 style={title}>経費精算 - 仕訳待ち</h1>
+        <><header style={{ marginBottom: 18 }}>
+          <div className="garden-help-heading"><h1 style={title}>経費精算 - 仕訳待ち</h1><HelpButton /></div>
           <p style={lead}>完了済みの経費を弥生インポートCSVへ書き出します。</p>
           <CorpFilter value={corpFilter} corps={sortedCorps} onChange={setCorpFilter} />
-        </header>
+        </header><SystemTabs /></>
       )}
 
       <section style={cards}>

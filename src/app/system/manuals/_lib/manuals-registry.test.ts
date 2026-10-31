@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   findManual,
+  findManualForPath,
   findManualDoc,
   getManualModules,
   getVisibleManualDocs,
@@ -17,7 +18,7 @@ describe("manuals registry", () => {
       storagePrefix: "system/kot-attendance",
     });
     expect(SYSTEM_MANUALS[3].docs.map((doc) => [doc.key, doc.file, doc.minRole])).toEqual([
-      ["operation", "1_operation.html", "staff"],
+      ["operation", "1_operation.html", "toss"],
       ["summary", "0_summary.html", "super_admin"],
       ["overview", "2_overview.html", "super_admin"],
       ["engineer", "3_engineer.html", "super_admin"],
@@ -38,7 +39,7 @@ describe("manuals registry", () => {
   });
 
   it("hides manuals and modules with no readable document", () => {
-    expect(getVisibleManuals("cs")).toEqual([]);
+    expect(getVisibleManuals("cs")).toHaveLength(SYSTEM_MANUALS.length);
     expect(getManualModules("staff").map((module) => [module.slug, module.count])).toEqual([
       ["system", 31],
       ["bud", 3],
@@ -70,7 +71,21 @@ it("adds the onboarding flow after operation for staff and above only", () => {
   const manual = findManual("system", "onboarding")!;
   expect(getVisibleManualDocs(manual, "staff").map(doc => doc.key)).toEqual(["operation", "flow"]);
   expect(getVisibleManualDocs(manual, "super_admin").slice(0, 2).map(doc => doc.key)).toEqual(["operation", "flow"]);
-  expect(getVisibleManualDocs(manual, "cs")).toEqual([]);
+  expect(getVisibleManualDocs(manual, "cs").map(doc => doc.key)).toEqual(["operation"]);
   expect(findManualDoc(manual, "5_flow.html")).toMatchObject({ key: "flow", kind: "html", minRole: "staff" });
   expect(SYSTEM_MANUALS.filter(manual => manual.docs.some(doc => doc.key === "flow"))).toHaveLength(1);
+});
+
+it("matches the longest route including query tabs, without prefix collisions", () => {
+ expect(SYSTEM_MANUALS.every(manual => Array.isArray(manual.paths))).toBe(true);
+ expect(findManualForPath("/system/innovera-calls/recordings")?.slug).toBe("innovera-calls");
+ expect(findManualForPath("/system/innovera-extra")).toBeNull();
+ expect(findManualForPath("/my?tab=report&day=2026-10-31")?.slug).toBe("ap-daily");
+ expect(findManualForPath("/my?tab=review")?.slug).toBe("ap-daily");
+ expect(findManualForPath("/my?tab=profile")?.slug).toBe("mypage");
+ const base = SYSTEM_MANUALS[0];
+ expect(findManualForPath("/example/nested", [{ ...base, slug: "short", paths: ["/example"] }, { ...base, slug: "long", paths: ["/example/nested"] }])?.slug).toBe("long");
+});
+it.each(["toss", "closer", "cs", "outsource"] as const)("allows operation for %s while keeping privileged docs hidden", role => {
+ expect(getVisibleManualDocs(SYSTEM_MANUALS[0], role).map(doc => doc.key)).toEqual(["operation"]);
 });
