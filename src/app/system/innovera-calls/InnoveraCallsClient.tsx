@@ -1,4 +1,5 @@
 "use client";
+import { useSearchParams } from "next/navigation";
 import SystemTabs, { TabActionButton } from "../_components/SystemTabs/SystemTabs";
 import CircuitOrderEditor from "./CircuitOrderEditor";
 import type { CircuitGroup } from "@/lib/innovera/circuit-order.server";
@@ -148,7 +149,9 @@ export default function InnoveraCallsClient({
   ownName?: string;
   role: GardenRole;
 }) {
-  const [tab, setTab] = useState<"calls" | "line">("calls");
+  // 最初の表示から URL のタブを使う（?tab=line で開いたとき、通話・録音が一瞬出ないように）
+  const initialTab = useSearchParams()?.get("tab");
+  const [tab, setTab] = useState<"calls" | "line">(!embedded && initialTab === "line" ? "line" : "calls");
   const [reordering, setReordering] = useState(false);
   const [orderBusy, setOrderBusy] = useState(false);
   const [circuitGroups, setCircuitGroups] = useState<CircuitGroup[]>([]);
