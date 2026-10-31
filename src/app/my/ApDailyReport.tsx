@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { FormPage, FormRow, RadioGroup, TextField, NumberField, TextArea, FixedValue, Stepper, SubmitButton, ResultMessage, RecentList, TimeRange } from '@/app/system/forms/_components/form-kit';
+import { FormPage, FormRow, RadioGroup, TextField, NumberField, TextArea, FixedValue, Stepper, SubmitButton, ResultMessage, TimeRange } from '@/app/system/forms/_components/form-kit';
 import { buildMessage, coinKeys, fixedKind, minutes, type Report, type Kind } from './ap-daily-report';
+import ApDailyReview from './ApDailyReview';
 type Data = { record: Report | null; recent: Report[]; auto: Pick<Report,'start_time'|'end_time'|'work_minutes'|'calls'|'absent'|'prospect'|'effective_rate'> & Record<Kind,number>; totals: Record<Kind,number>; monthMinutes:number; employee:{name:string;number:string;kind:Kind|null} };
 const labels = ['コイン作成数','誘導約束','誘導中','明細確認依頼','トータルコイン'];
 export default function ApDailyReport({ history = false }: { history?: boolean }) {
@@ -34,7 +35,7 @@ export default function ApDailyReport({ history = false }: { history?: boolean }
     finally { sending.current=false; setBusy(false); }
   }
   return <FormPage embedded hideHeading title="AP日報" submitterName={data?.employee.name ?? ''} employeeNumber={data?.employee.number ?? ''}>
-    {history ? <RecentList title="直近31日" items={data?.recent.map(r=><div key={r.report_date}><strong>{r.report_date}</strong><FixedValue>{r.start_time.slice(0,5)}～{r.end_time.slice(0,5)}　{Number((r.work_minutes/60).toFixed(2))}時間稼働<br/>総コール{r.calls}件・留守{r.absent}件・見込み{r.prospect}件・有効率{Number(r.effective_rate).toFixed(1)}%<br/>{r.kind === 'toss' ? 'トス' : '本日獲得'} {r.count}件{r.kind === 'closer' && <>　現状合計{Number(r.month_total).toFixed(1)}件　効率{Number(r.efficiency).toFixed(2)}</>}</FixedValue></div>)} /> : <>
+    {history ? <ApDailyReview recent={data?.recent ?? []} loading={loading}/> : <>
       <FormRow grouped label="1 日付"><TextField aria-label="日付" type="date" value={date} disabled={busy} onChange={e=>{if(e.target.value) setDate(e.target.value);}} /></FormRow>
       {loading && <FixedValue>読み込み中...</FixedValue>}
       {current && data && <form onSubmit={e=>{e.preventDefault();void submit();}}><fieldset disabled={busy || loading}>
