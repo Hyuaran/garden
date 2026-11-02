@@ -108,7 +108,7 @@ it("keeps the confirmation table compact and opens all fields in the common moda
  review.focus();
  fireEvent.keyDown(review,{key:"Enter"});
  const dialog=screen.getByRole("dialog",{name:"入社 太郎 さんの入社後の確認"});
- for(const label of ["契約書の種類","雇用期間","契約更新","契約開始日","契約終了日","契約日","業務内容","就業時間","就業場所"])expect(within(dialog).getByLabelText(label)).toBeVisible();
+ for(const label of ["契約書の種類","雇用期間","契約更新","契約開始日","契約終了日","契約日","業務内容","就業時間","就業場所"])expect(within(dialog).getByLabelText(new RegExp(`^${label}＊?$`))).toBeVisible();
  expect(within(dialog).getByLabelText("契約書の種類")).toBeDisabled();
  expect(within(dialog).queryByRole("button",{name:"テスト送信"})).not.toBeInTheDocument();
  expect(within(dialog).getByText("確認済み・表示名変更済み")).toBeVisible();
@@ -152,7 +152,7 @@ it("saves checks immediately, removes completed hires, and restores failed saves
  fireEvent.click(screen.getByRole("tab",{name:"入社後の確認"}));
  fireEvent.click(await screen.findByText("入社 太郎"));
  fireEvent.click(screen.getByRole("button",{name:"手で追加済みにする"}));
- await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/h",expect.objectContaining({method:"PATCH",body:JSON.stringify({checklist:{filemaker_added:true}})})));
+ await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/onboarding/hire-candidates/h",expect.objectContaining({method:"PATCH",body:JSON.stringify({checklist:{filemaker_added:true}})})));
  fireEvent.click(screen.getAllByRole("button",{name:"閉じる"}).at(-1)!);
  await waitFor(()=>expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument());
  fireEvent.click(screen.getByRole("checkbox",{name:"完了も表示"}));
@@ -244,8 +244,25 @@ it("declines from the editor with confirmation and retains the no_show database 
  fireEvent.click(await screen.findByRole("button",{name:"辞退"}));
  expect(fetch.mock.calls.some(([,init])=>init?.method==="PATCH")).toBe(false);
  fireEvent.click(within(screen.getByRole("dialog",{name:"辞退の確認"})).getByRole("button",{name:"辞退"}));
- await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/c",expect.objectContaining({method:"PATCH",body:JSON.stringify({status:"no_show"})})));
+ await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/onboarding/hire-candidates/c",expect.objectContaining({method:"PATCH",body:JSON.stringify({status:"no_show"})})));
  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
  expect(screen.queryByRole("heading",{name:"入社予定者を修正"})).not.toBeInTheDocument();
 });
 
+
+it("派遣の必須表示を切り替え、締結不要で送付と締結を無効にする",async()=>{
+ const agency={...row,employment_type:"派遣",first_name:"",first_name_kana:"",last_name_kana:"ヤマダ",birthday:"",gender:"",company_id:"COMP-1",kot_division_code:"01",kot_type_code:"02"};
+ vi.stubGlobal("fetch",vi.fn(async(url:string)=>Response.json(url.endsWith("kot-options")?{companies:[],divisions:[],workingTypes:[]}:[agency])));
+ const view=render(<CandidatePanel userId="agency-required" tab="candidates"/>);
+ expect(await screen.findByText("情報待ち")).toBeVisible();fireEvent.click(screen.getByText("山田",{selector:"td"}));
+ const dialog=await screen.findByRole("dialog",{name:"入社予定者を修正"});
+ expect(within(dialog).getByLabelText("名")).not.toBeRequired();expect(within(dialog).getByLabelText("姓＊")).toBeRequired();expect(within(dialog).getByLabelText("性別")).toHaveValue("");
+ fireEvent.change(within(dialog).getByLabelText("雇用形態＊"),{target:{value:"正社員"}});expect(within(dialog).getByLabelText("名＊")).toBeRequired();
+ view.unmount();
+ const hired={...agency,status:"hired",checklist:{contract_not_required:{checked_at:"now",checked_by:"staff"}}};
+ vi.stubGlobal("fetch",vi.fn(async()=>Response.json([hired])));
+ render(<CandidatePanel userId="agency-waiver" tab="confirmations"/>);
+ fireEvent.click(await screen.findByText("山田",{selector:"span"}));
+ expect(screen.getByRole("checkbox",{name:/雇用契約書 送った/})).toBeDisabled();expect(screen.getByRole("checkbox",{name:/雇用契約書 締結済み/})).toBeDisabled();expect(screen.getByRole("checkbox",{name:/雇用契約書 締結しない/})).toBeEnabled();
+ expect(screen.queryByText("雇用契約書の中身")).not.toBeInTheDocument();expect(screen.getByText("⓪ 名前・生年月日")).toBeVisible();
+});

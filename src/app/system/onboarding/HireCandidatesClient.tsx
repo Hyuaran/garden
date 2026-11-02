@@ -7,9 +7,9 @@ import layout from "./HireConfirmation.module.css";
 import HireConfirmationSteps from "./HireConfirmationSteps";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import { EMPLOYMENT_TYPES, signaturesComplete, lineComplete, checklistComplete, checklistPriority, type ChecklistKey, type HireCandidate, type HireInput } from "./_lib/hire-candidates";
+import { EMPLOYMENT_TYPES, signatureCount, hireInformationPending, isHireFieldRequired, signaturesComplete, lineComplete, checklistComplete, checklistPriority, type ChecklistKey, type HireCandidate, type HireInput } from "./_lib/hire-candidates";
 import styles from "./onboarding.module.css";
-const base = "/api/system/hire-candidates";
+const base = "/api/system/onboarding/hire-candidates";
 async function api(path = "", method = "GET", body?: unknown) {
  const res = await fetch(base+path,{method,headers:body ? {"Content-Type":"application/json"}:undefined,body:body ? JSON.stringify(body):undefined,cache:"no-store"});
  const data = await res.json(); if (!res.ok) throw new Error(data.error || "処理できませんでした"); return data;
@@ -97,8 +97,10 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  useEffect(()=>{if(canWrite)loadOptions().catch(()=>{});},[canWrite]);
  const openForm = (row?:HireCandidate)=>{setMessage("");setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});if(!options)loadOptions().catch(e=>setMessage(e instanceof Error?e.message:"選択肢を読み込めませんでした"));};
  const set=(key:keyof HireInput,value:string)=>setForm(old=>old?{...old,[key]:value}:null);
- const field=(key:keyof HireInput,label:string,type="text")=><label key={key}>{label}<input required type={type} value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}/></label>;
- const choice=(key:keyof HireInput,label:string,opts:{value:string;label:string}[])=><label key={key}>{label}<select required value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}><option value="" disabled>選んでください</option>{opts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
+ const required=(key:keyof HireInput)=>isHireFieldRequired(key,form?.employment_type??"");
+ const mark=(key:keyof HireInput)=>required(key)&&<span className="garden-required" aria-hidden="true">＊</span>;
+ const field=(key:keyof HireInput,label:string,type="text")=><label key={key}><span>{label}{mark(key)}</span><input required={required(key)} aria-required={required(key)} type={type} value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}/></label>;
+ const choice=(key:keyof HireInput,label:string,opts:{value:string;label:string}[])=><label key={key}><span>{label}{mark(key)}</span><select required={required(key)} aria-required={required(key)} value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}><option value="" disabled={required(key)}>{key==="gender"?"不明":"選んでください"}</option>{opts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
  const status=(r:HireCandidate)=>{
   const failed=stopped(r)?.[0];
   if(failed)return ({number:"番号",kot:"KING OF TIME ",roster:"名簿",garden:"Garden 反映"}[failed] ?? "登録")+"で止まっています";
@@ -116,17 +118,17 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
    setMessage(e instanceof Error?e.message:"保存できませんでした");
   } finally {setSaving(null);}
  };
- const check = (r:HireCandidate,key:ChecklistKey,label:string) => <label key={key} className={styles.hireCheck}><input type="checkbox" aria-label={`${r.last_name} ${r.first_name} ${key.startsWith("contract")?"雇用契約書":key.startsWith("nda")?"秘密保持":key.startsWith("emergency")?"緊急連絡先":"FileMaker"} ${label}`} checked={!!r.checklist?.[key]} disabled={!canWrite||busy||!!saving||(key==="filemaker_added"&&(!signaturesComplete(r)||!lineComplete(r)))} onChange={e=>toggleChecklist(r,key,e.target.checked)}/>{label}</label>;
+ const check = (r:HireCandidate,key:ChecklistKey,label:string) => <label key={key} className={styles.hireCheck}><input type="checkbox" aria-label={`${r.last_name} ${r.first_name} ${key.startsWith("contract")?"雇用契約書":key.startsWith("nda")?"秘密保持":key.startsWith("emergency")?"緊急連絡先":"FileMaker"} ${label}`} checked={!!r.checklist?.[key]} disabled={!canWrite||busy||!!saving||(!key.endsWith("_not_required")&&!!r.checklist?.[`${key.split("_")[0]}_not_required` as ChecklistKey])||(key==="filemaker_added"&&(!signaturesComplete(r)||!lineComplete(r)))} onChange={e=>toggleChecklist(r,key,e.target.checked)}/>{label}</label>;
  const columns:DataColumn<HireCandidate>[]=[
  {id:"date",label:"入社予定日",type:"date",value:r=>r.hire_date},
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name},
  {id:"employment",label:"雇用形態",type:"text",value:r=>r.employment_type},
- {id:"status",label:"状態", align: "mark",type:"text",value:r=>status(r)+(checklistComplete(r)?" 完了":""),render:r=><span className={stopped(r)?styles.hireError:undefined}>{status(r)}</span>},
+ {id:"status",label:"状態", align: "mark",type:"text",value:r=>status(r)+(checklistComplete(r)?" 完了":""),render:r=><span className={stopped(r)?styles.hireError:undefined}>{status(r)}{hireInformationPending(r)&&<span className={layout.informationWaiting}> 情報待ち</span>}</span>},
 
  ];
  const confirmationColumns:DataColumn<HireCandidate>[]=[
- {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name,wrap:true,render:r=><div><span>{r.last_name} {r.first_name}</span><p>{r.employee_number}・{r.hire_date} 入社</p>{checklistComplete(r)&&<span>完了</span>}</div>},
- {id:"complete",label:"①締結",align:"mark",type:"number",value:checklistPriority,render:r=><span className={signaturesComplete(r)?layout.done:layout.pending}>{[r.checklist?.contract_signed,r.checklist?.nda_signed,r.checklist?.emergency_signed].filter(Boolean).length}/3</span>},
+ {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name,wrap:true,render:r=><div><span>{r.last_name} {r.first_name}</span>{hireInformationPending(r)&&<span className={layout.informationWaiting}> 情報待ち</span>}<p>{r.employee_number}・{r.hire_date} 入社</p>{checklistComplete(r)&&<span>完了</span>}</div>},
+ {id:"complete",label:"①締結",align:"mark",type:"number",value:checklistPriority,render:r=><span className={signaturesComplete(r)?layout.done:layout.pending}>{signatureCount(r)}/3</span>},
  {id:"line",label:"②LINE",align:"mark",type:"text",value:r=>r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未",render:r=><span className={lineComplete(r)?layout.done:layout.pending}>{r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未"}</span>},
  {id:"filemaker",label:"③FileMaker",align:"mark",type:"text",value:r=>r.checklist?.filemaker_added?"追加済み":"未",render:r=><span className={r.checklist?.filemaker_added?layout.done:layout.pending}>{r.checklist?.filemaker_added?"追加済み":"未"}</span>},
  ];
@@ -136,7 +138,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  return <>
  {tab==="confirmations"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
  {reviewRow&&<Modal title={`${reviewRow.last_name} ${reviewRow.first_name} さんの入社後の確認`} className={layout.dialog} onClose={()=>setReviewId(null)} actions={<button onClick={()=>setReviewId(null)} data-modal-action="secondary">閉じる</button>}>
- {((r:HireCandidate)=><HireConfirmationSteps row={r} canWrite={canWrite&&!busy&&!saving} onRefresh={load} onReconciled={async()=>{setResultRows(old=>old.includes(r.id)?old:[...old,r.id]);await load();}} toggleFilemaker={()=>void toggleChecklist(r,"filemaker_added",!r.checklist?.filemaker_added)} skip={()=>r.checklist?.line_skipped?void toggleChecklist(r,"line_skipped",false):setLineSkip(r)} documents={<>{([["contract","雇用契約書"],["nda","秘密保持誓約書"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}</div>)}</>}/>)(reviewRow)}
+ {((r:HireCandidate)=><HireConfirmationSteps row={r} canWrite={canWrite&&!busy&&!saving} onRefresh={load} onReconciled={async()=>{setResultRows(old=>old.includes(r.id)?old:[...old,r.id]);await load();}} toggleFilemaker={()=>void toggleChecklist(r,"filemaker_added",!r.checklist?.filemaker_added)} skip={()=>r.checklist?.line_skipped?void toggleChecklist(r,"line_skipped",false):setLineSkip(r)} documents={<>{([["contract","雇用契約書"],["nda","秘密保持誓約書"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}{check(r,`${key}_not_required`,"締結しない")}</div>)}</>}/>)(reviewRow)}
  </Modal>}
  {lineSkip&&<dialog ref={lineSkipDialog} aria-labelledby="hire-line-skip-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setLineSkip(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setLineSkip(null);}}} data-garden-modal="panel" data-size="sm">
  <h2 id="hire-line-skip-title">公式 LINE を登録しない</h2>

@@ -77,12 +77,12 @@ it("requires the display name change, copies the padded name, and records the ac
  expect(screen.getByText("②の LINE 確認と表示名の変更が済むと進めます")).toBeVisible();
  await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"名前をコピー"}));});expect(copy).toHaveBeenCalledWith("0004 上田　基人");
  await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"表示名を変更しました"}));});
- expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/test/line",expect.objectContaining({body:JSON.stringify({action:"renamed"})}));
+ expect(fetch).toHaveBeenCalledWith("/api/system/onboarding/hire-candidates/test/line",expect.objectContaining({body:JSON.stringify({action:"renamed"})}));
  view.rerender(<HireConfirmationSteps {...props} row={{...pending,line_display_renamed_at:"now"}}/>);
  expect(screen.getByRole("button",{name:"FileMaker に依頼"})).toBeEnabled();
  const line=within(screen.getByText("② LINE テスト送信").closest("section")!);
  await act(async()=>{fireEvent.click(line.getByRole("button",{name:"戻す"}));});
- expect(fetch).toHaveBeenLastCalledWith("/api/system/hire-candidates/test/line",expect.objectContaining({body:JSON.stringify({action:"renamed_undo"})}));
+ expect(fetch).toHaveBeenLastCalledWith("/api/system/onboarding/hire-candidates/test/line",expect.objectContaining({body:JSON.stringify({action:"renamed_undo"})}));
  view.rerender(<HireConfirmationSteps {...props} row={{...pending,checklist:{...pending.checklist,line_skipped:{checked_at:"now",checked_by:"u"}}}}/>);
  expect(screen.queryByText("LINE 管理画面で、この方の表示名を変更してください")).not.toBeInTheDocument();
  expect(screen.getByRole("button",{name:"FileMaker に依頼"})).toBeEnabled();

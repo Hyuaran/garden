@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CHECKLIST_KEYS, checklistComplete, checklistPriority, parseChecklist, nextEmployeeNumber, parseHireInput, rosterPayload, type HireCandidate } from "./hire-candidates";
-const mocks = vi.hoisted(()=>({server:vi.fn(),admin:vi.fn(),employees:vi.fn(),create:vi.fn(),records:vi.fn(),record:vi.fn(),sync:vi.fn(),options:vi.fn(),after:vi.fn()}));
+import { signatureCount, signaturesComplete, hireInformationPending, CHECKLIST_KEYS, checklistComplete, checklistPriority, parseChecklist, nextEmployeeNumber, parseHireInput, rosterPayload, type HireCandidate } from "./hire-candidates";
+const mocks = vi.hoisted(()=>({update:vi.fn(),kotUpdate:vi.fn(),byCode:vi.fn(),server:vi.fn(),admin:vi.fn(),employees:vi.fn(),create:vi.fn(),records:vi.fn(),record:vi.fn(),sync:vi.fn(),options:vi.fn(),after:vi.fn()}));
 vi.mock("server-only",()=>({}));
 vi.mock("next/server",()=>({after:mocks.after}));
 vi.mock("@/app/_lib/supabase/server",()=>({createServerClient:mocks.server}));
 vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:mocks.admin}));
-vi.mock("@/app/root/_lib/kot-api",()=>({fetchKotHireEmployees:mocks.employees,createKotEmployee:mocks.create,fetchKotHireOptions:mocks.options}));
-vi.mock("@/lib/kintone/records",()=>({getAllRecords:mocks.records,createRecord:mocks.record}));
+vi.mock("@/app/root/_lib/kot-api",()=>({fetchKotEmployeeByCode:mocks.byCode,updateKotEmployee:mocks.kotUpdate,fetchKotHireEmployees:mocks.employees,createKotEmployee:mocks.create,fetchKotHireOptions:mocks.options}));
+vi.mock("@/lib/kintone/records",()=>({updateRecord:mocks.update,getAllRecords:mocks.records,createRecord:mocks.record}));
 vi.mock("@/app/root/_lib/roster-sync.server",()=>({syncRootRoster:mocks.sync}));
-import { candidateOptions, ensureRoster, hireCandidate, listCandidates } from "./hire-candidates.server";
-import { GET, POST } from "@/app/api/system/hire-candidates/route";
-import { PATCH } from "@/app/api/system/hire-candidates/[id]/route";
-import { POST as hire } from "@/app/api/system/hire-candidates/[id]/hire/route";
-import { GET as options } from "@/app/api/system/hire-candidates/kot-options/route";
-import { POST as retryFilemaker } from "@/app/api/system/hire-candidates/[id]/filemaker/route";
+import { completeHireIdentity, candidateOptions, ensureRoster, hireCandidate, listCandidates } from "./hire-candidates.server";
+import { GET, POST } from "@/app/api/system/onboarding/hire-candidates/route";
+import { PATCH } from "@/app/api/system/onboarding/hire-candidates/[id]/route";
+import { POST as hire } from "@/app/api/system/onboarding/hire-candidates/[id]/hire/route";
+import { GET as options } from "@/app/api/system/onboarding/hire-candidates/kot-options/route";
+import { POST as retryFilemaker } from "@/app/api/system/onboarding/hire-candidates/[id]/filemaker/route";
 describe("candidate options cache",()=>{
  const kot={divisions:[{code:"01",name:"所属"}],workingTypes:[{code:"02",name:"区分"}]};
  const companies=[{company_id:"COMP-002",company_name:"法人"}];
@@ -131,7 +131,7 @@ describe("authorization",()=>{
   const q={select:vi.fn(),eq:vi.fn(),is:vi.fn(),maybeSingle:vi.fn(async()=>({data:{garden_role:role},error:null}))};q.select.mockReturnValue(q);q.eq.mockReturnValue(q);q.is.mockReturnValue(q);
   mocks.server.mockResolvedValue({auth:{getUser:async()=>({data:{user:{id:"user"}}})},from:()=>q});
   const req=new Request("http://localhost",{method:"POST",body:"{}"}),ctx={params:Promise.resolve({id:"id"})};
-  for (const response of [await GET(new Request("http://localhost/api/system/hire-candidates")),await POST(req),await PATCH(req,ctx),await hire(req,ctx),await options(),await retryFilemaker(req,ctx)]) expect(response.status).toBe(403);
+  for (const response of [await GET(new Request("http://localhost/api/system/onboarding/hire-candidates")),await POST(req),await PATCH(req,ctx),await hire(req,ctx),await options(),await retryFilemaker(req,ctx)]) expect(response.status).toBe(403);
   expect(mocks.admin).not.toHaveBeenCalled();
  });
 });
@@ -214,3 +214,34 @@ describe("hire checklist",()=>{
  });
 });
 it("名簿の会社の選択肢に合わせて「株式会社」を外す",()=>{expect(rosterPayload(candidate(),"株式会社ヒュアラン").ドロップダウン_15).toEqual({value:"ヒュアラン"});expect(rosterPayload(candidate(),"株式会社ARATA").ドロップダウン_15).toEqual({value:"ARATA"});});
+
+describe("派遣の未入力と締結不要",()=>{
+ it("苗字だけは派遣に限って保存する",()=>{
+  const input={...candidate(),employment_type:"派遣",first_name:"",first_name_kana:"",birthday:"",gender:""};
+  expect(parseHireInput(input).first_name).toBe("");expect(hireInformationPending(input)).toBe(true);
+  expect(()=>parseHireInput({...input,employment_type:"正社員"})).toThrow();
+ });
+ it("締結不要を締結済みと同じに数え、不正な監査記録は数えない",()=>{
+  const checklist={contract_not_required:{checked_at:"now",checked_by:"staff"},nda_signed:{checked_at:"now",checked_by:"staff"},emergency_not_required:{checked_at:"now",checked_by:"staff"}};
+  expect(signatureCount({checklist})).toBe(3);expect(signaturesComplete({checklist})).toBe(true);
+  expect(signatureCount({checklist:{...checklist,contract_not_required:{checked_at:"now",checked_by:""}}})).toBe(2);
+ });
+ it("名が不明なら KING OF TIME には未定、名簿には空で送る",async()=>{
+  const row={...candidate(),employment_type:"派遣",first_name:"",first_name_kana:"",birthday:""};
+  mocks.employees.mockResolvedValue([]);mocks.create.mockResolvedValue({});mocks.records.mockResolvedValue([]);mocks.record.mockResolvedValue({id:"56"});mocks.sync.mockResolvedValue({errors:[]});
+  vi.stubEnv("KOT_EMPLOYEE_CREATE_ENABLED","true");
+  try {await hireCandidate({db:dbFor(row) as never,userId:"staff"},row.id);expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({firstName:"未定",firstNamePhonetics:"ミテイ"}));expect(mocks.create.mock.calls.at(-1)?.[0]).not.toHaveProperty("birthDate");expect(mocks.record.mock.calls.at(-1)?.[2]).toMatchObject({従業員名_名:{value:""},生年月日:{value:""}});expect(row.checklist?.contract_not_required?.checked_by).toBe("staff");} finally {vi.unstubAllEnvs();}
+ });
+});
+
+it.each([true,false])("⓪ synchronizes identity and handles KOT disabled=%s",async disabled=>{
+ const row={...candidate(),status:"hired" as const,employment_type:"派遣",first_name:"",first_name_kana:"",birthday:"",employee_id:"EMP-1571",kintone_roster_record_id:"56"};
+ mocks.byCode.mockResolvedValue({key:"key-1571"});mocks.kotUpdate.mockResolvedValue({});mocks.update.mockResolvedValue({});mocks.sync.mockResolvedValue({errors:[]});
+ vi.stubEnv("KOT_EMPLOYEE_UPDATE_ENABLED",disabled?"false":"true");
+ try {
+  const result=await completeHireIdentity({db:dbFor(row) as never,userId:"staff"},row.id,{first_name:"太郎",first_name_kana:"タロウ",birthday:"2000-01-01",gender:"male"});
+  expect(mocks.update).toHaveBeenCalledWith("56",expect.any(String),"56",expect.objectContaining({従業員名_姓名:{value:"山田 太郎"},生年月日:{value:"2000-01-01"}}));
+  if(disabled)expect(result.warning).toBe("KING OF TIME は手で直してください");else expect(mocks.kotUpdate).toHaveBeenCalledWith("key-1571",expect.objectContaining({firstName:"太郎",birthDate:"2000-01-01"}));
+  expect(row.first_name).toBe("太郎");expect(hireInformationPending(row)).toBe(false);
+ } finally {vi.unstubAllEnvs();}
+});

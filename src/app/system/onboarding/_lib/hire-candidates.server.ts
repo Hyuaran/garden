@@ -5,9 +5,9 @@ import { canView, viewPermissionContext } from "@/lib/auth/view-permission.serve
 import { randomUUID } from "node:crypto";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { createRecord, getAllRecords } from "@/lib/kintone/records";
+import { createRecord, getAllRecords, updateRecord } from "@/lib/kintone/records";
 import { syncRootRoster } from "@/app/root/_lib/roster-sync.server";
-import { createKotEmployee, fetchKotHireEmployees, fetchKotHireOptions } from "@/app/root/_lib/kot-api";
+import { updateKotEmployee, fetchKotEmployeeByCode, createKotEmployee, fetchKotHireEmployees, fetchKotHireOptions } from "@/app/root/_lib/kot-api";
 import { signaturesComplete, lineComplete, parseHireInput, parseChecklist, checklistPriority, rosterPayload, type HireCandidate, type HireChecklist } from "./hire-candidates";
 export class HireError extends Error { constructor(message: string, public status = 400) { super(message); } }
 export async function hireAdminContext(readTab?: "candidates" | "confirmations") {
@@ -76,6 +76,10 @@ export async function candidateOptions({db}: Context) {
 }
 export async function saveCandidate(context: Context, raw: unknown, id?: string) {
  const {db,userId} = context;
+ if (raw && typeof raw === "object" && Object.hasOwn(raw,"identity")) {
+  if (!id || Object.keys(raw).some(key=>key!=="identity")) throw new HireError("入力内容を確認してください");
+  return completeHireIdentity(context,id,(raw as {identity:unknown}).identity);
+ }
  if (raw && typeof raw === "object" && Object.hasOwn(raw,"checklist")) {
   if (!id || Object.keys(raw).some(key => key !== "checklist")) throw new HireError("確認する項目を選び直してください");
   // line_skipped も共通の許可リストで検証し、操作者と時刻を保存する。
@@ -84,6 +88,10 @@ export async function saveCandidate(context: Context, raw: unknown, id?: string)
   if (!current || current.status !== "hired") throw new HireError("入社済みの方だけ確認できます");
   if (changes.line_skipped === true && !signaturesComplete(current)) throw new HireError("①の締結がそろうと進めます",409);
   if (changes.filemaker_added === true && (!signaturesComplete(current) || !lineComplete(current))) throw new HireError("①の締結と②の LINE 確認と表示名の変更が済むと進めます",409);
+  for (const key of Object.keys(changes)) {
+   const waiver = `${key.split("_")[0]}_not_required` as keyof HireChecklist;
+   if ((key.endsWith("_sent") || key.endsWith("_signed")) && current.checklist?.[waiver] && changes[waiver] !== false) throw new HireError("締結しないを外してから変更してください",409);
+  }
   const checklist: HireChecklist = {...current.checklist};
   const now = new Date().toISOString();
   for (const key of Object.keys(changes) as (keyof HireChecklist)[]) {
@@ -100,10 +108,11 @@ export async function saveCandidate(context: Context, raw: unknown, id?: string)
   return row;
  }
  const input = parseHireInput(raw);
+ const values = {...input,birthday:input.birthday || null,gender:input.gender || null};
  const company = checked(await db.from("root_companies").select("company_id").eq("company_id",input.company_id).maybeSingle());
  if (!company) throw new HireError("所属法人を確認してください");
- if (!id) return checked(await db.from("system_hire_candidates").insert({...input,created_by:userId}).select().single());
- const row = checked(await db.from("system_hire_candidates").update({...input,updated_at:new Date().toISOString()}).eq("id",id).eq("status","planned").is("processing_token",null).is("employee_number",null).select().maybeSingle());
+ if (!id) return checked(await db.from("system_hire_candidates").insert({...values,created_by:userId}).select().single());
+ const row = checked(await db.from("system_hire_candidates").update({...values,updated_at:new Date().toISOString()}).eq("id",id).eq("status","planned").is("processing_token",null).is("employee_number",null).select().maybeSingle());
  if (!row) throw new HireError("入社処理が始まっているため変更できません",409);
  return row;
 }
@@ -113,7 +122,7 @@ export async function ensureRoster(c: HireCandidate, companyName: string) {
  const app = process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || "56";
  const token = process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN || "";
  const records = await getAllRecords(app,token,'従業員ステータス in ("在籍中")', ["$id","従業員名_姓名","生年月日","社員番号","打刻ID"]).catch(()=>{throw new HireError(`社員番号 ${c.employee_number} の登録前に Kintone 名簿を読み込めませんでした。名簿の API トークンの閲覧権限と接続を確認してから［続きから］を押してください。`);});
- const matches = records.filter(r => normalizeName(field(r,"従業員名_姓名")) === normalizeName(c.last_name+c.first_name) && field(r,"生年月日") === c.birthday);
+ const matches = records.filter(r => c.birthday ? normalizeName(field(r,"従業員名_姓名")) === normalizeName(c.last_name+c.first_name) && field(r,"生年月日") === c.birthday : !!c.employee_number && !!field(r,"社員番号") && !!field(r,"打刻ID") && Number(field(r,"社員番号")) === Number(c.employee_number) && Number(field(r,"打刻ID")) === Number(c.employee_number));
  if (matches.length > 1) throw new HireError(`Kintone 名簿に『${c.last_name} ${c.first_name}』さん（生年月日 ${c.birthday}）が ${matches.length} 件あります。重複しているレコードを 1 件にしてから［続きから］を押してください。`,409);
  if (matches.length) {
   const r = matches[0];
@@ -157,8 +166,9 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
    if (process.env.KOT_EMPLOYEE_CREATE_ENABLED !== "true") throw new HireError(`社員番号 ${c.employee_number} の KING OF TIME 登録は停止中です（東海林さんの OK 待ち）。登録の再開後に［続きから］を押してください。`);
    const employees = await fetchKotHireEmployees();
    const existing = employees.find(e=> Number(e.code) === Number(c.employee_number));
-   if (existing && (normalizeName((existing.lastName || "")+(existing.firstName || "")) !== normalizeName(c.last_name+c.first_name))) throw new HireError(`社員番号 ${c.employee_number} は KING OF TIME で別の方（${existing.lastName || ""} ${existing.firstName || ""}）に使われています。KING OF TIME のその方の社員番号を確認・修正してから［続きから］を押してください。`,409);
-   if (!existing) await createKotEmployee({code:c.employee_number!,lastName:c.last_name,firstName:c.first_name,lastNamePhonetics:c.last_name_kana,firstNamePhonetics:c.first_name_kana,birthDate:c.birthday,hiredDate:c.hire_date,gender:c.gender as "male"|"female",divisionCode:c.kot_division_code,typeCode:c.kot_type_code});
+   if (existing && (normalizeName((existing.lastName || "")+(existing.firstName || "")) !== normalizeName(c.last_name+(c.first_name || (c.employment_type === "派遣" ? "未定" : ""))))) throw new HireError(`社員番号 ${c.employee_number} は KING OF TIME で別の方（${existing.lastName || ""} ${existing.firstName || ""}）に使われています。KING OF TIME のその方の社員番号を確認・修正してから［続きから］を押してください。`,409);
+   if (!existing && !c.gender) throw new HireError("KING OF TIME の中継では性別が必須です。性別を確認して入力してから［続きから］を押してください");
+   if (!existing) await createKotEmployee({code:c.employee_number!,lastName:c.last_name,firstName:c.first_name || "未定",lastNamePhonetics:c.last_name_kana,firstNamePhonetics:c.first_name_kana || "ミテイ",...(c.birthday ? {birthDate:c.birthday} : {}),hiredDate:c.hire_date,gender:c.gender as "male"|"female",divisionCode:c.kot_division_code,typeCode:c.kot_type_code});
    await done();
   }
   stage = "roster";
@@ -172,13 +182,13 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
   const existingGarden = checked(await db.from("root_employees").select("name").eq("employee_number",c.employee_number!.padStart(4,"0")).maybeSingle());
   if (existingGarden?.name && normalizeName(existingGarden.name) !== normalizeName(c.last_name+c.first_name)) throw new HireError(`社員番号 ${c.employee_number} は Garden で別の方（${existingGarden.name}）に使われています。管理者が Garden と名簿の社員番号を確認・修正してから［続きから］を押してください。`,409);
   const summary = await syncRootRoster({dryRun:false,recordIds:[c.kintone_roster_record_id!]});
-  if (summary.errors.length) throw new HireError(`社員番号 ${c.employee_number} の Kintone 名簿から Garden への反映に失敗しました。管理者が名簿の登録内容と同期処理のエラーを確認・修正してから［続きから］を押してください。`);
+  if (summary.errors.some(error => !(c.employment_type === "派遣" && !c.birthday && error === `${c.employee_number!.padStart(4,"0")} ${c.last_name}: 生年月日が空のためアカウント作成をスキップ`))) throw new HireError(`社員番号 ${c.employee_number} の Kintone 名簿から Garden への反映に失敗しました。管理者が名簿の登録内容と同期処理のエラーを確認・修正してから［続きから］を押してください。`);
   const employee = checked(await db.from("root_employees").select("employee_id,user_id").eq("employee_number",c.employee_number!.padStart(4,"0")).single());
-  if (!employee?.user_id) throw new HireError(`社員番号 ${c.employee_number} の Garden アカウントを準備できませんでした。管理者がアカウント作成処理を確認・修正してから［続きから］を押してください。`);
+  if (!employee || (!employee.user_id && !(c.employment_type === "派遣" && !c.birthday))) throw new HireError(`社員番号 ${c.employee_number} の Garden アカウントを準備できませんでした。管理者がアカウント作成処理を確認・修正してから［続きから］を押してください。`);
   // The existing sync defaults new employees to COMP-001; apply the selected company.
-  checked(await db.from("root_employees").update({company_id:c.company_id}).eq("employee_id",employee!.employee_id));
+  checked(await db.from("root_employees").update({company_id:c.company_id,name:[c.last_name,c.first_name].filter(Boolean).join(" "),birthday:c.birthday || null}).eq("employee_id",employee!.employee_id));
   await done();
-  await persist({employee_id:employee!.employee_id,status:"hired"});
+  await persist({employee_id:employee!.employee_id,status:"hired",...(c.employment_type === "派遣" ? {checklist:{...c.checklist,...Object.fromEntries(["contract","nda","emergency"].map(key=>[`${key}_not_required`,{checked_at:new Date().toISOString(),checked_by:userId}]))}} : {})});
   return c;
  } catch (e) {
   const stageName = {number:"社員番号の採番",kot:"KING OF TIME 登録",roster:"Kintone 名簿への登録",garden:"Garden への反映"}[stage];
@@ -189,7 +199,33 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
   checked(await db.from("system_hire_candidates").update({processing_token:null,processing_started_at:null}).eq("id",id).eq("processing_token",token));
  }
 }
-export async function hireResponse(action: (context: Context) => Promise<unknown>) {
- try { return Response.json(await action(await hireAdminContext())); }
+export async function hireResponse(action: (context: Context) => Promise<unknown>, tab?: "candidates" | "confirmations") {
+ try { return Response.json(await action(await hireAdminContext(tab))); }
  catch(e) { return Response.json({error:e instanceof Error ? e.message : "処理できませんでした"},{status:e instanceof HireError ? e.status : 400}); }
+}
+
+export async function completeHireIdentity({db}: Context,id:string,raw:unknown) {
+ const current = checked(await db.from("system_hire_candidates").select("*").eq("id",id).maybeSingle()) as HireCandidate | null;
+ if (!current || current.status !== "hired" || current.employment_type !== "派遣" || !current.employee_id || !current.employee_number || !current.kintone_roster_record_id) throw new HireError("派遣の入社情報を確認してください",409);
+ if (!raw || typeof raw !== "object" || Array.isArray(raw) || Object.keys(raw).some(key=>!["first_name","first_name_kana","birthday","gender"].includes(key))) throw new HireError("入力内容を確認してください");
+ const full = parseHireInput({...current,...raw,employment_type:"アルバイト"});
+ const identity = {first_name:full.first_name,first_name_kana:full.first_name_kana,birthday:full.birthday,gender:full.gender};
+ const next = {...current,...identity};
+ let warning = "";
+ try {
+  if (process.env.KOT_EMPLOYEE_UPDATE_ENABLED !== "true") throw new Error("KING OF TIME の変更は止めています");
+  const employee = await fetchKotEmployeeByCode(current.employee_number);
+  await updateKotEmployee(employee.key,{lastName:next.last_name,firstName:next.first_name,lastNamePhonetics:next.last_name_kana,firstNamePhonetics:next.first_name_kana,birthDate:next.birthday,gender:next.gender as "male"|"female"});
+ } catch(error) {
+  const message = error instanceof Error ? error.message : "";
+  if (!/止めています|止まって|停止中/.test(message)) throw new HireError("KING OF TIME の変更ができませんでした。接続と入力内容を確認してもう一度保存してください",503);
+  warning = "KING OF TIME は手で直してください";
+ }
+ const record = rosterPayload(next,"");
+ await updateRecord(process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || "56",process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN || "",current.kintone_roster_record_id,Object.fromEntries(Object.entries(record).filter(([key])=>["従業員名_姓","従業員名_名","従業員名_姓名","従業員名_姓名カナ","生年月日"].includes(key))));
+ checked(await db.from("root_employees").update({name:[next.last_name,next.first_name].join(" "),name_kana:[next.last_name_kana,next.first_name_kana].join(" "),birthday:next.birthday}).eq("employee_id",current.employee_id));
+ const synced = await syncRootRoster({dryRun:false,recordIds:[current.kintone_roster_record_id]});
+ if (synced.errors.length) throw new HireError("Garden のアカウント準備を完了できませんでした。接続を確認してもう一度保存してください",503);
+ const updated = checked(await db.from("system_hire_candidates").update({...identity,updated_at:new Date().toISOString()}).eq("id",id).eq("status","hired").select().single());
+ return {...updated,warning};
 }

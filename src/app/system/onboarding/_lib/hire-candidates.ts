@@ -4,7 +4,7 @@ export type HireInput = Record<typeof HIRE_FIELDS[number], string>;
 export type HireCandidate = HireInput & HireChecklistState & { id: string; status: "planned" | "no_show" | "hiring" | "hired"; employee_number: string | null; employee_id: string | null; kintone_roster_record_id: string | null; steps: Record<string, { done?: boolean; at?: string; error?: string }> };
 export const EMPLOYMENT_TYPES = ["正社員", "アルバイト", "役員", "派遣", "パートナー"];
 export const CHECKLIST_KEYS = ["contract_sent", "contract_signed", "nda_sent", "nda_signed", "emergency_sent", "emergency_signed", "filemaker_added"] as const;
-export const ALLOWED_CHECKLIST_KEYS = [...CHECKLIST_KEYS, "line_skipped"] as const;
+export const ALLOWED_CHECKLIST_KEYS = [...CHECKLIST_KEYS, "contract_not_required", "nda_not_required", "emergency_not_required", "line_skipped"] as const;
 export type ChecklistKey = typeof ALLOWED_CHECKLIST_KEYS[number];
 export type HireChecklist = Partial<Record<ChecklistKey, { checked_at: string; checked_by: string }>>;
 export type HireChecklistState = { line_verified?: boolean; line_verified_at?: string | null; line_verified_by?: string | null; line_display_renamed_at?: string | null; line_display_renamed_by?: string | null; filemaker_request?: {status:string;files:Record<string,{status:string;error?:string}>}|null; checklist?: HireChecklist; onboarding_status?: string | null; line_registered?: boolean };
@@ -13,7 +13,7 @@ export function parseChecklist(raw: unknown): Partial<Record<ChecklistKey, boole
  return raw as Partial<Record<ChecklistKey, boolean>>;
 }
 export function checklistComplete(row: HireChecklistState & {status: string}) {
- return row.status === "hired" && row.onboarding_status === "submitted" && lineComplete(row) && CHECKLIST_KEYS.every(key => !!row.checklist?.[key]?.checked_at && !!row.checklist[key]?.checked_by);
+ return row.status === "hired" && row.onboarding_status === "submitted" && lineComplete(row) && signaturesComplete(row) && SIGNATURE_GROUPS.every(key => !!row.checklist?.[`${key}_not_required`]?.checked_at || (!!row.checklist?.[`${key}_sent`]?.checked_at && !!row.checklist?.[`${key}_sent`]?.checked_by)) && !!row.checklist?.filemaker_added?.checked_at && !!row.checklist.filemaker_added.checked_by;
 }
 export function checklistPriority(row: HireChecklistState & {status: string}) {
  return row.status === "hired" && !checklistComplete(row) ? 0 : checklistComplete(row) ? 2 : 1;
@@ -21,11 +21,12 @@ export function checklistPriority(row: HireChecklistState & {status: string}) {
 export function parseHireInput(raw: unknown): HireInput {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("入力内容を確認してください");
   const input = Object.fromEntries(HIRE_FIELDS.map(k => [k, String((raw as Record<string, unknown>)[k] ?? "").trim()])) as HireInput;
-  if (HIRE_FIELDS.some(k => !input[k] || input[k].length > 200)) throw new Error("入力内容を確認してください");
+  if (HIRE_FIELDS.some(k => (isHireFieldRequired(k,input.employment_type) && !input[k]) || input[k].length > 200)) throw new Error("入力内容を確認してください");
   for (const k of ["birthday", "hire_date"] as const) {
+    if (!input[k] && k === "birthday" && input.employment_type === "派遣") continue;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input[k]) || new Date(input[k]).toISOString().slice(0,10) !== input[k]) throw new Error("入力内容を確認してください");
   }
-  if (!["male", "female"].includes(input.gender) || !EMPLOYMENT_TYPES.includes(input.employment_type)) throw new Error("入力内容を確認してください");
+  if (!["male", "female", ...(input.employment_type === "派遣" ? [""] : [])].includes(input.gender) || !EMPLOYMENT_TYPES.includes(input.employment_type)) throw new Error("入力内容を確認してください");
   return input;
 }
 export function nextEmployeeNumber(numbers: (string | null)[], kotCodes: string[], reserved: (string | null)[] = []) {
@@ -41,12 +42,22 @@ export function nextEmployeeNumber(numbers: (string | null)[], kotCodes: string[
 export const rosterCompanyName = (name: string) => name.replace(/^(株式会社|（株）|\(株\))\s*/, "").replace(/\s*(株式会社)$/, "").trim();
 export function rosterPayload(c: HireCandidate, companyName: string) {
  return Object.fromEntries(Object.entries({
- 従業員名_姓: c.last_name, 従業員名_名: c.first_name,
- 従業員名_姓名: c.last_name + " " + c.first_name, 従業員名_姓名カナ: c.last_name_kana + " " + c.first_name_kana,
- 生年月日: c.birthday, 入社日: c.hire_date, 雇用形態: c.employment_type,
+ 従業員名_姓: c.last_name, 従業員名_名: c.first_name || "",
+ 従業員名_姓名: [c.last_name,c.first_name].filter(Boolean).join(" "), 従業員名_姓名カナ: [c.last_name_kana,c.first_name_kana].filter(Boolean).join(" "),
+ 生年月日: c.birthday || "", 入社日: c.hire_date, 雇用形態: c.employment_type,
  社員番号: c.employee_number, 打刻ID: c.employee_number, 従業員ステータス: "在籍中", ドロップダウン_15: rosterCompanyName(companyName),
  }).map(([k,value]) => [k,{value}]));
 }
 
-export function signaturesComplete(row: HireChecklistState) { return (["contract_signed","nda_signed","emergency_signed"] as const).every(k => !!row.checklist?.[k]?.checked_at && !!row.checklist[k]?.checked_by); }
+export const SIGNATURE_GROUPS = ["contract","nda","emergency"] as const;
+export function signatureCount(row: HireChecklistState) {
+ return SIGNATURE_GROUPS.filter(key => [row.checklist?.[`${key}_signed`],row.checklist?.[`${key}_not_required`]].some(value => !!value?.checked_at && !!value.checked_by)).length;
+}
+export function signaturesComplete(row: HireChecklistState) { return signatureCount(row) === 3; }
+export function isHireFieldRequired(key: keyof HireInput, employmentType: string) {
+ return employmentType !== "派遣" || !["first_name","first_name_kana","birthday","gender"].includes(key);
+}
+export function hireInformationPending(row: HireInput) {
+ return row.employment_type === "派遣" && [row.first_name,row.first_name_kana,row.birthday,row.gender].some(value => !value);
+}
 export function lineComplete(row: HireChecklistState) { return (!!row.line_verified_at && !!row.line_display_renamed_at) || (!!row.checklist?.line_skipped?.checked_at && !!row.checklist.line_skipped.checked_by); }

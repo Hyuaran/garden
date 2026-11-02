@@ -5,7 +5,7 @@
 .sectionHeading h3 { margin:0; }
 .sectionHeading span { white-space:nowrap; }
 .documents { display:grid; gap:12px; }
-.documents > div { display:grid; grid-template-columns:minmax(120px,1fr) auto auto; gap:12px; }
+.documents > div { display:grid; grid-template-columns:minmax(120px,1fr) auto auto auto; gap:12px; }
 .contract { margin:0; padding:16px; min-width:0; border:1px solid var(--line); border-radius:12px; }
 .contract legend { padding:0 6px; }
 .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
@@ -37,3 +37,6 @@
 
 .headerActions { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:12px; margin-left:auto; min-width:0; }
 .steps button.textButton { height:auto; min-height:0; padding:4px 0; border:0; background:transparent; color:var(--sub,var(--ink)); text-decoration:underline; }
+
+.informationWaiting { color:var(--warning,#a76712); font-weight:600; }
+.documents label:has(input:disabled) { color:var(--sub); opacity:.65; }

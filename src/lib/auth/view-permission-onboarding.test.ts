@@ -9,7 +9,7 @@ vi.mock("@/app/root/_lib/roster-sync.server",()=>({syncRootRoster:vi.fn()}));
 vi.mock("@/app/root/_lib/kot-api",()=>({createKotEmployee:vi.fn(),fetchKotHireEmployees:vi.fn(),fetchKotHireOptions:vi.fn()}));
 import { onboardingAdminContext } from "@/app/system/onboarding/_lib/onboarding-admin.server";
 import { hireAdminContext } from "@/app/system/onboarding/_lib/hire-candidates.server";
-import { GET as hireGet, POST as hirePost } from "@/app/api/system/hire-candidates/route";
+import { GET as hireGet, POST as hirePost } from "@/app/api/system/onboarding/hire-candidates/route";
 import { GET as detailGet, POST as detailPost } from "@/app/api/system/onboarding/admin/[employeeId]/route";
 beforeEach(()=>{
   vi.resetAllMocks();
@@ -31,15 +31,23 @@ it.each(["candidates","confirmations"] as const)("%sの閲覧許可後にだけ�
 });
 it("未許可の入社予定者・事務詳細APIはデータ接続前に403",async()=>{
   mocks.canView.mockResolvedValue(false);
-  expect((await hireGet(new Request("http://localhost/api/system/hire-candidates?tab=confirmations"))).status).toBe(403);
+  expect((await hireGet(new Request("http://localhost/api/system/onboarding/hire-candidates?tab=confirmations"))).status).toBe(403);
   const detailResponse = await detailGet(new Request("http://localhost"),{params:Promise.resolve({employeeId:"EMP-2"})});
   expect(detailResponse.status).toBe(403);
   expect(mocks.admin).not.toHaveBeenCalled();
 });
-it("閲覧を許可しても事務の書き込みと入社予定者の登録は広がらない",async()=>{
-  await expect(onboardingAdminContext()).rejects.toMatchObject({status:403});
-  const request=new Request("http://localhost/api/system/hire-candidates",{method:"POST",body:"{}"});
+it("入社予定者タブを見られる人は登録もできる（2026-11-02 東海林さん：閲覧＝社員以上だけ）",async()=>{
+  const request=new Request("http://localhost/api/system/onboarding/hire-candidates",{method:"POST",body:"{}"});
+  expect((await hirePost(request)).status).toBe(400);
+  expect(mocks.canView).toHaveBeenCalledWith("system-onboarding","candidates",{role:"staff",employeeId:"EMP-1"});
+});
+it("入社予定者タブを見られない人は登録できない",async()=>{
+  mocks.canView.mockResolvedValue(false);
+  const request=new Request("http://localhost/api/system/onboarding/hire-candidates",{method:"POST",body:"{}"});
   expect((await hirePost(request)).status).toBe(403);
+});
+it("閲覧を許可しても事務の書き込みは広がらない",async()=>{
+  await expect(onboardingAdminContext()).rejects.toMatchObject({status:403});
   const update = new Request("http://localhost/api/system/onboarding/admin/EMP-2",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"save",values:{}})});
   expect((await detailPost(update,{params:Promise.resolve({employeeId:"EMP-2"})})).status).toBe(403);
   expect(mocks.admin).not.toHaveBeenCalled();

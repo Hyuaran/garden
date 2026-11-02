@@ -3,5 +3,5 @@ import { hireDocuments } from "@/app/system/onboarding/_lib/hire-documents.serve
 export async function POST(_req:Request,{params}:{params:Promise<{id:string}>}) {
  const {id}=await params;
  let body; try { body=await _req.json(); } catch { body={}; }
- return hireResponse(c=>hireDocuments(c,id,body.contract ?? {}));
+ return hireResponse(c=>hireDocuments(c,id,body.contract ?? {}),"confirmations");
 }

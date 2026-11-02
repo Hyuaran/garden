@@ -7,7 +7,7 @@ vi.mock("./_lib/onboarding.server", () => ({
   OnboardingError: class extends Error {}, onboardingEmployee: vi.fn(async () => ({})), readOnboarding: mocks.self,
 }));
 vi.mock("./OnboardingClient", () => ({ default: () => <div role="progressbar" aria-label="入力の進捗" /> }));
-vi.mock("./HireCandidatesClient", () => ({ default: ({ tab }: { tab: string }) => <p>{tab}</p> }));
+vi.mock("./HireCandidatesClient", () => ({ default: ({ tab,canWrite }: { tab: string;canWrite:boolean }) => <p data-testid="hire-panel" data-can-write={String(canWrite)}>{tab}</p> }));
 vi.mock("./AdminOnboardingList", () => ({ default: () => <p>一覧</p> }));
 vi.mock("@/lib/auth/view-permission.server", async () => {
  const {resolveCanView} = await import("@/lib/auth/view-permission");
@@ -59,4 +59,11 @@ it("設定で許可されたタブだけ表示し、拒否したタブのデー�
  mocks.admin.mockResolvedValue({});
  render(await Page({searchParams:Promise.resolve({tab:"self"})}));
  expect(screen.queryByRole("tablist")).not.toBeInTheDocument();expect(mocks.self).not.toHaveBeenCalled();expect(mocks.list).toHaveBeenCalledOnce();
+});
+
+it.each(["candidates","confirmations"])("grants writing to a manager viewing the %s tab",async tab=>{
+ mocks.role="manager";mocks.settings=[{page_key:"system-onboarding",tab_key:tab,roles:["manager"],employee_ids:[],viewers_can_add:false,updated_by:"admin",updated_at:"2026-11-02"}];
+ mocks.hire.mockResolvedValue({userId:"staff"});
+ render(await Page({searchParams:Promise.resolve({tab})}));
+ expect(screen.getByTestId("hire-panel")).toHaveAttribute("data-can-write","true");expect(mocks.hire).toHaveBeenCalledWith(tab);
 });

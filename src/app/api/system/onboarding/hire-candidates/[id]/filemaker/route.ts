@@ -9,7 +9,7 @@ export async function POST(_req:Request,{params}:{params:Promise<{id:string}>}){
   if(row.status!=="hired"||!signaturesComplete(row))throw new HireError("①の締結がそろうと進めます",409);
   if(!lineComplete(row))throw new HireError("②の LINE 確認と表示名の変更が済むと進めます",409);
   return requestFilemakerAccount(c.db,id,c.userId);
- });
+ },"confirmations");
 }
 export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}) {
  const {id}=await params;
@@ -20,5 +20,5 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}) {
   const result=await c.db.from("system_filemaker_account_requests").select("status,files").eq("hire_candidate_id",id).maybeSingle();
   if(result.error)throw new HireError("状態を読み込めませんでした",503);
   return {ok:true,request:result.data};
- });
+ },"confirmations");
 }

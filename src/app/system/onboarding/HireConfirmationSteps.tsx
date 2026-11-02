@@ -6,11 +6,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePolling } from "@/lib/hooks/usePolling";
 import ChangeConfirm from "@/app/system/_components/ChangeConfirm/ChangeConfirm";
 import HireProcessingOverlay from "./HireProcessingOverlay";
-import { signaturesComplete, lineComplete, type HireCandidate } from "./_lib/hire-candidates";
+import { signatureCount, hireInformationPending, signaturesComplete, lineComplete, type HireCandidate } from "./_lib/hire-candidates";
 import layout from "./HireConfirmation.module.css";
 import styles from "./onboarding.module.css";
 import { initializeContract, japanToday, updateContract } from "./_lib/hire-contract-defaults";
-const base="/api/system/hire-candidates/";
+const base="/api/system/onboarding/hire-candidates/";
 export default function HireConfirmationSteps({row,canWrite,documents,toggleFilemaker,skip,onRefresh,onReconciled}:{row:HireCandidate;canWrite:boolean;documents:ReactNode;toggleFilemaker:()=>void;skip:()=>void;onRefresh:()=>Promise<unknown>;onReconciled?:()=>Promise<unknown>}) {
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[code,setCode]=useState(""),[sent,setSent]=useState(false),[confirm,setConfirm]=useState(false);
  const [deadline,setDeadline]=useState<number|null>(null),[seconds,setSeconds]=useState(0),[showWait,setShowWait]=useState(false);
@@ -19,6 +19,8 @@ export default function HireConfirmationSteps({row,canWrite,documents,toggleFile
  const automaticStart=useRef(true), automaticEnd=useRef(true), automaticConcluded=useRef(true);
  const [contract,setContract]=useState<Partial<EmploymentContractPayload>>(()=>initializeContract(contractDefaults(defaultContractType(row.employment_type??"")),today));
  function changeContract(value:Partial<EmploymentContractPayload>) {setContract(updateContract(automaticStart.current?{...value,contractStart:value.concludedOn||today}:value,today,automaticEnd.current));}
+ const [identity,setIdentity]=useState({first_name:row.first_name??"",first_name_kana:row.first_name_kana??"",birthday:row.birthday??"",gender:row.gender??""});
+ const [identityNotice,setIdentityNotice]=useState("");
  const [documentNotice,setDocumentNotice]=useState("");
  const checking=useRef(false);
  const skipped=!!row.checklist?.line_skipped?.checked_at&&!!row.checklist.line_skipped.checked_by;
@@ -47,10 +49,16 @@ export default function HireConfirmationSteps({row,canWrite,documents,toggleFile
  },1000,{enabled:deadline!==null});
  const locked=!canWrite||busy||deadline!==null;
  return <div className={layout.steps}>
-  <section><header className={layout.sectionHeading}><h3>① 締結</h3><span>{[row.checklist?.contract_signed,row.checklist?.nda_signed,row.checklist?.emergency_signed].filter(Boolean).length}/3</span></header><div className={layout.documents}>{documents}</div><fieldset className={layout.contract} disabled={!canWrite}><legend>雇用契約書の中身</legend><div className={layout.grid}>
+  {hireInformationPending(row)&&<section><h3>⓪ 名前・生年月日</h3>
+   <form onSubmit={e=>{e.preventDefault();void run(async()=>{const res=await fetch(base+row.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({identity})});const data=await res.json();if(!res.ok)throw new Error(data.error||"保存できませんでした");setIdentityNotice(data.warning||"保存しました");});}}>
+    <div className={layout.grid}>{([["first_name","名","text"],["first_name_kana","メイ","text"],["birthday","生年月日","date"]] as const).map(([key,label,type])=><label key={key}><span>{label}<span className="garden-required" aria-hidden="true">＊</span></span><input required aria-required="true" type={type} value={identity[key]} disabled={locked} onChange={e=>setIdentity({...identity,[key]:e.target.value})}/></label>)}
+    <label><span>性別<span className="garden-required" aria-hidden="true">＊</span></span><select required aria-required="true" value={identity.gender} disabled={locked} onChange={e=>setIdentity({...identity,gender:e.target.value})}><option value="">不明</option><option value="male">男性</option><option value="female">女性</option></select></label></div><button disabled={locked}>保存する</button>
+   </form></section>}
+  {identityNotice&&<p role="status">{identityNotice}</p>}
+  <section><header className={layout.sectionHeading}><h3>① 締結</h3><span>{signatureCount(row)}/3</span></header><div className={layout.documents}>{documents}</div>{!row.checklist?.contract_not_required&&<fieldset className={layout.contract} disabled={!canWrite}><legend>雇用契約書の中身</legend><div className={layout.grid}>
    <ContractTypeFields value={contract} onChange={changeContract} renewalSelect/>
    {([['concludedOn','契約日','date'],['contractStart','契約開始日','date'],['contractEnd','契約終了日','date'],['workLocation','就業場所','text']] as const).map(([key,label,type])=><label key={key}>{label}<input type={type} value={contract[key]??""} placeholder="既存の契約書の値を使用" disabled={key==="contractEnd"&&contract.indefinite} onChange={e=>{if(key==="contractStart")automaticStart.current=false;if(key==="contractEnd")automaticEnd.current=false;if(key==="concludedOn")automaticConcluded.current=false;changeContract({...contract,[key]:e.target.value});}}/></label>)}
-   </div></fieldset>
+   </div></fieldset>}
    {documentNotice&&<p role="status">{documentNotice}</p>}
    <button className={layout.primary} disabled={locked||row.onboarding_status!=="submitted"} onClick={()=>run(async()=>{
     const overrides={...contract};
