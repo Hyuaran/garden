@@ -775,7 +775,7 @@ describe("ListMasterClient upload purchase vendor", () => {
     window.history.replaceState(null, "", "/system/list?tab=upload");
     render(<ListMasterClient />);
 
-    expect(await screen.findByLabelText("購入先")).toBeRequired();
+    expect(await screen.findByRole("combobox", { name: "購入先" })).toBeRequired();
     expect(screen.getByRole("option", { name: "データ総研（1,200）" })).toBeInTheDocument();
   });
 });
@@ -1033,7 +1033,7 @@ describe("ListMasterClient list search UX", () => {
     fireEvent.click(await screen.findByRole("button", { name: "条件を保存" }));
     expect(screen.getByRole("dialog", { name: "条件を保存" })).toBeInTheDocument();
     expect(screen.getByText(/いまの条件：/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("条件名"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText(/条件名/), { target: { value: "" } });
     expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "読み込む" }));
@@ -1241,14 +1241,14 @@ describe("ListMasterClient internal block release modal", () => {
     await openReleaseModal();
 
     expect(screen.getByRole("button", { name: "解除する" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("解除理由（必須）"), { target: { value: "   " } });
+    fireEvent.change(screen.getByRole("textbox", { name: "解除理由" }), { target: { value: "   " } });
     expect(screen.getByRole("button", { name: "解除する" })).toBeDisabled();
   });
 
   it("sends the trimmed release reason to PATCH", async () => {
     const fetchMock = await openReleaseModal();
 
-    fireEvent.change(screen.getByLabelText("解除理由（必須）"), { target: { value: "  本人から再架電の了承あり  " } });
+    fireEvent.change(screen.getByRole("textbox", { name: "解除理由" }), { target: { value: "  本人から再架電の了承あり  " } });
     fireEvent.click(screen.getByRole("button", { name: "解除する" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
@@ -1265,7 +1265,7 @@ describe("ListMasterClient internal block release modal", () => {
   it("shows the API error in the release modal", async () => {
     await openReleaseModal({ internalBlockRelease: { status: 400, body: { error: "解除理由を入力してください" } } });
 
-    fireEvent.change(screen.getByLabelText("解除理由（必須）"), { target: { value: "登録間違い" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "解除理由" }), { target: { value: "登録間違い" } });
     fireEvent.click(screen.getByRole("button", { name: "解除する" }));
 
     expect(await screen.findByText("解除理由を入力してください")).toBeInTheDocument();

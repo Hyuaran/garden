@@ -62,9 +62,9 @@ export function RejectModal({
 
           <label className="block">
             <span className="text-sm text-gray-700">
-              差戻し理由（{REASON_MIN} 文字以上）
+              差戻し理由（{REASON_MIN} 文字以上）<span className="garden-required" aria-hidden="true">＊</span>
             </span>
-            <textarea
+            <textarea aria-required="true"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={submitting}

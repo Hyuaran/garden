@@ -37,17 +37,17 @@ describe("TossForm conditional UI", () => {
     render(<TossForm />);
     expect(screen.queryByLabelText("キャッシュバック金額")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("キャッシュバック有無"), { target: { value: "利用する" } });
+    fireEvent.change(screen.getByLabelText(/キャッシュバック有無/), { target: { value: "利用する" } });
     fireEvent.change(screen.getByLabelText("キャッシュバック金額"), { target: { value: "5000" } });
-    fireEvent.change(screen.getByLabelText("キャッシュバック有無"), { target: { value: "利用しない" } });
-    fireEvent.change(screen.getByLabelText("キャッシュバック有無"), { target: { value: "利用する" } });
+    fireEvent.change(screen.getByLabelText(/キャッシュバック有無/), { target: { value: "利用しない" } });
+    fireEvent.change(screen.getByLabelText(/キャッシュバック有無/), { target: { value: "利用する" } });
     expect(screen.getByLabelText("キャッシュバック金額")).toHaveValue(null);
 
     fireEvent.change(screen.getByLabelText(/PD管理番号/), { target: { value: "1234567" } });
-    fireEvent.change(screen.getByLabelText("関電リスト区分"), { target: { value: "リスト外" } });
+    fireEvent.change(screen.getByLabelText(/関電リスト区分/), { target: { value: "リスト外" } });
     expect(screen.queryByLabelText(/PD管理番号/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "照合" })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("関電リスト区分"), { target: { value: "リスト内" } });
+    fireEvent.change(screen.getByLabelText(/関電リスト区分/), { target: { value: "リスト内" } });
     expect(screen.getByLabelText(/PD管理番号/)).toHaveValue("");
   });
 

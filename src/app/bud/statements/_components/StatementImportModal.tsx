@@ -119,8 +119,8 @@ export function StatementImportModal({
 
         <div className="p-4 space-y-3">
           <label className="block">
-            <span className="text-xs text-gray-600">対象口座 *</span>
-            <select
+            <span className="text-xs text-gray-600">対象口座<span className="garden-required" aria-hidden="true">＊</span></span>
+            <select aria-required="true"
               value={bankAccountId}
               onChange={(e) => setBankAccountId(e.target.value)}
               disabled={submitting}
@@ -157,8 +157,8 @@ export function StatementImportModal({
           </label>
 
           <label className="block">
-            <span className="text-xs text-gray-600">CSV ファイル *</span>
-            <input
+            <span className="text-xs text-gray-600">CSV ファイル<span className="garden-required" aria-hidden="true">＊</span></span>
+            <input aria-required="true"
               type="file"
               accept=".csv,text/csv"
               onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}

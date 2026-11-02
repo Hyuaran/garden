@@ -119,20 +119,20 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
   }
 
   return <FormPage mobile={mobile} title={mobile ? "NHK訪問業務 報告" : "NHK訪問業務 報告フォーム"} submitterName={submitterName} employeeNumber={employeeNumber} description="業務が終わったら、この画面に入力して送信してください。" guide={<p className={local.guide}><Link prefetch={false} href="/system/manuals/system/nhk-visit?tab=operation">使い方ガイドを見る</Link></p>}>
-    <FormRow label={<>1 日付</>}>
-      <TextField type="date" value={visitDate} onChange={(event) => setVisitDate(event.currentTarget.value)} />
+    <FormRow required label={<>1 日付</>}>
+      <TextField required type="date" value={visitDate} onChange={(event) => setVisitDate(event.currentTarget.value)} />
     </FormRow>
 
-    <FormRow label={<>2 時間</>}>
+    <FormRow required label={<>2 時間</>}>
       <div className={local.timeRow}>
-        <TextField type="time" value={startTime} onChange={(event) => setStartTime(event.currentTarget.value)} />
+        <TextField required type="time" value={startTime} onChange={(event) => setStartTime(event.currentTarget.value)} />
         <span>〜</span>
-        <TextField type="time" value={endTime} onChange={(event) => setEndTime(event.currentTarget.value)} />
+        <TextField required type="time" value={endTime} onChange={(event) => setEndTime(event.currentTarget.value)} />
       </div>
     </FormRow>
 
-    <FormRow label={<>3 派遣先</>}>
-      <SelectField value={destination} onChange={(event) => setDestination(event.currentTarget.value)}>
+    <FormRow required label={<>3 派遣先</>}>
+      <SelectField required value={destination} onChange={(event) => setDestination(event.currentTarget.value)}>
         
         {NHK_VISIT_DESTINATIONS.map((item) => <option key={item} value={item}>{item}</option>)}
       </SelectField>
@@ -161,8 +161,8 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
       </div>
     </FormRow>
 
-    <FormRow label={<>6 交通費</>}>
-      <RadioGroup name="transportFee" label="交通費" options={["あり", "なし"]} value={transportFee} onChange={value => setTransportFee(value as NhkVisitTransportFee)} />
+    <FormRow required label={<>6 交通費</>}>
+      <RadioGroup required name="transportFee" label="交通費" options={["あり", "なし"]} value={transportFee} onChange={value => setTransportFee(value as NhkVisitTransportFee)} />
     </FormRow>
 
     <SubmitButton busy={sending} onClick={() => void submit()}>{mobile ? "送信する" : "報告内容を送信する"}</SubmitButton>

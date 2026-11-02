@@ -32,7 +32,7 @@ describe("toss form mapping", () => {
   });
 
   it("requires a PD number only for records inside the Kanden list", () => {
-    expect(() => validateTossInput({ ...input, pdManagementNumber: "", pd: "" })).toThrow("pdManagementNumber");
+    expect(() => validateTossInput({ ...input, pdManagementNumber: "", pd: "" })).toThrow("PD管理番号を入力してください");
     expect(validateTossInput({ ...input, listCategory: "リスト外", pdManagementNumber: "", pd: "" }).pdManagementNumber).toBe("");
   });
 

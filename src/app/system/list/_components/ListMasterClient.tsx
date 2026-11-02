@@ -1019,8 +1019,8 @@ function SaveConditionModal({
         </div>
         <div className={styles.modalSaveRow}>
           <label>
-            条件名
-            <input value={conditionName} onChange={(event) => onNameChange(event.target.value)} />
+            条件名<span className="garden-required" aria-hidden="true">＊</span>
+            <input aria-required="true" value={conditionName} onChange={(event) => onNameChange(event.target.value)} />
           </label>
           <button type="button" onClick={onSave} disabled={busy || conditionName.trim() === ""} data-modal-action="primary">
             保存
@@ -1159,8 +1159,8 @@ function InternalBlockReleaseModal({
           </div>
         </dl>
         <label className={styles.modalTextareaLabel}>
-          解除理由（必須）
-          <textarea value={reason} rows={2} onChange={(event) => onReasonChange(event.target.value)} disabled={busy} />
+          解除理由<span className="garden-required" aria-hidden="true">＊</span>
+          <textarea aria-required="true" value={reason} rows={2} onChange={(event) => onReasonChange(event.target.value)} disabled={busy} />
         </label>
         <p className={styles.modalHint}>例：本人から再架電の了承あり／登録間違い</p>
         {error && <p className={styles.modalError}>{error}</p>}
@@ -2818,7 +2818,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             <div className={styles.purchaseVendorRow}>
               <label>
                 購入先
-                <select required value={purchaseVendor} onChange={(event) => setPurchaseVendor(event.target.value)}>
+                <span className="garden-required" aria-hidden="true">＊</span><select required aria-required="true" value={purchaseVendor} onChange={(event) => setPurchaseVendor(event.target.value)}>
                   <option value="">選択してください</option>
                   {purchaseVendors.map((vendor) => (
                     <option key={vendor.value} value={vendor.value}>
@@ -2830,7 +2830,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </label>
               {purchaseVendor === "__other__" && (
                 <label>
-                  その他の購入先
+                  その他の購入先<span className="garden-required" aria-hidden="true">＊</span>
                   <input value={purchaseVendorOther} onChange={(event) => setPurchaseVendorOther(event.target.value)} />
                 </label>
               )}
@@ -3207,12 +3207,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             <p className={styles.empty}>ヒュアラン社内だけの架電禁止。購入元のアポ禁とは別です</p>
             <div className={styles.internalBlockForm}>
               <label>
-                電話番号
-                <input value={internalBlockPhone} onChange={(event) => setInternalBlockPhone(event.target.value)} />
+                電話番号<span className="garden-required" aria-hidden="true">＊</span>
+                <input aria-required="true" value={internalBlockPhone} onChange={(event) => setInternalBlockPhone(event.target.value)} />
               </label>
               <label>
-                理由
-                <input value={internalBlockReason} onChange={(event) => setInternalBlockReason(event.target.value)} />
+                理由<span className="garden-required" aria-hidden="true">＊</span>
+                <input aria-required="true" value={internalBlockReason} onChange={(event) => setInternalBlockReason(event.target.value)} />
               </label>
               <button type="button" onClick={handleInternalBlockRegister} disabled={internalBlockBusy || !internalBlockPhone.trim() || !internalBlockReason.trim()}>
                 登録

@@ -589,7 +589,7 @@ export default function InCallPage() {
                 }}
               >
                 その他の理由{" "}
-                <span style={{ color: C.red }}>※必須</span>
+                <span className="garden-required" aria-hidden="true">＊</span>
               </div>
               <input
                 type="text"
@@ -637,7 +637,7 @@ export default function InCallPage() {
                 }}
               >
                 次回対応日時{" "}
-                <span style={{ color: C.red }}>※必須</span>
+                <span className="garden-required" aria-hidden="true">＊</span>
               </div>
               <input
                 type="date"

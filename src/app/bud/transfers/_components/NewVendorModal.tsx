@@ -107,19 +107,19 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
         </div>
 
         <div className="space-y-3 p-5">
-          <Field label="取引先名 *" value={form.name} onChange={(v) => handleChange("name", v)} />
+          <Field required label="取引先名" value={form.name} onChange={(v) => handleChange("name", v)} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="銀行名" value={form.bank_name} onChange={(v) => handleChange("bank_name", v)} />
-            <Field label="銀行コード *（4桁）" value={form.bank_code} onChange={(v) => handleChange("bank_code", v)} maxLength={4} />
+            <Field required label="銀行コード（4桁）" value={form.bank_code} onChange={(v) => handleChange("bank_code", v)} maxLength={4} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="支店名" value={form.branch_name} onChange={(v) => handleChange("branch_name", v)} />
-            <Field label="支店コード *（3桁）" value={form.branch_code} onChange={(v) => handleChange("branch_code", v)} maxLength={3} />
+            <Field required label="支店コード（3桁）" value={form.branch_code} onChange={(v) => handleChange("branch_code", v)} maxLength={3} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className={styles.label}>預金種目 *</span>
-              <select
+              <span className={styles.label}>預金種目<span className="garden-required" aria-hidden="true">＊</span></span>
+              <select aria-required="true"
                 value={form.account_type}
                 onChange={(e) => handleChange("account_type", e.target.value)}
                 
@@ -129,7 +129,7 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
                 <option value="4">貯蓄</option>
               </select>
             </label>
-            <Field label="口座番号 *（7桁）" value={form.account_number} onChange={(v) => handleChange("account_number", v)} maxLength={7} />
+            <Field required label="口座番号（7桁）" value={form.account_number} onChange={(v) => handleChange("account_number", v)} maxLength={7} />
           </div>
           <Field label="口座名義カナ" value={form.account_holder_kana} onChange={(v) => handleChange("account_holder_kana", v)} />
 
@@ -164,17 +164,18 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
 }
 
 interface FieldProps {
+  required?: boolean;
   label: string;
   value: string;
   onChange: (v: string) => void;
   maxLength?: number;
 }
 
-function Field({ label, value, onChange, maxLength }: FieldProps) {
+function Field({ label, value, onChange, maxLength, required }: FieldProps) {
   return (
     <label className="block">
-      <span className={styles.label}>{label}</span>
-      <input
+      <span className={styles.label}>{label}{required && <span className="garden-required" aria-hidden="true">＊</span>}</span>
+      <input aria-required="true"
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -32,9 +32,9 @@ export default function AddressInputs({ name, label, initial }: { name: string; 
     return () => { clearTimeout(timer); controller.abort(); };
   }, [code]);
   return <div role="group" aria-label={label} className={styles.addressGroup}>
-    <div className={styles.addressTitle}>{label}（必須）</div>
+    <div className={styles.addressTitle}>{label}<span className="garden-required" aria-hidden="true">＊</span></div>
     <label>郵便番号<input name={`${name}_postal`} value={fields.postal} onChange={event => setFields({ ...fields, postal: event.target.value })} autoComplete="postal-code" /></label>
-    <label>住所<input name={`${name}_address`} aria-label={`${label}（必須）`} required value={fields.address} onChange={event => { currentAddress.current = event.target.value; revision.current++; setFields({ ...fields, address: event.target.value }); }} /></label>
+    <label>住所<span className="garden-required" aria-hidden="true">＊</span><input name={`${name}_address`} aria-label={`${label}（必須）`} required aria-required="true" value={fields.address} onChange={event => { currentAddress.current = event.target.value; revision.current++; setFields({ ...fields, address: event.target.value }); }} /></label>
     <label>建物・部屋<input name={`${name}_building`} value={fields.building} onChange={event => setFields({ ...fields, building: event.target.value })} /></label>
     {notice && <p role="status">{notice}</p>}
     {choices.map(choice => <button key={choice.address} type="button" onClick={() => { currentAddress.current = choice.address; revision.current++; setFields({ ...fields, address: choice.address }); setChoices([]); }}>{choice.address}</button>)}

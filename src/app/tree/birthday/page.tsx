@@ -166,10 +166,10 @@ export default function TreeBirthdayPage() {
                   marginBottom: 4,
                 }}
               >
-                誕生日
+                誕生日<span className="garden-required" aria-hidden="true">＊</span>
               </label>
               <input
-                type="date"
+                aria-required="true" type="date"
                 value={birthday}
                 onChange={(e) => setBirthday(e.target.value)}
                 onFocus={handleFocus}

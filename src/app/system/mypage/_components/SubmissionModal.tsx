@@ -63,7 +63,7 @@ export default function SubmissionModal({
         <form onSubmit={submit}>
           {type === "emergency_contact" || type === "nda" ? (
             <>
-              <FormRow label="区分"><RadioGroup name="kind" label="区分"
+              <FormRow required label="区分"><RadioGroup required name="kind" label="区分"
                 options={["新規", type === "emergency_contact" ? "変更" : "再提出"]}
                 value={values.kind === "new" ? "新規" : type === "emergency_contact" ? "変更" : "再提出"}
                 onChange={value=>setValues({...values,kind:value === "新規" ? "new" : type === "emergency_contact" ? "change" : "resubmit"})}/></FormRow>
@@ -76,7 +76,7 @@ export default function SubmissionModal({
             </>
           ) : null}
           {submissionFields[type].map(([key, label, input, optional], index) => (
-            <FormRow key={key} label={<label htmlFor={`submission-${key}`}>{index + 1} {label}</label>}>
+            <FormRow required={!optional} key={key} label={<label htmlFor={`submission-${key}`}>{index + 1} {label}</label>}>
               {input === "textarea" ? (
                 <TextArea id={`submission-${key}`} required={!optional}
                   placeholder={type === "dependents" && key === "details" ? "増える人・外れる人の氏名、続柄、生年月日、その年の収入の見込みを入力してください。" : undefined}
@@ -108,12 +108,12 @@ export default function SubmissionModal({
             <label className={styles.agree}>
               <input
                 type="checkbox"
-                checked={values.agreed === true}
+                aria-required="true" checked={values.agreed === true}
                 onChange={(e) =>
                   setValues({ ...values, agreed: e.target.checked })
                 }
               />
-              内容に同意します
+              内容に同意します<span className="garden-required" aria-hidden="true">＊</span>
             </label>
           ) : null}
           {error ? (

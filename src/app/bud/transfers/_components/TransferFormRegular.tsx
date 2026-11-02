@@ -529,8 +529,8 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                 <div className={`${styles.fieldGrid} mt-4`}>
                   <div className={styles.fieldGridThree}>
                     <label className="block">
-                      <span className={styles.label}>収納機関番号 *</span>
-                      <input
+                      <span className={styles.label}>収納機関番号<span className="garden-required" aria-hidden="true">＊</span></span>
+                      <input aria-required="true"
                         type="text"
                         inputMode="numeric"
                         value={payeasyBillerNo}
@@ -545,8 +545,8 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                       )}
                     </label>
                     <label className="block">
-                      <span className={styles.label}>お客様番号 *</span>
-                      <input
+                      <span className={styles.label}>お客様番号<span className="garden-required" aria-hidden="true">＊</span></span>
+                      <input aria-required="true"
                         type="text"
                         inputMode="numeric"
                         value={payeasyCustomerNo}
@@ -561,8 +561,8 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                       )}
                     </label>
                     <label className="block">
-                      <span className={styles.label}>確認番号 *</span>
-                      <input
+                      <span className={styles.label}>確認番号<span className="garden-required" aria-hidden="true">＊</span></span>
+                      <input aria-required="true"
                         type="text"
                         inputMode="numeric"
                         value={payeasyConfirmNo}
@@ -582,8 +582,8 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
 
               {paymentCategory === "registered" && (
                 <label className="mt-4 block">
-                  <span className={styles.label}>決済方法 *</span>
-                  <select
+                  <span className={styles.label}>決済方法<span className="garden-required" aria-hidden="true">＊</span></span>
+                  <select aria-required="true"
                     value={registeredMethod}
                     onChange={(e) => setRegisteredMethod(e.target.value as RegisteredMethod | "")}
                     disabled={busy}
@@ -679,8 +679,8 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                 )}
                 <div className={styles.fieldGridTwo}>
                   <label className="block">
-                    <span className={styles.label}>振込金額 *（円）</span>
-                    <input
+                    <span className={styles.label}>振込金額<span className="garden-required" aria-hidden="true">＊</span>（円）</span>
+                    <input aria-required="true"
                       type="number"
                       min="1"
                       max="9999999999"
@@ -725,8 +725,8 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                 </div>
                 <div className={styles.fieldGridTwo}>
                   <label className="block">
-                    <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
-                    <input
+                    <span className={styles.label}>振込予定日<span className="garden-required" aria-hidden="true">＊</span>（翌営業日以降）</span>
+                    <input aria-required="true"
                       type="date"
                       value={scheduledDate}
                       onChange={(e) => setScheduledDate(e.target.value)}

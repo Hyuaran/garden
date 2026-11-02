@@ -70,7 +70,7 @@ function Settings({ account, employees, inherited, onSave, onClose }: { account:
       {(draft.balance_mode === "anchor" || draft.balance_mode === "arrival") && <>
         {draft.balance_note.startsWith("起点を自動で設定") && <small>{draft.balance_note}</small>}
         <label>起点の残高（円）<input type="number" step="1" value={draft.anchor_balance ?? ""} onChange={e => setDraft({ ...draft, anchor_balance: e.target.value === "" ? null : Number(e.target.value) })} /></label>
-        {draft.balance_mode === "arrival" && <label>起点の時刻（日本時間）<input type="datetime-local" step="1" required value={draft.anchor_at ? new Date(Date.parse(draft.anchor_at) + 9 * 3600000).toISOString().slice(0,19) : ""} onChange={e => setDraft({ ...draft, anchor_at: e.target.value ? new Date(e.target.value + "+09:00").toISOString() : null })} /><small>マネーフォワードの残高に合わせ直すときは、確認した金額と時刻を手で入力してください。</small></label>}
+        {draft.balance_mode === "arrival" && <label>起点の時刻（日本時間）<span className="garden-required" aria-hidden="true">＊</span><input type="datetime-local" step="1" required aria-required="true" value={draft.anchor_at ? new Date(Date.parse(draft.anchor_at) + 9 * 3600000).toISOString().slice(0,19) : ""} onChange={e => setDraft({ ...draft, anchor_at: e.target.value ? new Date(e.target.value + "+09:00").toISOString() : null })} /><small>マネーフォワードの残高に合わせ直すときは、確認した金額と時刻を手で入力してください。</small></label>}
         {draft.balance_mode === "anchor" && <label>起点の日<input type="date" value={draft.anchor_date ?? ""} onChange={e => setDraft({ ...draft, anchor_date: e.target.value || null })} /></label>}
       </>}
       <label>マネーフォワードで確認する理由<input value={draft.balance_note} maxLength={1000} onChange={e => setDraft({ ...draft, balance_note: e.target.value })} /></label>

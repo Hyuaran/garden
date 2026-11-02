@@ -2440,6 +2440,7 @@ body {
   font-family: var(--font-sans);
 }
 .lock-btn:hover { background: var(--accent-amber); color: #fff; }
+.garden-required { color: var(--accent-red); margin-left: .2em; font-weight: 400; line-height: inherit; }
 </style>
 </head>
 <body>
@@ -2611,7 +2612,7 @@ body {
 
         <div id="normal-mode-content">
 
-        <div class="step-label">① 獲得種類</div>
+        <div class="step-label">① 獲得種類<span class="garden-required" aria-hidden="true">＊</span></div>
 
         <div class="acquisition-picker">
           <div class="ap-label">この案件の獲得種類を選択（手数料単価に影響）</div>
@@ -2627,7 +2628,7 @@ body {
           </div>
         </div>
 
-        <div class="step-label">② 申込書・証憑を撮影・添付</div>
+        <div class="step-label">② 申込書・証憑を撮影・添付（電灯・動力・ガスのいずれか必須）</div>
 
         <div class="validation-banner" id="validation-banner">
           <strong>⚠ 電灯・動力・ガスのいずれか1枚以上</strong>の添付が必要です
@@ -3561,8 +3562,8 @@ function confirmOutside(isOutside, pd) {
       <div class="body">マスタに無いお客様です。お客様番号を手入力してください。</div>
     </div>
     <div class="outside-cn-input">
-      <div class="cn-guide">関電お客様番号（14桁）を入力</div>
-      <input type="text" id="outside-cn" maxlength="14" placeholder="例：10000000013579" oninput="updateOutsideCN(this.value)">
+      <div class="cn-guide">関電お客様番号（14桁）を入力<span class="garden-required" aria-hidden="true">＊</span></div>
+      <input type="text" id="outside-cn" aria-required="true" maxlength="14" placeholder="例：10000000013579" oninput="updateOutsideCN(this.value)">
       <div class="cn-hint">※ 申込書の供給地点番号22桁の中央14桁です</div>
     </div>
     <div class="info-card" style="margin-top:8px;">

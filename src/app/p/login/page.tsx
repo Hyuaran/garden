@@ -56,24 +56,24 @@ function TossLoginForm() {
 
         <form onSubmit={onSubmit} className={styles.form}>
           <label>
-            <span>パートナーコード または 社員番号</span>
+            <span>パートナーコード または 社員番号<span className="garden-required" aria-hidden="true">＊</span></span>
             <input
               autoComplete="username"
               inputMode="numeric"
               maxLength={7}
               onChange={(event) => setPartnerCode(event.target.value.replace(/[^0-9]/g, ""))}
               placeholder="7桁のコード / 社員番号"
-              required
+              required aria-required="true"
               value={partnerCode}
             />
           </label>
           <label>
-            <span>パスワード</span>
+            <span>パスワード<span className="garden-required" aria-hidden="true">＊</span></span>
             <input
               autoComplete="current-password"
               onChange={(event) => setPassword(event.target.value)}
               placeholder="パスワードを入力"
-              required
+              required aria-required="true"
               type="password"
               value={password}
             />

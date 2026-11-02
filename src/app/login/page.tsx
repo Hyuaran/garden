@@ -123,28 +123,28 @@ function LoginForm() {
               </p>
             )}
           <label className={styles.field}>
-            <span>社員番号またはID</span>
+            <span>社員番号またはID<span className="garden-required" aria-hidden="true">＊</span></span>
             <input
               autoComplete="username"
               data-testid="login-empid"
               name="employeeIdOrPartnerCode"
               onChange={(event) => setEmployeeIdOrPartnerCode(event.target.value)}
               placeholder="例: 12345 / E-12345 / P-001"
-              required
+              required aria-required="true"
               type="text"
               value={employeeIdOrPartnerCode}
             />
           </label>
 
           <label className={styles.field}>
-            <span>パスワード</span>
+            <span>パスワード<span className="garden-required" aria-hidden="true">＊</span></span>
             <div className={styles.passwordWrap}>
               <input
                 autoComplete="current-password"
                 data-testid="login-password"
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="パスワードを入力"
-                required
+                required aria-required="true"
                 type={showPassword ? "text" : "password"}
                 value={password}
               />

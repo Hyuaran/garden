@@ -45,7 +45,7 @@ it("一覧の口座選択に実際の主キーを使い、CSV取り込みへ渡�
   fireEvent.change(screen.getByLabelText("銀行"), { target: { value: account.id } });
   await waitFor(() => expect(mocks.fetchStatementList).toHaveBeenLastCalledWith(expect.objectContaining({ bankAccountId: account.id })));
   fireEvent.click(screen.getByRole("button", { name: "+ CSV 取込" }));
-  fireEvent.change(screen.getByLabelText("対象口座 *"), { target: { value: account.id } });
+  fireEvent.change(screen.getByLabelText(/対象口座/), { target: { value: account.id } });
   const file = new File(["csv"], "statement.csv", { type: "text/csv" });
   Object.defineProperty(file, "text", { value: async () => "csv" });
   const input = document.querySelector('input[type="file"]')!;

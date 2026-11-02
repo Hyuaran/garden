@@ -356,7 +356,7 @@ describe("system mypage", () => {
     fireEvent.change(screen.getByLabelText(new RegExp("(^|\\s)氏名（電子署名）$")), {
       target: { value: "社員A" },
     });
-    fireEvent.click(screen.getByLabelText(new RegExp("(^|\\s)内容に同意します$")));
+    fireEvent.click(screen.getByLabelText(new RegExp("(^|\\s)内容に同意します＊?$")));
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ ok: true, id: "nda-1" }), { status: 201 }),
     );

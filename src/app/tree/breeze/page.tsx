@@ -153,7 +153,7 @@ export default function BreezePage() {
 
         {/* 入力フォーム */}
         <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 8 }}>
-          <input
+          <label style={{display:"flex",flex:1,minWidth:0,alignItems:"center",gap:6}}><span>メッセージ<span className="garden-required" aria-hidden="true">＊</span></span><input aria-required="true"
             type="text"
             value={newMsg}
             onChange={(e) => setNewMsg(e.target.value)}
@@ -164,7 +164,7 @@ export default function BreezePage() {
               border: "1px solid rgba(0,0,0,0.08)", fontSize: 13,
               fontFamily: "'Noto Sans JP', sans-serif", outline: "none",
             }}
-          />
+          /></label>
           <button
             onClick={sendMessage}
             style={{

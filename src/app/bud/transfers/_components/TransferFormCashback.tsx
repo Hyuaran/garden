@@ -231,14 +231,14 @@ export function TransferFormCashback() {
             <div className={styles.cardBody}>
               <div className={styles.fieldGridTwo}>
                 <TextField
-                  label="申込者名 *"
+                  required label="申込者名"
                   value={applicantName}
                   onChange={setApplicantName}
                   disabled={submitting}
                   error={errors.cashback_applicant_name}
                 />
                 <TextField
-                  label="申込者名カナ *"
+                  required label="申込者名カナ"
                   value={applicantNameKana}
                   onChange={setApplicantNameKana}
                   disabled={submitting}
@@ -254,14 +254,14 @@ export function TransferFormCashback() {
                   disabled={submitting}
                 />
                 <TextField
-                  label="商材名 *"
+                  required label="商材名"
                   value={productName}
                   onChange={setProductName}
                   disabled={submitting}
                   error={errors.cashback_product_name}
                 />
                 <TextField
-                  label="商流名 *"
+                  required label="商流名"
                   value={channelName}
                   onChange={setChannelName}
                   disabled={submitting}
@@ -289,7 +289,7 @@ export function TransferFormCashback() {
                   disabled={submitting}
                 />
                 <TextField
-                  label="銀行コード *（4桁）"
+                  required label="銀行コード（4桁）"
                   value={bankCode}
                   onChange={setBankCode}
                   maxLength={4}
@@ -303,7 +303,7 @@ export function TransferFormCashback() {
                   disabled={submitting}
                 />
                 <TextField
-                  label="支店コード *（3桁）"
+                  required label="支店コード（3桁）"
                   value={branchCode}
                   onChange={setBranchCode}
                   maxLength={3}
@@ -311,8 +311,8 @@ export function TransferFormCashback() {
                   error={errors.payee_branch_code}
                 />
                 <label className="block">
-                  <span className={styles.label}>預金種目 *</span>
-                  <select
+                  <span className={styles.label}>預金種目<span className="garden-required" aria-hidden="true">＊</span></span>
+                  <select aria-required="true"
                     value={accountType}
                     onChange={(e) => setAccountType(e.target.value)}
                     disabled={submitting}
@@ -324,7 +324,7 @@ export function TransferFormCashback() {
                   </select>
                 </label>
                 <TextField
-                  label="口座番号 *（1〜7桁）"
+                  required label="口座番号（1〜7桁）"
                   value={accountNumber}
                   onChange={setAccountNumber}
                   maxLength={7}
@@ -333,7 +333,7 @@ export function TransferFormCashback() {
                 />
                 <div className={styles.fullSpan}>
                   <TextField
-                    label="口座名義カナ *"
+                    required label="口座名義カナ"
                     value={holderKana}
                     onChange={setHolderKana}
                     disabled={submitting}
@@ -355,8 +355,8 @@ export function TransferFormCashback() {
             <div className={styles.cardBody}>
               <div className={styles.fieldGridTwo}>
                 <label className="block">
-                  <span className={styles.label}>CB 金額 *（円）</span>
-                  <input
+                  <span className={styles.label}>CB 金額<span className="garden-required" aria-hidden="true">＊</span>（円）</span>
+                  <input aria-required="true"
                     type="number"
                     min="1"
                     max="9999999999"
@@ -374,8 +374,8 @@ export function TransferFormCashback() {
                   )}
                 </label>
                 <label className="block">
-                  <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
-                  <input
+                  <span className={styles.label}>振込予定日<span className="garden-required" aria-hidden="true">＊</span>（翌営業日以降）</span>
+                  <input aria-required="true"
                     type="date"
                     value={scheduledDate}
                     onChange={(e) => setScheduledDate(e.target.value)}
@@ -503,6 +503,7 @@ export function TransferFormCashback() {
 }
 
 interface TextFieldProps {
+  required?: boolean;
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -511,11 +512,11 @@ interface TextFieldProps {
   error?: string;
 }
 
-function TextField({ label, value, onChange, disabled, maxLength, error }: TextFieldProps) {
+function TextField({ label, value, onChange, disabled, maxLength, error, required }: TextFieldProps) {
   return (
     <label className="block">
-      <span className={styles.label}>{label}</span>
-      <input
+      <span className={styles.label}>{label}{required && <span className="garden-required" aria-hidden="true">＊</span>}</span>
+      <input aria-required="true"
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}

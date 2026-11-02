@@ -944,7 +944,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
             <FormGrid cols={3}>
               <TextField label="銀行名" required={bankRequired} value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} error={errors.bank_name} />
               <TextField label="金融機関コード（4桁）" required={bankRequired} maxLength={4} inputMode="numeric" value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} error={errors.bank_code} />
-              <FieldLabel label="口座種別"><RadioGroup name="bank-account-type" label="口座種別" required={bankRequired} options={ACCOUNT_TYPES} value={editTarget.account_type} onChange={value => setEditTarget({...editTarget,account_type:value})}/></FieldLabel>
+              <FieldLabel required={bankRequired} label="口座種別"><RadioGroup name="bank-account-type" label="口座種別" required={bankRequired} options={ACCOUNT_TYPES} value={editTarget.account_type} onChange={value => setEditTarget({...editTarget,account_type:value})}/></FieldLabel>
               <TextField label="支店名" required={bankRequired} value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} error={errors.branch_name} />
               <TextField label="支店コード（3桁）" required={bankRequired} maxLength={3} inputMode="numeric" value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} error={errors.branch_code} />
               <TextField label="口座番号（7桁）" required={bankRequired} maxLength={7} inputMode="numeric" value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} error={errors.account_number} />
@@ -1058,7 +1058,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
                   <TextField
-                    label="API トークン"
+                    required label="API トークン"
                     type="password"
                     autoComplete="off"
                     value={chatworkTokenInput}

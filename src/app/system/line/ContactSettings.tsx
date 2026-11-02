@@ -24,8 +24,8 @@ export default function ContactSettings({data,busy,act}:{data:{contacts:Contact[
  {edit&&<Modal title={adding?'連絡先を追加する':edit.label+'の連絡先'} onClose={()=>setEdit(undefined)} actions={<>
  {!adding&&edit.key!=='guest_home'&&<ActionButton disabled={busy||!!assigned} style={{color:'#e5484d',borderColor:'#e5484d'}} onClick={()=>setConfirm(true)}>連絡先から外す</ActionButton>}
  <SubmitButton busy={busy} onClick={()=>save(edit.url)}>登録する</SubmitButton></>}>
- {adding&&<FormRow label="1 氏名"><SelectField aria-label="氏名" value={edit.employee_id||''} onChange={e=>setEdit({...edit,employee_id:e.target.value,key:e.target.value})}>{available.map(e=><option key={e.employee_id} value={e.employee_id}>{contactName(e.name)}</option>)}</SelectField></FormRow>}
- <FormRow label={adding?'2 リンク':'リンク'}><TextField aria-label="連絡先のリンク" type="url" maxLength={2000} value={edit.url} onChange={e=>setEdit({...edit,url:e.target.value})}/></FormRow>
+ {adding&&<FormRow required label="1 氏名"><SelectField required aria-label="氏名" value={edit.employee_id||''} onChange={e=>setEdit({...edit,employee_id:e.target.value,key:e.target.value})}>{available.map(e=><option key={e.employee_id} value={e.employee_id}>{contactName(e.name)}</option>)}</SelectField></FormRow>}
+ <FormRow required={edit.key!=='guest_home'} label={adding?'2 リンク':'リンク'}><TextField required={edit.key!=='guest_home'} aria-label="連絡先のリンク" type="url" maxLength={2000} value={edit.url} onChange={e=>setEdit({...edit,url:e.target.value})}/></FormRow>
  <p>登録したら、リッチメニュータブの［リッチメニューに反映する］を押してください。</p>
  {assigned&&<p>先にリッチメニュータブで担当を変更してください。</p>}<ResultMessage>{error}</ResultMessage>
  </Modal>}

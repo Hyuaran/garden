@@ -185,14 +185,14 @@ export default function PayrollNoticeClient({
     {message && <div className={styles.message}>{message}</div>}
 
     <section className={`${styles.panel} ${styles.teamPanel}`}>
-      <h2>対象チーム <span>必須</span></h2>
+      <h2>対象チーム <span className="garden-required" aria-hidden="true">＊</span></h2>
       <div className="garden-radio-group">
-        {TEAMS.map((team) => <label key={team} className="garden-radio"><input type="radio" name="team" checked={input.team === team} onChange={() => update({ team })} /><span>{team}</span></label>)}
+        {TEAMS.map((team) => <label key={team} className="garden-radio"><input type="radio" aria-required="true" name="team" checked={input.team === team} onChange={() => update({ team })} /><span>{team}</span></label>)}
       </div>
     </section>
 
     <section className={styles.panel}>
-      <h2>交通費変更該当者 <span>必須</span></h2>
+      <h2>交通費変更該当者 <span className="garden-required" aria-hidden="true">＊</span></h2>
       <p className={styles.hint}>参考：<a href="https://9j11u0q829lg.cybozu.com/k/93/" target="_blank" rel="noopener noreferrer">交通費変更申請フォーム／一覧はこちら</a></p>
       <FlagRow name="commuteFlag" value={input.commuteFlag} onChange={(value) => setFlag("commuteFlag", value)} />
       {input.commuteFlag === "いる" && <Rows onAdd={() => update({ commutePeople: [...input.commutePeople, blankCommute()] })} addLabel="該当者を追加">
@@ -205,7 +205,7 @@ export default function PayrollNoticeClient({
     </section>
 
     <section className={styles.panel}>
-      <h2>研修中社員（{TRAINING_HOURS_LABEL}／時給1,500円 該当者） <span>必須</span></h2>
+      <h2>研修中社員（{TRAINING_HOURS_LABEL}／時給1,500円 該当者） <span className="garden-required" aria-hidden="true">＊</span></h2>
       <FlagRow name="trainingFlag" value={input.trainingFlag} onChange={(value) => setFlag("trainingFlag", value)} />
       {input.trainingFlag === "いる" && <Rows onAdd={() => update({ trainingPeople: [...input.trainingPeople, blankTraining()] })} addLabel="追加">
         {input.trainingPeople.map((person, index) => <div className={styles.personRowSingle} key={index}>
@@ -216,7 +216,7 @@ export default function PayrollNoticeClient({
     </section>
 
     <section className={styles.panel}>
-      <h2>紹介入社である社員 <span>必須</span></h2>
+      <h2>紹介入社である社員 <span className="garden-required" aria-hidden="true">＊</span></h2>
       <FlagRow name="referralFlag" value={input.referralFlag} onChange={(value) => setFlag("referralFlag", value)} />
       {input.referralFlag === "いる" && <Rows onAdd={() => update({ referralPeople: [...input.referralPeople, blankReferral()] })} addLabel="追加">
         {input.referralPeople.map((person, index) => <div className={styles.personRow} key={index}>
@@ -228,8 +228,8 @@ export default function PayrollNoticeClient({
     </section>
 
     <section className={styles.panel}>
-      <h2>その他共有事項 <span>必須</span></h2>
-      <textarea className={styles.textarea} value={input.otherNotes} onChange={(event) => update({ otherNotes: event.target.value })} placeholder="共有したいことを入力してください" />
+      <h2>その他共有事項 <span className="garden-required" aria-hidden="true">＊</span></h2>
+      <textarea aria-required="true" className={styles.textarea} value={input.otherNotes} onChange={(event) => update({ otherNotes: event.target.value })} placeholder="共有したいことを入力してください" />
     </section>
 
     <div className={styles.actions}>
@@ -270,7 +270,7 @@ function FlagRow({ name, value, onChange }: { name: string; value: string; onCha
 }
 
 function Field({ label, value, placeholder, onChange }: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
-  return <label className={styles.field}><span>{label}</span><input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
+  return <label className={styles.field}><span>{label}<span className="garden-required" aria-hidden="true">＊</span></span><input aria-required="true" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 function Rows({ children, onAdd, addLabel }: { children: React.ReactNode; onAdd: () => void; addLabel: string }) {

@@ -9,13 +9,13 @@ export function ContractTypeFields({value:p,onChange,renewalSelect=false}:{renew
   <label>契約更新{renewalSelect?<select disabled={p.indefinite} value={!p.renewalText||p.renewalText==="更新する場合がある"?renewalOptions[1]:p.renewalText} onChange={e=>onChange({...p,renewalText:e.target.value})}>{renewalOptions.map(text=><option key={text} value={text}>{text}</option>)}</select>:<input value={p.renewalText??""} onChange={e=>onChange({...p,renewalText:e.target.value})}/>}</label>
   <label>通勤手当の月額上限（円）<input type="number" min="0" value={p.commuteCap??20000} onChange={e=>onChange({...p,commuteCap:Number(e.target.value)})}/></label>
   {employee&&<>
-   <label>業務内容<textarea required value={p.duties??""} onChange={e=>onChange({...p,duties:e.target.value})}/></label>
-   <label>就業時間<textarea required value={p.workHours??""} onChange={e=>onChange({...p,workHours:e.target.value})}/></label>
+   <label>業務内容<span className="garden-required" aria-hidden="true">＊</span><textarea required aria-required="true" value={p.duties??""} onChange={e=>onChange({...p,duties:e.target.value})}/></label>
+   <label>就業時間<span className="garden-required" aria-hidden="true">＊</span><textarea required aria-required="true" value={p.workHours??""} onChange={e=>onChange({...p,workHours:e.target.value})}/></label>
    <label>固定残業<select value={p.fixedOvertime?"yes":"no"} onChange={e=>onChange({...p,fixedOvertime:e.target.value==="yes"})}><option value="no">なし</option><option value="yes">あり（30時間・超過分別途支給）</option></select></label>
    {p.templateType==="nhk_dispatch"&&<>
-    <label>始業<input type="time" required value={p.startTime??""} onChange={e=>onChange({...p,startTime:e.target.value})}/></label>
-    <label>終業<input type="time" required value={p.endTime??""} onChange={e=>onChange({...p,endTime:e.target.value})}/></label>
-    <label>休憩（分）<input type="number" min="0" required value={p.breakMinutes??60} onChange={e=>onChange({...p,breakMinutes:Number(e.target.value)})}/></label>
+    <label>始業<span className="garden-required" aria-hidden="true">＊</span><input type="time" required aria-required="true" value={p.startTime??""} onChange={e=>onChange({...p,startTime:e.target.value})}/></label>
+    <label>終業<span className="garden-required" aria-hidden="true">＊</span><input type="time" required aria-required="true" value={p.endTime??""} onChange={e=>onChange({...p,endTime:e.target.value})}/></label>
+    <label>休憩（分）<span className="garden-required" aria-hidden="true">＊</span><input type="number" min="0" required aria-required="true" value={p.breakMinutes??60} onChange={e=>onChange({...p,breakMinutes:Number(e.target.value)})}/></label>
    </>}
   </>}
  </>;

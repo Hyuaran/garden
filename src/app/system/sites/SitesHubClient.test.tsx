@@ -174,7 +174,7 @@ describe("SitesHubClient", () => {
     for (const key of ["Enter", " "]) {
       fireEvent.keyDown(row, { key });
       const dialog = screen.getByRole("dialog", { name: "お知らせを編集" });
-      expect(within(dialog).getByLabelText("題名")).toHaveValue("本店移転のお知らせ");
+      expect(within(dialog).getByLabelText(/題名/)).toHaveValue("本店移転のお知らせ");
       fireEvent.click(within(dialog).getByRole("button", { name: "キャンセル" }));
     }
   });

@@ -83,43 +83,43 @@ export function PeriodRolloverForm({ companyId, current, onRolledOver, onClose }
       </div>
 
       <div>
-        <label style={labelStyle}>純資産（円）</label>
+        <label style={labelStyle}>純資産（円）<span className="garden-required" aria-hidden="true">＊</span></label>
         <input
           type="text"
           inputMode="numeric"
-          value={junshisan}
+          aria-required="true" value={junshisan}
           onChange={(e) => setJunshisan(e.target.value.replace(/[^\d-]/g, ""))}
           style={inputStyle}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>現金（円）</label>
+        <label style={labelStyle}>現金（円）<span className="garden-required" aria-hidden="true">＊</span></label>
         <input
           type="text"
           inputMode="numeric"
-          value={genkin}
+          aria-required="true" value={genkin}
           onChange={(e) => setGenkin(e.target.value.replace(/[^\d-]/g, ""))}
           style={inputStyle}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>預金（円）</label>
+        <label style={labelStyle}>預金（円）<span className="garden-required" aria-hidden="true">＊</span></label>
         <input
           type="text"
           inputMode="numeric"
-          value={yokin}
+          aria-required="true" value={yokin}
           onChange={(e) => setYokin(e.target.value.replace(/[^\d-]/g, ""))}
           style={inputStyle}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>決算書 URL（Google Drive リンク等）</label>
+        <label style={labelStyle}>決算書 URL（Google Drive リンク等）<span className="garden-required" aria-hidden="true">＊</span></label>
         <input
           type="url"
-          value={docUrl}
+          aria-required="true" value={docUrl}
           onChange={(e) => setDocUrl(e.target.value)}
           style={inputStyle}
           placeholder="https://drive.google.com/..."

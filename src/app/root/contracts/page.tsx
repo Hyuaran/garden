@@ -127,8 +127,8 @@ export default function ContractsPage() {
       >
         <label>
           従業員
-          <select
-            required
+          <span className="garden-required" aria-hidden="true">＊</span><select
+            required aria-required="true"
             value={employeeId}
             onChange={(e) => choose(e.target.value)}
           >
@@ -164,20 +164,20 @@ export default function ContractsPage() {
           ))}
         </fieldset>
         <label>給与区分<select disabled={!!p.templateType} value={p.salaryKind??"hourly"} onChange={e=>setP({...p,salaryKind:e.target.value as "hourly"|"monthly"})}><option value="hourly">時給</option><option value="monthly">月給</option></select></label>
-        {p.salaryKind === "monthly" && <label>週の所定時間<input type="number" min="0.01" step="any" required value={p.weeklyHours??""} onChange={e=>setP({...p,weeklyHours:Number(e.target.value)})}/></label>}
+        {p.salaryKind === "monthly" && <label>週の所定時間<span className="garden-required" aria-hidden="true">＊</span><input type="number" min="0.01" step="any" required aria-required="true" value={p.weeklyHours??""} onChange={e=>setP({...p,weeklyHours:Number(e.target.value)})}/></label>}
         {[
           ["contractStart", "契約期間（から）", "date"],
           ["contractEnd", "契約期間（まで）", "date"],
           ["hourlyWage", p.salaryKind === "monthly" ? "基本賃金（月給・円）" : "基本賃金（時給・円）", "number"],
           ["concludedOn", "通知日及び締結日", "date"],
           ["workLocation", "就業場所", "text"],
-          ["employeeAddress", "従業員住所（任意）", "text"],
+          ["employeeAddress", p.templateType && p.templateType !== "part_time" ? "従業員住所" : "従業員住所（任意）", "text"],
         ].map(([key, label, type]) => (
           <label key={key}>
-            {label}
+            {label}{(key !== "employeeAddress" || p.templateType === "nhk_dispatch" || p.templateType === "full_time") && !(key === "contractEnd" && p.indefinite) && <span className="garden-required" aria-hidden="true">＊</span>}
             <input
               type={type}
-              required={key !== "employeeAddress" && !(key === "contractEnd" && p.indefinite)}
+              required={key !== "employeeAddress" && !(key === "contractEnd" && p.indefinite)} aria-required={(key !== "employeeAddress" || p.templateType === "nhk_dispatch" || p.templateType === "full_time") && !(key === "contractEnd" && p.indefinite) || undefined}
               value={String(p[key as keyof EmploymentContractPayload])}
               onChange={(e) =>
                 setP({
@@ -217,8 +217,8 @@ export default function ContractsPage() {
         {p.jobType === "other" ? (
           <label>
             その他の内容
-            <input
-              required
+            <span className="garden-required" aria-hidden="true">＊</span><input
+              required aria-required="true"
               value={p.jobTypeOther}
               onChange={(e) => setP({ ...p, jobTypeOther: e.target.value })}
             />

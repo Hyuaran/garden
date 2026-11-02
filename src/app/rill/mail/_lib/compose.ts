@@ -46,10 +46,10 @@ export function validateComposeInput(value: unknown): ComposeSendInput {
   if (!COMPOSE_MODES.includes(body.mode as ComposeMode)) throw new Error("Invalid mode");
   if (typeof body.box !== "string" || !body.box) throw new Error("box is required");
   if (body.mode !== "new" && (typeof body.sourceMessageId !== "string" || !body.sourceMessageId)) throw new Error("sourceMessageId is required");
-  if (!Array.isArray(body.to) || !validateRecipients(body.to)) throw new Error("Valid recipients are required");
+  if (!Array.isArray(body.to) || !validateRecipients(body.to)) throw new Error("宛先を入力してください");
   if (!Array.isArray(body.cc) || !body.cc.every(isValidEmailAddress)) throw new Error("Invalid cc recipient");
-  if (typeof body.subject !== "string" || !body.subject.trim()) throw new Error("subject is required");
-  if (typeof body.bodyText !== "string") throw new Error("bodyText is required");
+  if (typeof body.subject !== "string" || !body.subject.trim()) throw new Error("件名を入力してください");
+  if (typeof body.bodyText !== "string") throw new Error("本文を入力してください");
   return { mode: body.mode as ComposeMode, box: body.box, sourceMessageId: body.sourceMessageId, to: body.to.map((item) => item.trim()), cc: body.cc.map((item) => item.trim()), subject: body.subject.trim(), bodyText: body.bodyText };
 }
 

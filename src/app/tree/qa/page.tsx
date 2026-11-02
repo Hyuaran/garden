@@ -232,10 +232,10 @@ export default function QASearchPage() {
                   {role === ROLES.MANAGER ? (
                     ei === ri ? (
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: C.midGreen, marginBottom: 4 }}>トス向け回答</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.midGreen, marginBottom: 4 }}>トス向け回答（どちらか必須）</div>
                         <textarea defaultValue={item.aToss} rows={2} style={{ width: "100%", padding: 10, border: "1px solid #dcedc8", borderRadius: 8, fontSize: 13, fontFamily: "'Noto Sans JP', sans-serif", boxSizing: "border-box", marginBottom: 8 }}
                           onBlur={(e) => { const n = [...qa]; n[ri] = { ...n[ri], aToss: e.target.value }; setQa(n); }} autoFocus />
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#3b82f6", marginBottom: 4 }}>クローザー向け回答</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#3b82f6", marginBottom: 4 }}>クローザー向け回答（どちらか必須）</div>
                         <textarea defaultValue={item.aCloser} rows={2} style={{ width: "100%", padding: 10, border: "1px solid rgba(59,130,246,0.3)", borderRadius: 8, fontSize: 13, fontFamily: "'Noto Sans JP', sans-serif", boxSizing: "border-box" }}
                           onBlur={(e) => { const n = [...qa]; n[ri] = { ...n[ri], aCloser: e.target.value }; setQa(n); setEi(null); }} />
                         <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>入力欄外をクリックで保存</div>
@@ -318,8 +318,8 @@ export default function QASearchPage() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: C.textSub, marginBottom: 6, fontWeight: 600 }}>質問</div>
-              <input type="text" placeholder="例：転用手続きの流れは？" value={newQ} onChange={(e) => setNewQ(e.target.value)}
+              <div style={{ fontSize: 12, color: C.textSub, marginBottom: 6, fontWeight: 600 }}>質問<span className="garden-required" aria-hidden="true">＊</span></div>
+              <input type="text" placeholder="例：転用手続きの流れは？" aria-required="true" value={newQ} onChange={(e) => setNewQ(e.target.value)}
                 style={{ width: "100%", padding: "12px 14px", border: "1px solid #dcedc8", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "'Noto Sans JP', sans-serif", background: C.white }} />
             </div>
 

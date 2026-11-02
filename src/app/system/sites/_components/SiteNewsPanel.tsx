@@ -153,8 +153,8 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
     </div>
 
     {form ? <Modal title={form.id ? "お知らせを編集" : "お知らせを追加"} onClose={()=>{if(!saving)setForm(null);}}>
-        <label>日付<input type="date" value={form.published_on} onChange={(event) => setForm({ ...form, published_on: event.target.value })} /></label>
-        <label>題名<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
+        <label>日付<span className="garden-required" aria-hidden="true">＊</span><input aria-required="true" type="date" value={form.published_on} onChange={(event) => setForm({ ...form, published_on: event.target.value })} /></label>
+        <label>題名<span className="garden-required" aria-hidden="true">＊</span><input aria-required="true" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
         <label>本文<textarea rows={6} value={form.body} onChange={(event) => setForm({ ...form, body: event.target.value })} /></label>
         <label className={styles.checkLabel}><input type="checkbox" checked={form.is_published} onChange={(event) => setForm({ ...form, is_published: event.target.checked })} />公開する</label>
         <div className={styles.modalActions} data-modal-actions>

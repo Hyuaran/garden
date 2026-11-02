@@ -106,7 +106,7 @@ export function TodayPlanList({ items, onChange, disabled = false }: Props) {
       </ul>
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <input
+        <label style={{display:"flex",flex:1,minWidth:0,alignItems:"center",gap:6}}><span>予定<span className="garden-required" aria-hidden="true">＊</span></span><input aria-required="true"
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -125,7 +125,7 @@ export function TodayPlanList({ items, onChange, disabled = false }: Props) {
             color: "#1b4332",
             background: "#fff",
           }}
-        />
+        /></label>
         <button
           type="button"
           onClick={add}

@@ -59,9 +59,9 @@ export function VendorPicker({
   return (
     <div>
       <label className="block">
-        <span className={styles.label}>取引先 *</span>
+        <span className={styles.label}>取引先<span className="garden-required" aria-hidden="true">＊</span></span>
         <div className={styles.partnerRow}>
-          <select
+          <select aria-required="true"
             value={selectedVendorId}
             onChange={(e) => handleSelect(e.target.value)}
             disabled={disabled}

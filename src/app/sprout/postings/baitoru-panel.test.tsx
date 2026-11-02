@@ -7,10 +7,10 @@ beforeEach(()=>{
  cleanup();vi.resetAllMocks();m.load.mockResolvedValue({settings:{enabled:false,period_start:'2026-09-22',chatwork_title:'【バイトル新規応募】',exclude_inquiry_nos:[],notify_room:'dev',mention_employee_ids:[],max_per_run:10,last_called_at:null,content_options:['テレマアルバイト','テレマ正社員']},mention_candidates:[],postings:[],runs:[],failed:[{kintone_record_id:'baitoru:1',name:'山田 花子',notify_error:'通知の失敗'}]});m.save.mockResolvedValue(undefined);m.retry.mockResolvedValue({ok:true});
 });
 it('registers the chosen dates and content',async()=>{
- render(<BaitoruPanel/>);await screen.findByLabelText('掲載期間の開始');
- fireEvent.change(screen.getByLabelText('掲載期間の開始'),{target:{value:'2026-11-01'}});
- fireEvent.change(screen.getByLabelText('掲載期間の終了'),{target:{value:'2026-11-14'}});
- fireEvent.change(screen.getByLabelText('掲載内容'),{target:{value:'テレマ正社員'}});
+ render(<BaitoruPanel/>);await screen.findByLabelText(/掲載期間の開始/);
+ fireEvent.change(screen.getByLabelText(/掲載期間の開始/),{target:{value:'2026-11-01'}});
+ fireEvent.change(screen.getByLabelText(/掲載期間の終了/),{target:{value:'2026-11-14'}});
+ fireEvent.change(screen.getByRole('combobox', { name: '掲載内容' }),{target:{value:'テレマ正社員'}});
  fireEvent.click(screen.getByRole('button',{name:'掲載する'}));
  await waitFor(()=>expect(m.create).toHaveBeenCalledWith('2026-11-01','2026-11-14','テレマ正社員'));
  await screen.findByText('掲載を登録しました');
@@ -37,7 +37,7 @@ it('shows end for active postings and cancel for future postings only',async()=>
 });
 it('shows posting registration, saves comma separated exclusions, and retries failed notices',async()=>{
  render(<BaitoruPanel/>);
- expect(await screen.findByLabelText('掲載期間の開始')).toHaveAttribute('type','date');
+ expect(await screen.findByLabelText(/掲載期間の開始/)).toHaveAttribute('type','date');
  expect(screen.queryByText('通知のタイトル')).not.toBeInTheDocument();
  expect(screen.getByLabelText('通知先')).toHaveValue('dev');
  fireEvent.change(screen.getByLabelText('今回だけ除外する問合せ番号（カンマ区切り）'),{target:{value:'123,456'}});

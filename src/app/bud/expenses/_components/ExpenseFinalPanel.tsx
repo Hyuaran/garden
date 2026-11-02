@@ -771,8 +771,8 @@ function DetailModal({
             <Row label="登録番号">{row.qualified_number ?? "—"}</Row>
             {(
               <div style={{ marginTop: 14 }}>
-                <label style={{ display: "block", color: "var(--text-sub)", fontSize: 12, marginBottom: 6 }}>差戻し理由</label>
-                <textarea value={returnReason} onChange={(event) => onReasonChange(event.target.value)} style={textarea} rows={4} />
+                <label style={{ display: "block", color: "var(--text-sub)", fontSize: 12, marginBottom: 6 }}>差戻し理由<span className="garden-required" aria-hidden="true">＊</span></label>
+                <textarea aria-required="true" value={returnReason} onChange={(event) => onReasonChange(event.target.value)} style={textarea} rows={4} />
                 <div data-modal-actions><ConfirmedDangerAction label="差戻し" disabled={busy || !returnReason.trim()} onConfirm={onReturn}/><button type="button" disabled={busy} onClick={onApprove} data-modal-action="primary">完了</button></div>
               </div>
             )}

@@ -110,9 +110,9 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
     {extensionDialog && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionDialog.saving) setExtensionDialog(null); }} data-garden-modal="overlay">
       <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="extension-dialog-title" tabIndex={-1} ref={dialogRef} data-garden-modal="panel">
         <h2 id="extension-dialog-title">出勤</h2>
-        <label className={styles.extensionField}>今日の内線番号
+        <label className={styles.extensionField}>今日の内線番号<span className="garden-required" aria-hidden="true">＊</span>
           <input
-            value={extensionDialog.extension}
+            aria-required="true" value={extensionDialog.extension}
             onChange={(event) => setExtensionDialog({ ...extensionDialog, extension: event.target.value.replace(/\D/g, "").slice(0, 5), error: null })}
             onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); void submitExtensionPunch(); } }}
             autoFocus

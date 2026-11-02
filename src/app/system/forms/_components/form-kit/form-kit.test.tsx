@@ -6,6 +6,15 @@ import { FormPage, FormRow, RadioGroup, SelectField, Stepper, TextField, NumberF
 afterEach(cleanup);
 
 describe('form-kit', () => {
+  it('marks only required rows and exposes required state on every input kind', () => {
+    const { container, rerender } = render(<FormRow required label="必須欄"><TextField required aria-label="文字" /><NumberField required aria-label="数字" /><TextArea required aria-label="文章" /><SelectField required aria-label="選択"><option>項目</option></SelectField><RadioGroup required name="required-choice" label="区分" options={['あり', 'なし']} value="あり" onChange={() => {}} /><TextField required type="date" aria-label="日付" /></FormRow>);
+    expect(container.querySelector('.garden-required')).toHaveTextContent('＊');
+    expect(container.querySelector('.garden-required')).toHaveAttribute('aria-hidden', 'true');
+    for (const input of container.querySelectorAll('input, select, textarea, [role="radiogroup"]')) expect(input).toHaveAttribute('aria-required', 'true');
+    rerender(<FormRow label="任意欄"><TextField aria-label="任意" /></FormRow>);
+    expect(container.querySelector('.garden-required')).toBeNull();
+    expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-required');
+  });
   it('renders the desktop frame with breadcrumb, sender, tabs and actions', () => {
     render(<FormPage title="報告" submitterName="本人" employeeNumber="1234" description="入力の案内" tabs={<button>設定</button>}><div>入力欄</div></FormPage>);
     expect(screen.getByRole('navigation', { name: '現在地' })).toBeInTheDocument();

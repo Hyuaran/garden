@@ -1562,6 +1562,7 @@ body.search-mode .entry-action-bar { display: none; }
   margin-left: 6px;
   letter-spacing: 0.02em;
 }
+.garden-required { color: var(--accent-red); margin-left: .2em; font-weight: 400; line-height: inherit; }
 </style>
 </head>
 <body>
@@ -2911,7 +2912,7 @@ function buildField(opts) {
 
   const lbl = document.createElement('div');
   lbl.className = 'field-label';
-  lbl.innerHTML = label + (required && !searchMode ? '<span class="required">*</span>' : '');
+  lbl.innerHTML = label + (required && !searchMode ? '<span class="garden-required" aria-hidden="true">＊</span>' : '');
 
   const ctrl = document.createElement('div');
   ctrl.className = 'field-control fs-' + status;
@@ -2993,6 +2994,7 @@ function buildField(opts) {
     '<span class="lbl">入力</span><span>' + (value || '(空)') + '</span>' +
     '</div>';
 
+  if (required && !searchMode) input.setAttribute('aria-required', 'true');
   ctrl.appendChild(input);
   ctrl.appendChild(tooltip);
 

@@ -65,9 +65,10 @@ export function validateTossInput(value: unknown): TossFormInput {
   if (!value || typeof value !== "object") throw new Error("入力内容が不正です");
   const input = value as Partial<TossFormInput>;
   const required: (keyof TossFormInput)[] = ["useTossCb", "rank", "listCategory", "applicantLastName", "applicantFirstName", "applicantLastKana", "applicantFirstKana", "birthDate", "postalCode", "prefecture", "city", "town", "contactPhone"];
-  for (const key of required) if (typeof input[key] !== "string" || !input[key]?.trim()) throw new Error(`${key} は必須です`);
+  const labels: Partial<Record<keyof TossFormInput, string>> = {useTossCb:"キャッシュバック有無",rank:"トスランク",listCategory:"関電リスト区分",applicantLastName:"申込者 姓",applicantFirstName:"申込者 名",applicantLastKana:"申込者 セイ",applicantFirstKana:"申込者 メイ",birthDate:"生年月日",postalCode:"郵便番号",prefecture:"都道府県",city:"市区町村",town:"町域・番地",contactPhone:"連絡先電話番号",pdManagementNumber:"PD管理番号",pd:"PD管理番号"};
+  for (const key of required) if (typeof input[key] !== "string" || !input[key]?.trim()) throw new Error(`${labels[key] ?? key}を入力してください`);
   if (input.listCategory === "リスト内") {
-    for (const key of ["pdManagementNumber", "pd"] as const) if (typeof input[key] !== "string" || !input[key]?.trim()) throw new Error(`${key} は必須です`);
+    for (const key of ["pdManagementNumber", "pd"] as const) if (typeof input[key] !== "string" || !input[key]?.trim()) throw new Error(`${labels[key] ?? key}を入力してください`);
   }
   if (!/^\d{7}$/.test(input.postalCode!.replace(/-/g, ""))) throw new Error("郵便番号は7桁で入力してください");
   return { ...input, tossUpItems: Array.isArray(input.tossUpItems) ? input.tossUpItems.map(String) : [], preferredTimes: Array.isArray(input.preferredTimes) ? input.preferredTimes.map(String) : [] } as TossFormInput;

@@ -3639,3 +3639,11 @@ button[data-modal-action="danger"], [data-garden-modal="panel"] button[data-moda
 @media (max-width: 600px) { :where(dialog), [data-garden-modal="panel"] { padding: 18px !important; } }
 .garden-help-heading { display:flex; align-items:center; min-width:0; }
 .garden-help-heading > h1 { min-width:0; }
+
+/* 必須の入力欄のラベル */
+.garden-required {
+  color: var(--modal-danger);
+  margin-left: 0.2em;
+  font-weight: 400;
+  line-height: inherit;
+}

@@ -26,7 +26,7 @@ it("待ちを選ぶと届出欄を隠し、nullで追加する", async () => {
   render(<Page/>);
   await screen.findByRole("button", { name: "届け出た" });
   fireEvent.click(screen.getByRole("button", { name: "転送を追加" }));
-  fireEvent.change(screen.getByLabelText("名義（必須）"), { target: { value: "新しい会社" } });
+  fireEvent.change(screen.getByLabelText(/名義（必須）/), { target: { value: "新しい会社" } });
   fireEvent.click(screen.getByRole("checkbox", { name: "まだ届けていない（届出待ち）" }));
   expect(screen.queryByText("届けた人")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "保存" }));

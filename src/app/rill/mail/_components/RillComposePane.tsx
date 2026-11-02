@@ -50,9 +50,9 @@ export function RillComposePane({ draft, addresses, error, onChange, onSend, onM
       <button className={styles.composeSend} onClick={onSend}><SendIcon />送信</button>
       <div className={styles.composeFields}>
         <div className={styles.composeRow}><span>差出人</span><div>{draft.fromLabel}</div></div>
-        <div className={styles.composeRow}><span>宛先</span><div className={styles.composeChips}>{chips("to")}<input list={`suggest-${draft.id}`} value={toInput} onChange={(event) => setToInput(event.target.value)} onKeyDown={keyDown("to", toInput)} onBlur={() => add("to", toInput)} placeholder="メールアドレス" /></div><button className={styles.ccToggle} onClick={() => onChange({ ...draft, ccVisible: true })}>＋Cc</button></div>
+        <div className={styles.composeRow}><span>宛先<span className="garden-required" aria-hidden="true">＊</span></span><div className={styles.composeChips}>{chips("to")}<input list={`suggest-${draft.id}`} aria-label="宛先" aria-required="true" value={toInput} onChange={(event) => setToInput(event.target.value)} onKeyDown={keyDown("to", toInput)} onBlur={() => add("to", toInput)} placeholder="メールアドレス" /></div><button className={styles.ccToggle} onClick={() => onChange({ ...draft, ccVisible: true })}>＋Cc</button></div>
         {draft.ccVisible && <div className={styles.composeRow}><span>Cc</span><div className={styles.composeChips}>{chips("cc")}<input list={`suggest-${draft.id}`} value={ccInput} onChange={(event) => setCcInput(event.target.value)} onKeyDown={keyDown("cc", ccInput)} onBlur={() => add("cc", ccInput)} placeholder="メールアドレス" /></div></div>}
-        <div className={styles.composeRow}><span>件名</span><input value={draft.subject} onChange={(event) => onChange({ ...draft, subject: event.target.value })} /></div>
+        <div className={styles.composeRow}><span>件名<span className="garden-required" aria-hidden="true">＊</span></span><input aria-label="件名" aria-required="true" value={draft.subject} onChange={(event) => onChange({ ...draft, subject: event.target.value })} /></div>
         <datalist id={`suggest-${draft.id}`}>{suggestions.map((address) => <option value={address} key={address} />)}</datalist>
       </div>
     </div>

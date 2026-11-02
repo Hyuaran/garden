@@ -120,8 +120,8 @@ export function BankPicker({
   return (
     <div className={styles.fieldGridTwo}>
       <label className="block">
-        <span className={styles.label}>起票法人 *</span>
-        <select
+        <span className={styles.label}>起票法人<span className="garden-required" aria-hidden="true">＊</span></span>
+        <select aria-required="true"
           value={executeCompanyId}
           onChange={(e) => {
             onCompanyChange(e.target.value);
@@ -141,9 +141,9 @@ export function BankPicker({
 
       <label className="block">
         <span className={styles.label}>
-          支払元口座 * {loading && <span className="ml-2 text-text-muted">読み込み中…</span>}
+          支払元口座<span className="garden-required" aria-hidden="true">＊</span> {loading && <span className="ml-2 text-text-muted">読み込み中…</span>}
         </span>
-        <select
+        <select aria-required="true"
           value={sourceAccountId}
           onChange={(e) => {
             const acc =

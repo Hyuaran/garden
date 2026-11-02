@@ -47,8 +47,8 @@ export default function FormsPage() {
  return <div style={{maxWidth:560,margin:'0 auto',padding:16}}><FormPage title={name?name+'さんの申告':'申告'} submitterName="" employeeNumber="" embedded>
  {!ready?(message==='確認中です'?<LiffLoading/>:<FixedValue>{message}</FixedValue>):<><FormRow label="今の登録内容" expanded><div><h3>{type==='commute_route'?'交通費':'給与受取口座'}</h3><CurrentRegistrationValue text={current[type]}/></div></FormRow><form onSubmit={submit}>
  <FormRow label="1 申告の種類"><RadioGroup name="submission-type" label="申告の種類" options={Object.values(labels)} value={labels[type]} onChange={value=>{if(!sending){setType(value===labels.commute_route?'commute_route':'bank_account');setResult('');}}}/></FormRow>
- {submissionFields[type].map(([key,label,input,optional],index)=><FormRow key={key} label={<label htmlFor={'submission-'+key}>{index+2} {label}</label>}>
- {input==='textarea'?<TextArea id={'submission-'+key} value={drafts[type][key]||''} disabled={sending} onChange={e=>setDrafts({...drafts,[type]:{...drafts[type],[key]:e.target.value}})}/>:<TextField id={'submission-'+key} type={input} required={!optional} disabled={sending} value={drafts[type][key]||''} onChange={e=>setDrafts({...drafts,[type]:{...drafts[type],[key]:e.target.value}})}/>}
+ {submissionFields[type].map(([key,label,input,optional],index)=><FormRow required={!optional} key={key} label={<label htmlFor={'submission-'+key}>{index+2} {label}</label>}>
+ {input==='textarea'?<TextArea required={!optional} id={'submission-'+key} value={drafts[type][key]||''} disabled={sending} onChange={e=>setDrafts({...drafts,[type]:{...drafts[type],[key]:e.target.value}})}/>:<TextField id={'submission-'+key} type={input} required={!optional} disabled={sending} value={drafts[type][key]||''} onChange={e=>setDrafts({...drafts,[type]:{...drafts[type],[key]:e.target.value}})}/>}
  </FormRow>)}
  {type==='bank_account'&&<FixedValue>種別は「普通」で受け付けます。</FixedValue>}
  <SubmitButton type="submit" busy={sending}>送信する</SubmitButton><ResultMessage success={success}>{result}</ResultMessage>

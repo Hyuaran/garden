@@ -101,10 +101,10 @@ describe("contracts drive browser", () => {
     render(<ContractsPage />);
 
     fireEvent.click(await screen.findByRole("button", { name: "登録する" }));
-    expect(await screen.findByLabelText("相手先")).toHaveValue("セントリックス株式会社");
-    expect(screen.getByLabelText("自社法人")).toHaveValue("COMP-001");
-    expect(screen.getByLabelText("契約種別")).toHaveValue("獲得業務委託契約書");
-    expect(screen.getByLabelText("締結日")).toHaveValue("2026-08-30");
+    expect(await screen.findByLabelText(/相手先/)).toHaveValue("セントリックス株式会社");
+    expect(screen.getByLabelText(/自社法人/)).toHaveValue("COMP-001");
+    expect(screen.getByLabelText(/契約種別/)).toHaveValue("獲得業務委託契約書");
+    expect(screen.getByLabelText(/締結日/)).toHaveValue("2026-08-30");
     expect(pdfMocks.extract).toHaveBeenCalledWith(expect.objectContaining({ name: "【セントリックス株式会社】獲得業務委託契約書.pdf" }));
     expect(fetchMock).toHaveBeenCalledWith("/api/system/contracts", expect.objectContaining({ method: "POST" }));
   });

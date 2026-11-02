@@ -26,8 +26,8 @@ vi.mock("../_lib/auth", () => ({
 import TossLoginPage from "./page";
 
 function submit(code: string, password = "pw") {
-  fireEvent.change(screen.getByLabelText("パートナーコード または 社員番号"), { target: { value: code } });
-  fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: password } });
+  fireEvent.change(screen.getByLabelText(/パートナーコード または 社員番号/), { target: { value: code } });
+  fireEvent.change(screen.getByLabelText(/パスワード/), { target: { value: password } });
   fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
 }
 

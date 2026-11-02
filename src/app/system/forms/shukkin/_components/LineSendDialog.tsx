@@ -195,8 +195,8 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
               {!quota?.ownLinked && <small>自分の LINE を先に連携してください</small>}
             </label>
             {quota?.passwordRequired && <label className={styles.password}>
-              送信パスワード
-              <input type="password" value={password} autoComplete="off" inputMode="numeric" onChange={(event) => setPassword(event.currentTarget.value)} />
+              送信パスワード<span className="garden-required" aria-hidden="true">＊</span>
+              <input aria-required="true" type="password" value={password} autoComplete="off" inputMode="numeric" onChange={(event) => setPassword(event.currentTarget.value)} />
               <small>公式 LINE が無料プランのため、送信にはパスワードが必要です</small>
             </label>}
             {state === "failed" && error && <p className={styles.error} role="alert">{error}</p>}

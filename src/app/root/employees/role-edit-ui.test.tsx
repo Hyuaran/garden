@@ -388,7 +388,7 @@ describe("Garden権限の編集UI", () => {
     await openEmployee();
     expect(await screen.findByText("Chatwork 連携")).toBeInTheDocument();
 
-    const tokenInput = screen.getByLabelText("API トークン") as HTMLInputElement;
+    const tokenInput = screen.getByLabelText(/API トークン/) as HTMLInputElement;
     fireEvent.change(tokenInput, { target: { value: CHATWORK_TEST_TOKEN } });
     fireEvent.click(screen.getByRole("button", { name: "接続を確認して保存" }));
 
@@ -421,8 +421,8 @@ describe("Garden権限の編集UI", () => {
 
   describe("退職日による口座必須の切り替え", () => {
     const bankLabels = ["銀行名", "金融機関コード（4桁）", "支店名", "支店コード（3桁）", "口座番号（7桁）", "口座名義", "口座名義カナ"];
-    const field = (label: string) => screen.getByLabelText(new RegExp(`^${label.replace(/[()（）]/g, "\\$&")}(?:\\*|$)`));
-    const hasRequiredMark = (label: string) => field(label).closest("label")!.querySelector("span")!.textContent!.includes("*");
+    const field = (label: string) => screen.getByLabelText(new RegExp(`^${label.replace(/[()（）]/g, "\\$&")}(?:＊|$)`));
+    const hasRequiredMark = (label: string) => field(label).closest("label")!.querySelector("span")!.textContent!.includes("＊");
 
     it("在籍者の口座7項目の必須エラーを保持し、退職日入力時には直ちに消す", async () => {
       mocks.fetchEmployees.mockResolvedValue([employeeWithoutBank]);
@@ -437,12 +437,12 @@ describe("Garden権限の編集UI", () => {
 
       fireEvent.change(screen.getByLabelText("退職日"), { target: { value: "2026-06-30" } });
       bankLabels.forEach(label => expect(hasRequiredMark(label)).toBe(false));
-      expect(screen.getByRole("radiogroup", { name: "口座種別" }).parentElement!.textContent).not.toContain("*");
+      expect(screen.getByRole("radiogroup", { name: "口座種別" }).parentElement!.textContent).not.toContain("＊");
       expect(screen.queryByText("必須")).not.toBeInTheDocument();
       expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
       expect(screen.queryByText(VALIDATION_ERROR_BANNER)).not.toBeInTheDocument();
       for (const label of ["従業員ID", "社員番号", "所属法人", "氏名", "氏名カナ", "メールアドレス", "雇用形態", "給与体系", "社会保険区分", "入社日"]) {
-        expect(screen.getByLabelText(`${label}*`, { exact: true })).toBeInTheDocument();
+        expect(screen.getByLabelText(`${label}＊`, { exact: true })).toBeInTheDocument();
       }
       mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
       fireEvent.click(screen.getByRole("button", { name: "保存" }));
@@ -539,8 +539,8 @@ describe("Garden権限の編集UI", () => {
       expect(dialog.getByText("いまの権限")).toBeInTheDocument();
       expect(dialog.getAllByText("正社員")).toHaveLength(2);
       expect(dialog.queryByLabelText("銀行名")).not.toBeInTheDocument();
-      expect(dialog.queryByLabelText("給与体系*")).not.toBeInTheDocument();
-      expect(dialog.queryByLabelText("入社日*")).not.toBeInTheDocument();
+      expect(dialog.queryByLabelText("給与体系＊")).not.toBeInTheDocument();
+      expect(dialog.queryByLabelText("入社日＊")).not.toBeInTheDocument();
     });
 
     it("口座が空でも専用の更新経路でemployee_idとgarden_roleを渡して一覧へ即時反映する", async () => {

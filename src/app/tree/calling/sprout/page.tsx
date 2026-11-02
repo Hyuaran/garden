@@ -387,7 +387,7 @@ export default function CallingSproutPage() {
                 }}
               >
                 その他の理由{" "}
-                <span style={{ color: C.red }}>※必須</span>
+                <span className="garden-required" aria-hidden="true">＊</span>
               </div>
               <input
                 type="text"
@@ -435,7 +435,7 @@ export default function CallingSproutPage() {
                 }}
               >
                 次回対応日時{" "}
-                <span style={{ color: C.red }}>※必須</span>
+                <span className="garden-required" aria-hidden="true">＊</span>
               </div>
               <input
                 type="date"
@@ -494,7 +494,7 @@ export default function CallingSproutPage() {
               >
                 架電メモ（コール履歴に記録）
                 {memoRequired && (
-                  <span style={{ color: C.red }}> ※必須</span>
+                  <span className="garden-required" aria-hidden="true">＊</span>
                 )}
               </div>
               <textarea
