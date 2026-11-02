@@ -178,7 +178,7 @@ it('定型文を追加でき、削除は確認の小窓で確定するまで送�
  expect(notice.closest('div[style*="position: fixed"]')).not.toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'雇用契約書のお知らせを変更する'}));
  dialog=within(screen.getByRole('dialog',{name:'定型文の変更'}));
- fireEvent.click(dialog.getByRole('button',{name:'削除する'}));
+ fireEvent.click(dialog.getByRole('button',{name:'雇用契約書のお知らせを削除する'}));
  expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateDelete')).toBe(false);
  fireEvent.click(within(screen.getByRole('dialog',{name:'定型文の削除'})).getByRole('button',{name:'削除する'}));
  await waitFor(()=>expect(screen.queryByRole('dialog',{name:'定型文の変更'})).toBeNull());
