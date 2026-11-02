@@ -35,6 +35,9 @@
   box-sizing: border-box;
 }
 
+/* 表が届いて縦に伸びた瞬間にスクロールバーが出て、画面全体が横へ跳ねないよう、場所を最初から取る */
+html { scrollbar-gutter: stable; }
+
 html,
 body {
   height: 100%;

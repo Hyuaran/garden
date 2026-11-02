@@ -80,3 +80,6 @@ it("requires every route reaching useUrlTab to receive initial URL state from it
   for(const route of routes)expect(texts.get(route),path.relative(app,route)).toContain("withInitialUrlView");
   expect(existsSync(path.resolve("src/lib/ui/withInitialUrlView.server.tsx"))).toBe(true);
 });
+it("reserves the page scrollbar so content arriving later does not shift the whole screen sideways", () => {
+  expect(readFileSync("src/app/globals.css", "utf8")).toMatch(/html\s*\{\s*scrollbar-gutter:\s*stable;/);
+});
