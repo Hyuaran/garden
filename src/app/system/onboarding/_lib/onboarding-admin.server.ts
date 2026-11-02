@@ -8,7 +8,7 @@ import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
 import { databaseError, OnboardingError, ONBOARDING_COLUMNS } from "./onboarding.server";
 import { maskMyNumber, parseInput, parseNullableAmount } from "./onboarding";
 import { proxyPayload } from "./onboarding-proxy";
-import { adminInputFromRow, buildAdminList, commuteDailyAllowance, initialAdminRecord, parseAdminEmailInput, parseAdminHouseholderInput, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
+import { adminInputFromRow, buildAdminList, notStartedAdminItem, commuteDailyAllowance, initialAdminRecord, parseAdminEmailInput, parseAdminHouseholderInput, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
 
 const ADMIN_ONBOARDING_COLUMNS = `employee_id,${ONBOARDING_COLUMNS},office,weekly_hours,health_insurance,pension_insurance,employment_insurance,tax_class,salary_kind,base_salary,allowances,commute_fixed_monthly,commute_cap_monthly,admin_updated_at`;
 const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id,employment_type";
@@ -81,7 +81,24 @@ export async function readAdminOnboardingList(context: AdminContext): Promise<Ad
     const employeeId = String(row.employee_id ?? "");
     return recordFromRow(row, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null });
   });
-  return buildAdminList(records).map(item => ({ ...item, nameKana: records.find(record => record.employee.employee_id === item.employeeId)?.values.name_kana ?? "" }));
+  const started = buildAdminList(records).map(item => ({ ...item, nameKana: records.find(record => record.employee.employee_id === item.employeeId)?.values.name_kana ?? "" }));
+  const notStartedIds = await readHiredWithoutOnboarding(new Set(records.map(record => record.employee.employee_id)));
+  const notStarted = await readEmployees(notStartedIds);
+  return [...notStartedIds.flatMap(id => notStarted.get(id) ? [notStartedAdminItem(notStarted.get(id)!)] : []), ...started];
+}
+
+/** 入社予定者の［入社］が済んで社員番号が付いたのに、入社手続きの記録がまだ無い人 */
+async function readHiredWithoutOnboarding(startedIds: Set<string>) {
+  const { data, error } = await getSupabaseAdmin().from("system_hire_candidates").select("employee_id").eq("status", "hired").not("employee_id", "is", null);
+  if (error) throw databaseError(error);
+  return [...new Set(((data ?? []) as Array<{ employee_id: string }>).map(row => row.employee_id))].filter(id => !startedIds.has(id));
+}
+
+/** 一覧の「未着手」の人を開いたときの名前（［入社］が済んでいない人は null） */
+export async function readNotStartedEmployee(employeeId: string) {
+  const ids = await readHiredWithoutOnboarding(new Set());
+  if (!ids.includes(employeeId)) return null;
+  return (await readEmployees([employeeId])).get(employeeId) ?? null;
 }
 
 export async function readAdminOnboardingDetail(context: AdminContext, employeeId: string): Promise<AdminOnboardingRecord | null> {

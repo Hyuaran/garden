@@ -143,12 +143,12 @@ export default function HireCandidatesClient({userId,tab,initialRows,canWrite = 
  </dialog>}
  {message&&<p role="alert">{message}</p>}
  <DataTable loading={loading || !visibilityReady} onRowClick={r=>setReviewId(r.id)} rowClickable={()=>true} key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>
- <label className={styles.hireCheck}><input type="checkbox" checked={showComplete} onChange={e=>saveVisibility(showNoShow,e.target.checked)}/>完了も表示</label>
+ <label className={styles.hireCheck}><input type="checkbox" checked={!showComplete} onChange={e=>saveVisibility(showNoShow,!e.target.checked)}/>完了を表示しない</label>
  </section>}
  {tab==="candidates"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
  {message&&<p role="alert">{message}</p>}
  <DataTable loading={loading || !visibilityReady} key="candidates" onRowClick={r=>{if(busy||saving)return;if(r.status==="hiring"&&stopped(r))setFailure(r);else if(canWrite&&r.status==="planned")openForm(r);}} rowClickable={r=>(canWrite&&r.status==="planned")||(r.status==="hiring"&&!!stopped(r))} rows={candidateRows} columns={columns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"date",direction:"asc"}} toolbar={canWrite && <button disabled={!canWrite||busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
- <label className={styles.hireCheck}><input type="checkbox" checked={showNoShow} onChange={e=>saveVisibility(e.target.checked,showComplete)}/>辞退した人も表示</label>
+ <label className={styles.hireCheck}><input type="checkbox" checked={!showNoShow} onChange={e=>saveVisibility(!e.target.checked,showComplete)}/>辞退者を表示しない</label>
  {form&&options&&<dialog ref={formDialog} aria-labelledby="hire-form-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setForm(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setForm(null);}}} data-garden-modal="panel">
  <h2 id="hire-form-title">{editing?"入社予定者を修正":"入社予定者を登録"}</h2>
  {message&&<p role="alert">{message}</p>}

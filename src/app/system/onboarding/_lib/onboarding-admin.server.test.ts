@@ -12,6 +12,7 @@ function chain(result: unknown) {
     in: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
     insert: vi.fn().mockResolvedValue(result),
     maybeSingle: vi.fn().mockResolvedValue(result),
@@ -26,7 +27,8 @@ describe("事務用入社手続きサーバー処理", () => {
     const onboardingQuery = chain({ data: [{ employee_id: "EMP-1559", name: "吉田 陽菜", my_number: "123456785540", dependents: [{ name: "家族", my_number: "111122223333" }], status: "submitted", submitted_at: "2026-09-01T00:00:00Z" }], error: null });
     const employeeQuery = chain({ data: [{ employee_id: "EMP-1559", name: "吉田 陽菜", hire_date: "2026-09-01", birthday: "2000-01-01", company_id: "COMP-1" }], error: null });
     const userSupabase = { from: vi.fn(() => onboardingQuery) };
-    const adminSupabase = { from: vi.fn(() => employeeQuery) };
+    const hiredQuery = chain({ data: [], error: null });
+    const adminSupabase = { from: vi.fn((table: string) => table === "system_hire_candidates" ? hiredQuery : employeeQuery) };
     mocks.getSupabaseAdmin.mockReturnValue(adminSupabase);
 
     const rows = await readAdminOnboardingList({ supabase: userSupabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext);
@@ -37,6 +39,19 @@ describe("事務用入社手続きサーバー処理", () => {
     // 社員番号を取ってこないと台帳と結びつかず、入社日が空になり氏名のリンクも壊れる。
     expect(onboardingQuery.select).toHaveBeenCalledWith(expect.stringContaining("employee_id"));
     expect(JSON.stringify(rows)).not.toMatch(/123456785540|111122223333/);
+  });
+
+  it("［入社］が済んで手続きの記録が無い人は「未着手」で並べ、始めた人は重ねない", async () => {
+    const onboardingQuery = chain({ data: [{ employee_id: "EMP-1559", name: "吉田 陽菜", status: "draft", submitted_at: null }], error: null });
+    const hiredQuery = chain({ data: [{ employee_id: "EMP-1559" }, { employee_id: "EMP-1575" }], error: null });
+    const employeeQuery = chain({ data: [{ employee_id: "EMP-1559", name: "吉田 陽菜", hire_date: "2026-09-01", birthday: null, company_id: "COMP-1" }, { employee_id: "EMP-1575", name: "籔 僚太", hire_date: "2026-11-02", birthday: null, company_id: "COMP-3", employment_type: "アルバイト" }], error: null });
+    mocks.getSupabaseAdmin.mockReturnValue({ from: vi.fn((table: string) => table === "system_hire_candidates" ? hiredQuery : employeeQuery) });
+
+    const rows = await readAdminOnboardingList({ supabase: { from: vi.fn(() => onboardingQuery) }, managerEmployeeId: "EMP-M" } as unknown as AdminContext);
+
+    expect(hiredQuery.eq).toHaveBeenCalledWith("status", "hired");
+    expect(rows.map(row => [row.employeeId, row.status])).toEqual([["EMP-1575", "not_started"], ["EMP-1559", "draft"]]);
+    expect(rows[0]).toMatchObject({ name: "籔 僚太", hireDate: "2026-11-02", adminComplete: false });
   });
 
   it("交通費の1日あたりは片道合計の2倍を従業員台帳へ反映する", async () => {

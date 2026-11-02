@@ -126,23 +126,23 @@ it("splits statuses, hides completed hires, and remembers visibility per user",a
  expect(screen.getByText("処理 太郎")).toBeVisible();
  expect(screen.queryByText("欠席 太郎")).not.toBeInTheDocument();
  expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole("checkbox",{name:"辞退した人も表示"}));
+ fireEvent.click(screen.getByRole("checkbox",{name:"辞退者を表示しない"}));
  expect(screen.getByText("欠席 太郎")).toBeVisible();
  fireEvent.click(screen.getByRole("tab",{name:"入社後の確認"}));
  expect(screen.getByText("未確認 太郎")).toBeVisible();
  expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument();
  expect(screen.queryByRole("button",{name:"＋ 入社予定者を登録"})).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole("checkbox",{name:"完了も表示"}));
+ fireEvent.click(screen.getByRole("checkbox",{name:"完了を表示しない"}));
  expect(screen.getByText("入社 太郎")).toBeVisible();
  expect(screen.getByText("完了")).toBeVisible();
  view.unmount();
  const restored=render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
- expect(screen.getByRole("checkbox",{name:"辞退した人も表示"})).toBeChecked();
+ expect(screen.getByRole("checkbox",{name:"辞退者を表示しない"})).not.toBeChecked();
  fireEvent.click(screen.getByRole("tab",{name:"入社後の確認"}));
- expect(screen.getByRole("checkbox",{name:"完了も表示"})).toBeChecked();
+ expect(screen.getByRole("checkbox",{name:"完了を表示しない"})).not.toBeChecked();
  restored.unmount();
  render(<HireCandidatesClient userId="admin-2"><p>既存一覧</p></HireCandidatesClient>);
- expect(screen.getByRole("checkbox",{name:"辞退した人も表示"})).not.toBeChecked();
+ expect(screen.getByRole("checkbox",{name:"辞退者を表示しない"})).toBeChecked();
 });
 it("saves checks immediately, removes completed hires, and restores failed saves",async()=>{
  const pending={...hired,checklist:{...fullChecklist,filemaker_added:undefined}};
@@ -155,7 +155,7 @@ it("saves checks immediately, removes completed hires, and restores failed saves
  await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/onboarding/hire-candidates/h",expect.objectContaining({method:"PATCH",body:JSON.stringify({checklist:{filemaker_added:true}})})));
  fireEvent.click(screen.getAllByRole("button",{name:"閉じる"}).at(-1)!);
  await waitFor(()=>expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument());
- fireEvent.click(screen.getByRole("checkbox",{name:"完了も表示"}));
+ fireEvent.click(screen.getByRole("checkbox",{name:"完了を表示しない"}));
  fireEvent.click(screen.getByText("入社 太郎"));
  const check=within(screen.getByText("③ FileMaker").closest("section")!).getByRole("button",{name:"戻す"});
  await waitFor(()=>expect(check).toBeEnabled());
@@ -182,7 +182,7 @@ it("skips LINE, restores it and prioritizes registration",async()=>{
  expect(dialog).toHaveTextContent("ガラケー");
  fireEvent.click(within(dialog).getByRole("button",{name:"登録しない"}));
  await waitFor(()=>expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument());
- fireEvent.click(screen.getByRole("checkbox",{name:"完了も表示"}));
+ fireEvent.click(screen.getByRole("checkbox",{name:"完了を表示しない"}));
  fireEvent.click(screen.getByText("入社 太郎"));
  await waitFor(()=>expect(within(screen.getByText("② LINE テスト送信").closest("section")!).getByRole("button",{name:"戻す"})).toBeEnabled());
  fireEvent.click(within(screen.getByText("② LINE テスト送信").closest("section")!).getByRole("button",{name:"戻す"}));
@@ -199,8 +199,8 @@ it("works when localStorage is unavailable",async()=>{
  vi.stubGlobal("fetch",vi.fn(async()=>Response.json([row])));
  render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
  expect(await screen.findByText("山田 太郎")).toBeVisible();
- fireEvent.click(screen.getByRole("checkbox",{name:"辞退した人も表示"}));
- expect(screen.getByRole("checkbox",{name:"辞退した人も表示"})).toBeChecked();
+ fireEvent.click(screen.getByRole("checkbox",{name:"辞退者を表示しない"}));
+ expect(screen.getByRole("checkbox",{name:"辞退者を表示しない"})).not.toBeChecked();
 });
 it("confirms the persisted employee number and does not hire on cancellation",async()=>{
  const fetch=vi.fn(async(url:string,init?:RequestInit)=>Response.json(url.endsWith("kot-options")?{companies:[],divisions:[],workingTypes:[]}:init?.method==="POST"?{...row,employee_number:"1571"}:[row]));vi.stubGlobal("fetch",fetch);
@@ -220,7 +220,7 @@ it("opens the row editor and registration dialog, closes on cancel and backdrop,
  const name=await screen.findByText("山田 太郎");
  expect(name.closest("tr")).toHaveAttribute("tabindex","0");
  expect(screen.getByText("処理 太郎").closest("tr")).not.toHaveAttribute("tabindex");
- fireEvent.click(screen.getByRole("checkbox",{name:"辞退した人も表示"}));
+ fireEvent.click(screen.getByRole("checkbox",{name:"辞退者を表示しない"}));
  expect(screen.getByText("欠席 太郎").closest("tr")).not.toHaveAttribute("tabindex");
  expect(screen.getByText("辞退",{selector:"span"})).toBeVisible();
  fireEvent.click(name);

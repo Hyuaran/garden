@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { OnboardingError } from "../../_lib/onboarding.server";
-import { onboardingAdminContext, readAdminOnboardingDetail } from "../../_lib/onboarding-admin.server";
+import { onboardingAdminContext, readAdminOnboardingDetail, readNotStartedEmployee } from "../../_lib/onboarding-admin.server";
 import OnboardingAdminDetailClient from "./OnboardingAdminDetailClient";
 import styles from "../../onboarding.module.css";
 
@@ -16,6 +16,7 @@ export const metadata = { title: "入社手続き | Garden" };
 export default async function OnboardingAdminDetailPage({ params }: { params: Promise<{ employeeId: string }> }) {
   const { employeeId } = await params;
   let record = null;
+  let notStarted: Awaited<ReturnType<typeof readNotStartedEmployee>> = null;
   let message = "";
   let canWrite = false;
   let wages: MinimumWage[] = [];
@@ -24,20 +25,22 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
     canWrite = context.canWrite ?? false;
     record = await readAdminOnboardingDetail(context, employeeId);
     wages = await listMinimumWages();
-    if (!record) message = "入社手続きの入力が見つかりませんでした。";
+    if (!record) notStarted = await readNotStartedEmployee(employeeId);
+    if (!record && !notStarted) message = "入社手続きの入力が見つかりませんでした。";
   } catch (error) {
     if (error instanceof OnboardingError && error.status === 401) redirect(`/login?returnTo=${encodeURIComponent(`/system/onboarding/admin/${employeeId}`)}`);
     message = error instanceof OnboardingError ? error.message : "入社手続きを読み込めませんでした。時間をおいて、もう一度お試しください。";
   }
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding?tab=all" }, { label: record?.values.name || record?.employee.name || "入社手続き" }]} />
-      <div className="garden-help-heading"><h1 {...CLARITY_MASK}>{record ? `${record.values.name || record.employee.name}さんの入社手続き` : "入社手続き"}</h1><HelpButton /></div>
+      <SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding?tab=all" }, { label: record?.values.name || record?.employee.name || notStarted?.name || "入社手続き" }]} />
+      <div className="garden-help-heading"><h1 {...CLARITY_MASK}>{record ? `${record.values.name || record.employee.name}さんの入社手続き` : notStarted ? `${notStarted.name}さんの入社手続き` : "入社手続き"}</h1><HelpButton /></div>
     </header><SystemTabs />
     <div className={styles.detailActions}><Link className={styles.button} href="/system/onboarding?tab=all">戻る</Link>
-    {record?.status === "draft" && <Link className={styles.button} href={`/system/onboarding/admin/${encodeURIComponent(employeeId)}/proxy`}>本人の代わりに入力する</Link>}</div>
+    {(record?.status === "draft" || notStarted) && <Link className={styles.button} href={`/system/onboarding/admin/${encodeURIComponent(employeeId)}/proxy`}>本人の代わりに入力する</Link>}</div>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
+      : notStarted ? <main className={styles.panel} role="status"><h2>未着手</h2><p>本人はまだ入社手続きを始めていません。本人に案内するか、［本人の代わりに入力する］から入力してください。</p></main>
       : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} wages={wages} /></main> : null}
   </div>;
 }

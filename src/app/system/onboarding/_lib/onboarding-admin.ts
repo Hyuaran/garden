@@ -42,7 +42,8 @@ export type AdminListItem = {
   name: string;
   nameKana?: string;
   hireDate: string | null;
-  status: "draft" | "submitted";
+  /** not_started＝［入社］は済んだが、本人も代わりの入力もまだ（手続きの記録が無い） */
+  status: "draft" | "submitted" | "not_started";
   submittedAt: string | null;
   missingCount: number;
   adminComplete: boolean;
@@ -216,6 +217,11 @@ export function buildAdminList(records: AdminOnboardingRecord[]): AdminListItem[
     if (b.submittedAt) return 1;
     return (b.hireDate ?? "").localeCompare(a.hireDate ?? "");
   });
+}
+
+/** ［入社］は済んだが、手続きの記録がまだ無い人を一覧に「未着手」で並べる */
+export function notStartedAdminItem(employee: AdminEmployee): AdminListItem {
+  return { employeeId: employee.employee_id, name: employee.name?.trim() || employee.employee_id, nameKana: "", hireDate: employee.hire_date, status: "not_started", submittedAt: null, missingCount: missingOnboardingItems(emptyInput(), employee.employment_type).length, adminComplete: false };
 }
 
 export function initialAdminRecord(employeeId: string): AdminOnboardingRecord {
