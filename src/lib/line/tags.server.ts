@@ -1,13 +1,17 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { requireEmployee } from '@/app/system/mypage/_lib/submission-server';
+import { canReadSystemScope, viewPermissionContext, ViewPermissionError } from '@/lib/auth/view-permission.server';
+import type { BroadcastTemplate } from './broadcast-template';
 import { automaticTags, chooseGreeting, personalize, type Employee, type Tag, type Member, type Greeting } from './tags';
 
-export async function requireLineAdmin() {
-  const e = await requireEmployee();
-  if (!e) return null;
-  const { data, error } = await getSupabaseAdmin().from('root_employees').select('garden_role').eq('employee_id', e.employee_id).single();
-  if (error || data?.garden_role !== 'super_admin') return null;
-  return e;
+export async function requireLineAdmin(tab = '') {
+ try {
+  const context = await viewPermissionContext();
+  if (!await canReadSystemScope('system-line', tab, context.viewer)) return null;
+  return { employee_id: context.viewer.employeeId, name: context.name };
+ } catch (error) {
+  if (error instanceof ViewPermissionError && error.status < 500) return null;
+  throw error;
+ }
 }
 export function checked<T extends { error: unknown }>(r: T): T { if(r.error) throw r.error; return r; }
 async function allRows<T>(table: string, columns: string, order: string): Promise<T[]> {
@@ -19,10 +23,11 @@ async function allRows<T>(table: string, columns: string, order: string): Promis
 }
 export async function loadLineData(sync = true, employeeId?: string) {
   const db=getSupabaseAdmin();
-  const [tags, employees, greetings] = await Promise.all([
+  const [tags, employees, greetings, templates] = await Promise.all([
     allRows<Tag>('system_line_tag','*','id'),
     allRows<Employee & { deleted_at?: string }>('root_employees_with_team','employee_id,employee_number,name,employment_type,garden_role,hire_date,termination_date,is_active,line_user_id,line_link_source,line_contact_url,deleted_at,business,current_team','employee_id'),
     allRows<Greeting>('system_line_greeting','*','id'),
+    allRows<BroadcastTemplate>('system_line_broadcast_template','*','sort'),
   ]);
   const activeRows=employees.filter(e=>!e.deleted_at);
   if(sync) {
@@ -30,7 +35,7 @@ export async function loadLineData(sync = true, employeeId?: string) {
   }
   const members=await allRows<Member>('system_line_tag_member','*','employee_id');
   const history=checked(await db.from('system_line_broadcast').select('*').not('sent_at','is',null).order('sent_at',{ascending:false}).limit(100)).data;
-  return { tags: tags.sort((a,b)=>a.sort-b.sort), employees:activeRows, greetings, members, history, updatedAt:new Date().toISOString() };
+  return { templates, tags: tags.sort((a,b)=>a.sort-b.sort), employees:activeRows, greetings, members, history, updatedAt:new Date().toISOString() };
 }
 export async function linkedGreeting(employeeNumber: string) {
   const db=getSupabaseAdmin();

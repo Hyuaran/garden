@@ -11,12 +11,37 @@ export const runtime='nodejs';
 function sign(value:string) { const secret=process.env.LINE_STAFF_CHANNEL_SECRET; if(!secret) throw new Error('送信の設定を確認してください。'); return createHmac('sha256',secret).update(value).digest('hex'); }
 export async function GET() {
   if(!await requireLineAdmin()) return NextResponse.json({}, {status:403});
-  try { const data=await loadLineData(); return NextResponse.json({...data, ...await loadMenuSettings(data.employees)}); } catch { return NextResponse.json({error:'一覧を取得できませんでした。'}, {status:500}); }
+  try {
+    const [data,broadcast,greeting,richmenu,contacts]=await Promise.all([loadLineData(),requireLineAdmin('broadcast'),requireLineAdmin('greeting'),requireLineAdmin('richmenu'),requireLineAdmin('contacts')]);
+    const menu=richmenu||contacts ? await loadMenuSettings(data.employees) : {contacts:[],menus:[]};
+    return NextResponse.json({...data,...menu,templates:broadcast?data.templates:[],history:broadcast?data.history:[],greetings:greeting?data.greetings:[]});
+  } catch { return NextResponse.json({error:'一覧を取得できませんでした。'}, {status:500}); }
 }
 export async function POST(request:Request) {
-  const admin=await requireLineAdmin(); if(!admin) return NextResponse.json({}, {status:403});
   try {
-    const b=await request.json(); const db=getSupabaseAdmin();
+    const b=await request.json();
+    const tabs: Record<string,string> = { templateSave:'broadcast',templateDelete:'broadcast',preview:'broadcast',send:'broadcast',tag:'tags',deleteTag:'tags',member:'tags',team:'tags',greeting:'greeting',test:'greeting',assignment:'richmenu',applyMenus:'richmenu',contact:'richmenu',employeeContact:'contacts' };
+    const tab=tabs[b.action];
+    if(!tab) return NextResponse.json({}, {status:403});
+    const admin=await requireLineAdmin(tab); if(!admin) return NextResponse.json({}, {status:403});
+    const db=getSupabaseAdmin();
+    if(b.action==='templateSave') {
+      if(typeof b.label!=='string'||!b.label.trim()||b.label.length>100||typeof b.title!=='string'||!b.title.trim()||b.title.length>200||typeof b.body!=='string'||!b.body.trim()||b.body.length>5000||!Array.isArray(b.tags)||b.tags.some((t: {kind?:unknown;name?:unknown}|null)=>!t||typeof t.kind!=='string'||typeof t.name!=='string')) throw new Error('ボタンの名前・題名・送信内容・絞り込みを確認してください。');
+      const tags=checked(await db.from('system_line_tag').select('kind,name')).data;
+      if(b.tags.some((t:{kind:string;name:string})=>!tags?.some(x=>x.kind===t.kind&&x.name===t.name))) throw new Error('タグを選び直してください。');
+      const row={label:b.label.trim(),title:b.title,body:b.body,tags:b.tags.map((t:{kind:string;name:string})=>({kind:t.kind,name:t.name})),updated_at:new Date().toISOString(),updated_by:admin.employee_id,updated_by_name:admin.name};
+      if(b.id) checked(await db.from('system_line_broadcast_template').update(row).eq('id',b.id));
+      else {
+        const last=checked(await db.from('system_line_broadcast_template').select('sort').order('sort',{ascending:false}).limit(1)).data;
+        checked(await db.from('system_line_broadcast_template').insert({...row,sort:(last?.[0]?.sort??-1)+1}));
+      }
+      return NextResponse.json({ok:true});
+    }
+    if(b.action==='templateDelete') {
+      if(typeof b.id!=='string'||!b.id) throw new Error('定型文を選び直してください。');
+      checked(await db.from('system_line_broadcast_template').delete().eq('id',b.id));
+      return NextResponse.json({ok:true});
+    }
     if(b.action==='applyMenus') {
       await applyRichMenus();
     } else if(b.action==='assignment') {

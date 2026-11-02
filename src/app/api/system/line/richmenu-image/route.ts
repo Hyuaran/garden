@@ -4,7 +4,7 @@ import { menuGroups, type MenuGroup } from '@/lib/line/richmenu';
 import { renderMenuImage } from '@/lib/line/richmenu-image.server';
 export const runtime = 'nodejs';
 export async function GET(request: Request) {
-  if (!await requireLineAdmin()) return new Response(null,{status:403});
+  if (!await requireLineAdmin('richmenu')) return new Response(null,{status:403});
   const group = new URL(request.url).searchParams.get('group') as MenuGroup;
   if (!menuGroups.includes(group)) return new Response(null,{status:400});
   try {

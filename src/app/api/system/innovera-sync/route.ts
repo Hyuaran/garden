@@ -33,7 +33,7 @@ async function requireStaff() {
 }
 
 export async function GET() {
-  const viewer = await requireViewEmployee("system-forms", "auto", "staff");
+  const viewer = await requireViewEmployee("system-innovera", "", "staff");
   if (!viewer) return NextResponse.json({ ok: false }, { status: 403 });
   const auth = { employeeId: String(viewer.employee_id) };
   const result = await runInnoveraSync({ apply: false, trigger: "manual", actorEmployeeId: auth.employeeId, includeLogs: true });
@@ -41,10 +41,8 @@ export async function GET() {
 }
 
 export async function POST() {
-  for (const scopeTab of ["auto"]) {
-    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
-    if (viewDenied) return viewDenied;
-  }
+  const viewDenied = await systemViewResponse("system-innovera", "");
+  if (viewDenied) return viewDenied;
 
   const auth = await requireStaff();
   if (!auth.ok) return auth.response;

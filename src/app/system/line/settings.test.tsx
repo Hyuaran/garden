@@ -1,12 +1,14 @@
+import { SystemViewProvider } from '../_components/ViewPermissionButton/SystemViewContext';
+import { templateFixtures } from './template-fixtures.test-data';
 import { InitialUrlView } from "@/lib/ui/InitialUrlView";
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import LineManager from './LineManager';
 import RichMenuSettings from './RichMenuSettings';
 import ContactSettings from './ContactSettings';
 const contact=(key:string,label:string,url='')=>({key,label,url,updated_at:'',updated_by:null});
 const contacts=[contact('guest_home','会社のホームページ'),contact('miyanaga','宮永さん','https://line.me/ti/p/m'),contact('team:小泉チーム','小泉さん','https://line.me/ti/p/k')];
-const data={contacts,menus:[],employees:[],tags:[],members:[],history:[],updatedAt:'',greetings:[{id:'g1',employment_tag_id:null,business_tag_id:null,body:'こんにちは\nよろしくお願いします',enabled:true}]};
+const data={templates:templateFixtures,contacts,menus:[],employees:[],tags:[],members:[],history:[],updatedAt:'',greetings:[{id:'g1',employment_tag_id:null,business_tag_id:null,body:'こんにちは\nよろしくお願いします',enabled:true}]};
 beforeEach(()=>{
   HTMLDialogElement.prototype.showModal=vi.fn(function(this:HTMLDialogElement){this.setAttribute('open','');});
   HTMLDialogElement.prototype.close=vi.fn();
@@ -135,4 +137,47 @@ it('一斉送信が終わると全画面で「〇人に送信しました」を�
   expect((screen.getByLabelText('送信内容') as HTMLTextAreaElement).value).toBe('');
   expect(screen.queryByText('2人に送信しました。')).toBeNull();
   expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='send')).toBe(true);
+});
+
+it('鉛筆は定型文の変更を開き、入力した名前を保存する',async()=>{
+ window.history.replaceState(null,'','/?tab=broadcast');
+ const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>({...data})});
+ vi.stubGlobal('fetch',fetchMock);
+ render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
+ fireEvent.click(await screen.findByRole('button',{name:'雇用契約書のお知らせを変更する'}));
+ let dialog=within(screen.getByRole('dialog',{name:'定型文の変更'}));
+ expect(dialog.getByLabelText('定型文の題名')).toHaveValue('{年}年{月}月分 雇用契約書');
+ fireEvent.change(dialog.getByLabelText('ボタンの名前'),{target:{value:'変更した名前'}});
+ fireEvent.click(dialog.getByRole('button',{name:'保存する'}));
+ await screen.findByRole('button',{name:'雇用契約書のお知らせを変更する'});
+ expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateSave'&&JSON.parse(init.body).label==='変更した名前')).toBe(true);
+});
+
+it('許可のないタブを隠し、URLで指定されても許可されたタブを開く',async()=>{
+ window.history.replaceState(null,'','/?tab=broadcast');
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>data}));
+ render(<SystemViewProvider value={{pageKey:'system-line',admin:false,canAdd:false,tabs:['tags','greeting','broadcast','contacts','richmenu','groups'].map(key=>({key,label:key,allowed:key==='greeting',canAdd:false}))}}><InitialUrlView search={window.location.search}><LineManager/></InitialUrlView></SystemViewProvider>);
+ await screen.findByText('こんにちは よろしくお願いします');
+ expect(screen.queryByRole('tab',{name:'一斉送信'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'雇用契約書のお知らせ'})).toBeNull();
+});
+
+it('定型文を追加でき、削除は確認の小窓で確定するまで送らない',async()=>{
+ window.history.replaceState(null,'','/?tab=broadcast');
+ const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>data});
+ vi.stubGlobal('fetch',fetchMock);
+ render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
+ fireEvent.click(await screen.findByRole('button',{name:'＋ 定型文を追加'}));
+ let dialog=within(screen.getByRole('dialog',{name:'定型文の追加'}));
+ for(const [name,value] of [['ボタンの名前','新しい定型文'],['定型文の題名','{年}年のお知らせ'],['定型文の送信内容','お疲れ様です']]) fireEvent.change(dialog.getByLabelText(name),{target:{value}});
+ fireEvent.click(dialog.getByRole('button',{name:'保存する'}));
+ await waitFor(()=>expect(screen.queryByRole('dialog',{name:'定型文の追加'})).toBeNull());
+ expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateSave'&&!JSON.parse(init.body).id)).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'雇用契約書のお知らせを変更する'}));
+ dialog=within(screen.getByRole('dialog',{name:'定型文の変更'}));
+ fireEvent.click(dialog.getByRole('button',{name:'削除する'}));
+ expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateDelete')).toBe(false);
+ fireEvent.click(within(screen.getByRole('dialog',{name:'定型文の削除'})).getByRole('button',{name:'削除する'}));
+ await waitFor(()=>expect(screen.queryByRole('dialog',{name:'定型文の変更'})).toBeNull());
+ expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateDelete')).toBe(true);
 });

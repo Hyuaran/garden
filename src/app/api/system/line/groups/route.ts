@@ -4,14 +4,14 @@ import { checked, requireLineAdmin } from '@/lib/line/tags.server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 export const runtime = 'nodejs';
 export async function GET() {
-  if (!await requireLineAdmin()) return NextResponse.json({}, {status:403});
+  if (!await requireLineAdmin('groups')) return NextResponse.json({}, {status:403});
   try {
     const {data} = checked(await getSupabaseAdmin().from('system_line_target').select('id,label,account,chatwork_room_id,notify_enabled,linked_at').eq('active',true).in('account',['dev','official']).in('target_type',['group','room']).order('joined_at'));
     return NextResponse.json({groups:data});
   } catch { return NextResponse.json({error:'グループを読み込めませんでした。'}, {status:500}); }
 }
 export async function POST(request: Request) {
-  if (!await requireLineAdmin()) return NextResponse.json({}, {status:403});
+  if (!await requireLineAdmin('groups')) return NextResponse.json({}, {status:403});
   try {
     const b = await request.json(); const db = getSupabaseAdmin();
     if (b.id && (typeof b.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(b.id))) throw new Error();

@@ -33,4 +33,4 @@ async function InnoveraSyncPage() {
   return <InnoveraSyncClient initialLogs={logs} initialCheckedAt={state?.last_checked_at} />;
 }
 
-export default withSystemView("system-forms", InnoveraSyncPage, "auto");
+export default withSystemView("system-innovera", InnoveraSyncPage);

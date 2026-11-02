@@ -11,7 +11,7 @@ const request=(body:object)=>new Request('http://localhost/api/system/line/manag
 it('全権管理者以外のすべての入口を403にする',async()=>{
  mocks.admin.mockResolvedValue(null);
  expect((await GET()).status).toBe(403);
- for(const action of ['tag','member','team','contact','applyMenus','greeting','test','preview','send'])expect((await POST(request({action}))).status).toBe(403);
+ for(const action of ['tag','member','team','contact','applyMenus','greeting','test','preview','send','templateSave','templateDelete'])expect((await POST(request({action}))).status).toBe(403);
  expect(mocks.db).not.toHaveBeenCalled();expect(mocks.push).not.toHaveBeenCalled();
 });
 it('確認時に人数と残り通数を返し、送信をしない',async()=>{
@@ -42,4 +42,34 @@ it('確認した人に500人ずつ送り、同じ確認からは二度送らな�
  expect(mocks.push.mock.calls.map(c=>c[0].length)).toEqual([500,500,1]);
  expect(updates).toContainEqual({sent_count:1001,failed_count:0});
  expect((await POST(request(body))).status).toBe(400);expect(mocks.push).toHaveBeenCalledTimes(3);
+});
+
+it('各操作は対応するタブを判定し、他タブの権限だけでは保存できない',async()=>{
+ mocks.admin.mockImplementation(async(tab:string)=>tab==='tags'?{employee_id:'editor'}:null);
+ for(const action of ['templateSave','templateDelete','preview','send']) {
+  expect((await POST(request({action}))).status).toBe(403);
+  expect(mocks.admin).toHaveBeenLastCalledWith('broadcast');
+ }
+ expect(mocks.db).not.toHaveBeenCalled();
+});
+it('定型文の追加・変更・削除と保存した人を記録する',async()=>{
+ mocks.admin.mockResolvedValue({employee_id:'editor',name:'保存した人'});
+ const writes:{table:string;kind:string;row:unknown}[]=[];
+ mocks.db.mockReturnValue({from:(table:string)=>{
+  const q={select:()=>q,eq:()=>q,order:()=>q,limit:()=>q,
+   update:(row:unknown)=>{writes.push({table,kind:'update',row});return q;},
+   insert:(row:unknown)=>{writes.push({table,kind:'insert',row});return q;},
+   delete:()=>{writes.push({table,kind:'delete',row:null});return q;},
+   then:(resolve:(r:unknown)=>unknown)=>Promise.resolve({data:table==='system_line_tag'?[{kind:'free',name:'通知'}]:[{sort:4}],error:null}).then(resolve)};
+  return q;
+ }});
+ const fields={label:'連絡',title:'{年}年',body:'本文',tags:[{kind:'free',name:'通知'}]};
+ expect((await POST(request({action:'templateSave',...fields}))).status).toBe(200);
+ expect(writes[0]).toMatchObject({kind:'insert',table:'system_line_broadcast_template',row:{...fields,sort:5,updated_by:'editor',updated_by_name:'保存した人'}});
+ expect((await POST(request({action:'templateSave',...fields,id:'template-id'}))).status).toBe(200);
+ expect(writes[1]).toMatchObject({kind:'update',row:{updated_by:'editor'}});
+ expect((await POST(request({action:'templateDelete',id:'template-id'}))).status).toBe(200);
+ expect(writes[2].kind).toBe('delete');
+ expect((await POST(request({action:'templateSave',...fields,label:''}))).status).toBe(400);
+ expect(writes).toHaveLength(3);
 });
