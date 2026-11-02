@@ -37,12 +37,14 @@ export function nextEmployeeNumber(numbers: (string | null)[], kotCodes: string[
   if (number >= 9000) throw new Error("入力内容を確認してください");
   return String(number);
 }
+// Kintone 名簿の会社の選択肢は「ヒュアラン」のように「株式会社」なし（Root の法人名は「株式会社ヒュアラン」）
+export const rosterCompanyName = (name: string) => name.replace(/^(株式会社|（株）|\(株\))\s*/, "").replace(/\s*(株式会社)$/, "").trim();
 export function rosterPayload(c: HireCandidate, companyName: string) {
  return Object.fromEntries(Object.entries({
  従業員名_姓: c.last_name, 従業員名_名: c.first_name,
  従業員名_姓名: c.last_name + " " + c.first_name, 従業員名_姓名カナ: c.last_name_kana + " " + c.first_name_kana,
  生年月日: c.birthday, 入社日: c.hire_date, 雇用形態: c.employment_type,
- 社員番号: c.employee_number, 打刻ID: c.employee_number, 従業員ステータス: "在籍中", ドロップダウン_15: companyName,
+ 社員番号: c.employee_number, 打刻ID: c.employee_number, 従業員ステータス: "在籍中", ドロップダウン_15: rosterCompanyName(companyName),
  }).map(([k,value]) => [k,{value}]));
 }
 

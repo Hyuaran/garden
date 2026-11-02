@@ -213,3 +213,4 @@ describe("hire checklist",()=>{
   expect(result[1]).not.toHaveProperty("onboarding_status");
  });
 });
+it("名簿の会社の選択肢に合わせて「株式会社」を外す",()=>{expect(rosterPayload(candidate(),"株式会社ヒュアラン").ドロップダウン_15).toEqual({value:"ヒュアラン"});expect(rosterPayload(candidate(),"株式会社ARATA").ドロップダウン_15).toEqual({value:"ARATA"});});
