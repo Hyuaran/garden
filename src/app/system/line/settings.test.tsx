@@ -173,6 +173,9 @@ it('定型文を追加でき、削除は確認の小窓で確定するまで送�
  fireEvent.click(dialog.getByRole('button',{name:'保存する'}));
  await waitFor(()=>expect(screen.queryByRole('dialog',{name:'定型文の追加'})).toBeNull());
  expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateSave'&&!JSON.parse(init.body).id)).toBe(true);
+ // 結果は画面の下に浮かべる（出ても消えても部品を押し下げない）。何をしたかが分かる文
+ const notice=await screen.findByText('定型文を保存しました。');
+ expect(notice.closest('div[style*="position: fixed"]')).not.toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'雇用契約書のお知らせを変更する'}));
  dialog=within(screen.getByRole('dialog',{name:'定型文の変更'}));
  fireEvent.click(dialog.getByRole('button',{name:'削除する'}));
