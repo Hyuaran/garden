@@ -103,7 +103,7 @@ it('一斉送信の記録は行を押すと送った文と相手を小窓で見�
   expect(dialog.getByText(/1行目/).textContent).toBe('1行目\n2行目');
   expect(dialog.getByText('研修')).toBeTruthy();
   expect(dialog.getByText('3人（送信済 3・失敗 0）')).toBeTruthy();
-  expect(dialog.getByText('処理済み')).toBeTruthy();
+  expect(dialog.getByText('送信済み')).toBeTruthy();
 });
 it('一斉送信の定型文ボタンで題名・文・絞り込みが入る',async()=>{
   window.history.replaceState(null,'','/?tab=broadcast');

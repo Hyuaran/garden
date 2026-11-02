@@ -29,7 +29,7 @@ export async function loadLineData(sync = true, employeeId?: string) {
     checked(await db.rpc(employeeId ? 'system_line_replace_employee_auto' : 'system_line_replace_auto',{ ...(employeeId ? {p_employee:employeeId} : {}), p_members:activeRows.filter(e=>!employeeId || e.employee_id===employeeId).flatMap(e=>automaticTags(e,tags)) }));
   }
   const members=await allRows<Member>('system_line_tag_member','*','employee_id');
-  const history=checked(await db.from('system_line_broadcast').select('*').order('created_at',{ascending:false}).limit(100)).data;
+  const history=checked(await db.from('system_line_broadcast').select('*').not('sent_at','is',null).order('sent_at',{ascending:false}).limit(100)).data;
   return { tags: tags.sort((a,b)=>a.sort-b.sort), employees:activeRows, greetings, members, history, updatedAt:new Date().toISOString() };
 }
 export async function linkedGreeting(employeeNumber: string) {

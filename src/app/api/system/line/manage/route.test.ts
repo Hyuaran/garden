@@ -19,9 +19,10 @@ it('確認時に人数と残り通数を返し、送信をしない',async()=>{
  const e={employee_id:'1',employee_number:'0001',name:'山田',is_active:true,line_user_id:'U1',hire_date:null,termination_date:null,line_link_source:'self'};
  mocks.load.mockResolvedValue({employees:[e,{...e,employee_id:'2',line_user_id:null}],tags:[],members:[]});
  mocks.quota.mockResolvedValue({remaining:10});
- mocks.db.mockReturnValue({from:()=>({insert:()=>({select:()=>({single:async()=>({data:{id:'draft'},error:null})})})})});
+ const cleanup=vi.fn(async()=>({error:null}));
+ mocks.db.mockReturnValue({from:()=>({delete:()=>({is:(col:string,v:null)=>({lt:(c:string,iso:string)=>{expect([col,v,c]).toEqual(['sent_at',null,'created_at']);return cleanup();}})}),insert:()=>({select:()=>({single:async()=>({data:{id:'draft'},error:null})})})})});
  const r=await POST(request({action:'preview',title:'連絡',body:'本文',tagIds:[]}));
- expect(r.status).toBe(200);expect(await r.json()).toMatchObject({people:[e],remaining:10,id:'draft'});expect(mocks.quota).toHaveBeenCalledTimes(1);expect(mocks.push).not.toHaveBeenCalled();
+ expect(r.status).toBe(200);expect(cleanup).toHaveBeenCalledTimes(1);expect(await r.json()).toMatchObject({people:[e],remaining:10,id:'draft'});expect(mocks.quota).toHaveBeenCalledTimes(1);expect(mocks.push).not.toHaveBeenCalled();
 });
 it('残り通数が足りなければ確認を止める',async()=>{
  mocks.admin.mockResolvedValue({employee_id:'admin'});mocks.db.mockReturnValue({});

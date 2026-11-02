@@ -79,6 +79,8 @@ export async function POST(request:Request) {
       if(b.action==='preview') {
         const quota=await getLineStaffQuota();
         if(!ids.length || (quota.remaining!==null&&quota.remaining<ids.length)) throw new Error('送る人がいないか、今月の残り通数が足りません。');
+        // 確認だけで送らなかった記録は履歴に出さない。1 時間たったものはここで片付ける（確認の有効期限は 5 分）
+        checked(await db.from('system_line_broadcast').delete().is('sent_at',null).lt('created_at',new Date(Date.now()-3600_000).toISOString()));
         const row=checked(await db.from('system_line_broadcast').insert({title:b.title,body:b.body,tag_ids:b.tagIds,recipient_count:ids.length,created_by:admin.employee_id}).select('id').single()).data;
         if(!row) throw new Error('記録を保存できませんでした。');
         const expires=Date.now()+5*60*1000;
