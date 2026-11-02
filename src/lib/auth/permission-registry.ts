@@ -181,8 +181,9 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     label: "入社手続き：入社予定者・入社後の確認（/system/onboarding?tab=candidates・confirmations）",
     group: "System",
     kind: "タブ",
-    allows: (role) => role === "super_admin",
-    source: "src/app/system/onboarding/_lib/hire-candidates.server.ts:hireAdminContext（全権管理者のみ）",
+    // 2026-11-02〜 そのタブを見られる人（歯車の閲覧権限）が登録・入社・確認まで書ける。既定は入社予定者＝責任者以上
+    allows: (role) => MANAGER_ROLES.has(role),
+    source: "src/app/system/onboarding/_lib/hire-candidates.server.ts:hireAdminContext（タブの閲覧権限＝canView で判定・歯車で変更可）",
   },
   {
     key: "calls.view_all",
