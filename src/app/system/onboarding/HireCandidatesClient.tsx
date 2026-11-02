@@ -18,6 +18,7 @@ async function api(path = "", method = "GET", body?: unknown) {
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
 const steps = [["number","社員番号を決める"],["kot","KING OF TIME に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
 const stopped = (r:HireCandidate)=>steps.find(([key])=>key!=="filemaker"&&!!r.steps[key]?.error);
+const onboardingLabel=(r:HireCandidate)=>r.onboarding_status==="submitted"?"提出ずみ":r.onboarding_status?"入力中":"未着手";
 export default function HireCandidatesClient({userId,tab,initialRows,canWrite = true}:{initialRows?:HireCandidate[];userId:string;tab:"candidates"|"confirmations";canWrite?:boolean}) {
  const [reviewId,setReviewId]=useState<string|null>(null);
  const [visibility, setVisibility, visibilityReady] = useStoredView('hire-candidates:'+userId, {showNoShow:false,showComplete:false}, raw => { const v=JSON.parse(raw); return {showNoShow:v?.showNoShow===true,showComplete:v?.showComplete===true}; });
@@ -126,6 +127,8 @@ export default function HireCandidatesClient({userId,tab,initialRows,canWrite = 
  {id:"complete",label:"①締結",align:"mark",type:"number",value:checklistPriority,render:r=><span className={signaturesComplete(r)?layout.done:layout.pending}>{signatureCount(r)}/3</span>},
  {id:"line",label:"②LINE",align:"mark",type:"text",value:r=>r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未",render:r=><span className={lineComplete(r)?layout.done:layout.pending}>{r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未"}</span>},
  {id:"filemaker",label:"③FileMaker",align:"mark",type:"text",value:r=>r.checklist?.filemaker_added?"追加済み":"未",render:r=><span className={r.checklist?.filemaker_added?layout.done:layout.pending}>{r.checklist?.filemaker_added?"追加済み":"未"}</span>},
+ // 完了には本人の入社手続き（代行入力を含む）の提出も要る。ここが「未着手」「入力中」だと完了にならない
+ {id:"onboarding",label:"④入社手続き",align:"mark",type:"text",value:onboardingLabel,render:r=><span className={r.onboarding_status==="submitted"?layout.done:layout.pending}>{onboardingLabel(r)}</span>},
  ];
  const reviewRow=rows.find(r=>r.id===reviewId);
  const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));

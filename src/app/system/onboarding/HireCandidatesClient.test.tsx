@@ -104,6 +104,7 @@ it("keeps the confirmation table compact and opens all fields in the common moda
  expect(screen.getByText("0/3")).toBeVisible();
  expect(screen.getByRole("columnheader",{name:/②LINE/})).toBeVisible();
  expect(screen.getByRole("columnheader",{name:/③FileMaker/})).toBeVisible();
+ expect(screen.getByRole("columnheader",{name:/④入社手続き/})).toBeVisible();
  expect(screen.queryByLabelText("契約書の種類")).not.toBeInTheDocument();
  review.focus();
  fireEvent.keyDown(review,{key:"Enter"});
