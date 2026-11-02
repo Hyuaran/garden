@@ -37,10 +37,10 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
       <div className="garden-help-heading"><h1 {...CLARITY_MASK}>{record ? `${record.values.name || record.employee.name}さんの入社手続き` : notStarted ? `${notStarted.name}さんの入社手続き` : "入社手続き"}</h1><HelpButton /></div>
     </header><SystemTabs />
     <div className={styles.detailActions}><Link className={styles.button} href="/system/onboarding?tab=all">戻る</Link>
-    {(record?.status === "draft" || notStarted) && <Link className={styles.button} href={`/system/onboarding/admin/${encodeURIComponent(employeeId)}/proxy`}>本人の代わりに入力する</Link>}</div>
+    {(record?.status === "draft" || notStarted) && <Link className={styles.button} href={`/system/onboarding/admin/${encodeURIComponent(employeeId)}/proxy`}>代行入力する</Link>}</div>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
-      : notStarted ? <main className={styles.panel} role="status"><h2>未着手</h2><p>本人はまだ入社手続きを始めていません。本人に案内するか、［本人の代わりに入力する］から入力してください。</p></main>
+      : notStarted ? <main className={styles.panel} role="status"><h2>未着手</h2><p>本人はまだ入社手続きを始めていません。本人に案内するか、［代行入力する］から入力してください。</p></main>
       : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} wages={wages} /></main> : null}
   </div>;
 }

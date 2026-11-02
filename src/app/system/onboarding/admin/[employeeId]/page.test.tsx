@@ -24,12 +24,12 @@ describe("入社手続き事務詳細ページ", () => {
     mocks.context.mockResolvedValue({ managerEmployeeId: "EMP-M", canWrite: true });
     mocks.detail.mockResolvedValue({ values: { ...emptyInput(), name: "後道 愛美" }, employee: { name: "後道 愛美" }, status: "draft" });
     const { unmount } = render(await OnboardingAdminDetailPage({ params: Promise.resolve({ employeeId: "EMP-1" }) }));
-    expect(screen.getByRole("link", { name: "本人の代わりに入力する" })).toHaveAttribute("href", "/system/onboarding/admin/EMP-1/proxy");
+    expect(screen.getByRole("link", { name: "代行入力する" })).toHaveAttribute("href", "/system/onboarding/admin/EMP-1/proxy");
     expect(screen.getByRole("heading", { name: "後道 愛美さんの入社手続き" })).toBeInTheDocument();
     unmount();
     mocks.detail.mockResolvedValue({ values: emptyInput(), employee: { name: "後道 愛美" }, status: "submitted" });
     render(await OnboardingAdminDetailPage({ params: Promise.resolve({ employeeId: "EMP-1" }) }));
-    expect(screen.queryByRole("link", { name: "本人の代わりに入力する" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "代行入力する" })).toBeNull();
   });
 
   it("責任者未満にはメールアドレスの修正ボタンを出さない", async () => {
