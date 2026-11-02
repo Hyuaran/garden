@@ -91,3 +91,16 @@ it('あいさつ文は一覧が初期表示で、編集・試し送信確認・�
   expect(screen.getByText('こんにちは よろしくお願いします')).toBeInTheDocument();
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
+it('一斉送信の記録は行を押すと送った文と相手を小窓で見られる',async()=>{
+  window.history.replaceState(null,'','/?tab=broadcast');
+  const tags=[{id:'t1',kind:'free',name:'研修',sort:0}];
+  const history=[{id:'b1',title:'連絡のテスト',body:'1行目\n2行目',tag_ids:['t1'],recipient_count:3,sent_count:3,failed_count:0,created_at:'2026-11-02T03:18:03Z',sent_at:'2026-11-02T03:18:05Z'}];
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({...data,tags,history})}));
+  render(<LineManager/>);
+  fireEvent.click(await screen.findByText('連絡のテスト'));
+  const dialog=within(screen.getByRole('dialog'));
+  expect(dialog.getByText(/1行目/).textContent).toBe('1行目\n2行目');
+  expect(dialog.getByText('研修')).toBeTruthy();
+  expect(dialog.getByText('3人（送信済 3・失敗 0）')).toBeTruthy();
+  expect(dialog.getByText('処理済み')).toBeTruthy();
+});
