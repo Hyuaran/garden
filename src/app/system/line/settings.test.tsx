@@ -105,3 +105,13 @@ it('一斉送信の記録は行を押すと送った文と相手を小窓で見�
   expect(dialog.getByText('3人（送信済 3・失敗 0）')).toBeTruthy();
   expect(dialog.getByText('処理済み')).toBeTruthy();
 });
+it('一斉送信の定型文ボタンで題名・文・絞り込みが入る',async()=>{
+  window.history.replaceState(null,'','/?tab=broadcast');
+  const tags=[{id:'e2',kind:'employment',name:'アルバイト',sort:0},{id:'b1',kind:'business',name:'ブロードバンド事業',sort:0},{id:'s1',kind:'status',name:'在籍中',sort:0}];
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({...data,tags})}));
+  render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
+  fireEvent.click(await screen.findByRole('button',{name:'雇用契約書のお知らせ'}));
+  expect((screen.getByLabelText('題名') as HTMLInputElement).value).toMatch(/^\d{4}年\d{1,2}月分 雇用契約書$/);
+  expect((screen.getByLabelText('送る文') as HTMLTextAreaElement).value).toContain('【雇用契約書】のクラウドサインをお送りしてますので');
+  for (const name of ['アルバイト','ブロードバンド事業','在籍中']) expect(screen.getAllByText(name).length).toBeGreaterThan(0);
+});
