@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import Modal from "@/app/system/_components/Modal/Modal";
 import { useActionDialog } from "@/app/system/_components/Modal/useActionDialog";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
@@ -90,14 +91,7 @@ async function readActiveExpenseRequests(
   });
 }
 
-function readInitialCorpFilter() {
-  if (typeof window === "undefined") return "all";
-  try {
-    return window.sessionStorage.getItem(CORP_FILTER_STORAGE_KEY) ?? "all";
-  } catch {
-    return "all";
-  }
-}
+
 
 export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }) {
   const actionDialog = useActionDialog();
@@ -112,7 +106,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const [corps, setCorps] = useState<Corp[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
   const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
-  const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
+  const [corpFilter, setCorpFilterState, viewReady] = useStoredView(CORP_FILTER_STORAGE_KEY,"all",raw=>raw,value=>value,"sessionStorage");
   const [applicantFilter, setApplicantFilter] = useState("all");
   const [listSearchField, setListSearchField] = useState<ExpenseBookingSearchField>("all");
   const [listSearchValue, setListSearchValue] = useState("");

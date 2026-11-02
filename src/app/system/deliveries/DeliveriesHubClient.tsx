@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -22,14 +23,7 @@ function GridViewIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg>;
 }
 
-function readViewMode(): ViewMode {
-  try {
-    if (typeof window === "undefined") return "list";
-    return window.localStorage.getItem(VIEW_MODE_KEY) === "grid" ? "grid" : "list";
-  } catch {
-    return "list";
-  }
-}
+
 
 function storeViewMode(mode: ViewMode) {
   try {
@@ -40,14 +34,14 @@ function storeViewMode(mode: ViewMode) {
 }
 
 export default function DeliveriesHubClient({ deliveries }: { deliveries: SystemDeliveryDefinition[] }) {
-  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
+  const [viewMode, setViewMode, viewReady] = useStoredView<ViewMode>(VIEW_MODE_KEY, "list", raw => raw === "grid" ? "grid" : "list", value => value);
 
   function changeViewMode(mode: ViewMode) {
     setViewMode(mode);
     storeViewMode(mode);
   }
 
-  return <div className={styles.pageShell}>
+  return <div className={styles.pageShell} style={{ visibility: viewReady ? "visible" : "hidden" }}>
     <header className={styles.header}>
       <div>
         <SystemBreadcrumb items={[{ label: "自動配信" }]} />
@@ -57,7 +51,7 @@ export default function DeliveriesHubClient({ deliveries }: { deliveries: System
 
     <div className={styles.listHeading}>
       <h2>自動配信の一覧</h2>
-      <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
+      <HeaderViewToggle ready={viewReady}><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
     </div>
 
     {viewMode === "grid" ? (

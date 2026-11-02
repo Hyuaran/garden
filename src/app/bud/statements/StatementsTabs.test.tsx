@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { renderWithInitialUrl as render } from "@/lib/ui/initial-url.test-helper";
+import {act, fireEvent,  screen} from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import StatementsTabs from "./StatementsTabs";

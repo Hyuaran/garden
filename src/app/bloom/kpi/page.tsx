@@ -1,5 +1,8 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import KpiDashboard from "./components/KpiDashboard";
 
-export default function BloomKpiPage() {
+function BloomKpiPage() {
   return <KpiDashboard />;
 }
+
+export default withInitialUrlView(BloomKpiPage);

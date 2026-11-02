@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import styles from "./contracts.module.css";
 const pdfMocks = vi.hoisted(() => ({ extract: vi.fn() }));
 vi.mock("./_lib/contract-pdf.client", () => ({ extractContractPdfPages: pdfMocks.extract }));
-import ContractsPage from "./page";
+import ContractsPage from "./UrlViewClient";
 pdfMocks.extract.mockResolvedValue(["契約書テキスト"]);
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); pdfMocks.extract.mockResolvedValue(["契約書テキスト"]); });
 beforeEach(() => {

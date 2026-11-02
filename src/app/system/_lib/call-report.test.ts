@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildCallReport, jstDateString, parseReportDate } from "./call-report";
 import type { CallMetricsResponse } from "./call-metrics";
 import { summarizeCallMetrics } from "./call-metrics";

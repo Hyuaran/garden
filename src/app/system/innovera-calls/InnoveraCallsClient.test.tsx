@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import InnoveraCallsClient from "./InnoveraCallsClient";
+vi.mock("next/navigation", async importOriginal => ({ ...await importOriginal<object>(), useSearchParams: () => new URLSearchParams(window.location.search) }));
 
 vi.mock("@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb", () => ({
   default: () => <nav aria-label="breadcrumb" />,

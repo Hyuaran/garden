@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { notFound, redirect } from 'next/navigation';
 import { requireEmployee } from '@/app/system/mypage/_lib/submission-server';
 import { withSystemView } from '@/lib/auth/system-view-page.server';
@@ -12,4 +13,4 @@ async function MobileExpenseFormPage({ params }: { params: Promise<{ form: strin
   if (!employee) redirect(`/login?returnTo=${encodeURIComponent(`/m/expense/${form}`)}`);
   return <ExpenseClient submitterName={String(employee.name)} employeeNumber={String(employee.employee_number)} fixedForm={form} />;
 }
-export default withSystemView('system-expense', MobileExpenseFormPage, undefined, '/m/expense');
+export default withInitialUrlView(withSystemView('system-expense', MobileExpenseFormPage, undefined, '/m/expense'));

@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
@@ -37,4 +38,4 @@ async function CorporateSitesPage() {
   return <SitesHubClient data={data} role={role} notifyState={notifyState} />;
 }
 
-export default withSystemView("system-sites", CorporateSitesPage);
+export default withInitialUrlView(withSystemView("system-sites", CorporateSitesPage));

@@ -1,4 +1,5 @@
 "use client";
+import { useBrowserOrigin } from "@/lib/ui/useBrowserOrigin";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
@@ -40,13 +41,13 @@ export default function MyPageClient({ initialTab, embedded = false, registered,
 
 // 従業員に渡すマイページの入口（/my＝メニューなし）。System の中の自分の情報にだけ出す
 function EmployeeLink() {
-  const [url, setUrl] = useState("/my");
+  const origin=useBrowserOrigin();
+  const url=origin ? `${origin}/my` : "/my";
   const [copied, setCopied] = useState(false);
-  useEffect(() => { setUrl(`${window.location.origin}/my`); }, []);
   async function copy() {
     try { await navigator.clipboard.writeText(url); setCopied(true); window.setTimeout(() => setCopied(false), 2000); } catch { setCopied(false); }
   }
-  return <p className={styles.employeeLink}>
+  return <p className={styles.employeeLink} style={{visibility:origin?"visible":"hidden"}}>
     <span>従業員用リンク</span>
     <a href="/my" target="_blank" rel="noopener">{url}</a>
     <button type="button" onClick={() => void copy()}>{copied ? "コピーしました" : "コピー"}</button>

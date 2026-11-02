@@ -11,9 +11,9 @@ describe("my page server",()=>{
  beforeEach(()=>{mocks.user={id:"u"};mocks.active=true;mocks.hire="2026-10-28";mocks.needs.mockReset();});
  it.each([true,false])("shows onboarding only when pending %s",async(pending)=>{
  mocks.needs.mockResolvedValue(pending); const page=await Page({searchParams:Promise.resolve({tab:"profile"})});
- expect(Boolean(page.props.children[0])).toBe(pending);expect(mocks.needs).toHaveBeenCalledWith(expect.anything(),"e");
+ expect(Boolean(page.props.children.props.children[0])).toBe(pending);expect(mocks.needs).toHaveBeenCalledWith(expect.anything(),"e");
  });
  it("keeps the requested tab through login",async()=>{mocks.user=null;await expect(Page({searchParams:Promise.resolve({tab:"calls"})})).rejects.toThrow("/login?returnTo=%2Fmy%3Ftab%3Dcalls");});
  it("requires an active account",async()=>{mocks.active=false;await expect(Page({searchParams:Promise.resolve({})})).rejects.toThrow("/login?returnTo=%2Fmy");});
- it("loads the calls content",async()=>{const page=await Page({searchParams:Promise.resolve({tab:"calls"})});expect(page.props.tab).toBe("calls");expect(mocks.needs).not.toHaveBeenCalled();});
+ it("loads the calls content",async()=>{const page=await Page({searchParams:Promise.resolve({tab:"calls"})});expect(page.props.children.props.tab).toBe("calls");expect(mocks.needs).not.toHaveBeenCalled();});
 });

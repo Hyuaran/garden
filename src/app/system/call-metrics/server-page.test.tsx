@@ -24,7 +24,7 @@ describe("call metrics server page", () => {
 
   it("returns only the authorized call metrics content", async () => {
     mocks.createServerClient.mockResolvedValue(client());
-    const page = await CallMetricsPage() as ReactElement;
+    const page = await CallMetricsPage({}) as ReactElement;
     expect(page.type).toBeTypeOf("function");
   });
 });

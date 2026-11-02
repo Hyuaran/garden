@@ -1,9 +1,10 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { broadbandAccess } from "@/lib/bud/broadband/access";
 import { readBroadbandTable } from "@/lib/bud/broadband/table";
 import { readReferences } from "@/lib/bud/broadband/references";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import BroadbandTable from "./BroadbandTable";
-export default async function BroadbandPage() {
+async function BroadbandPage() {
   const auth = await broadbandAccess();
   if (!auth.ok) return <p>権限がありません</p>;
   try {
@@ -15,3 +16,5 @@ export default async function BroadbandPage() {
     return <BroadbandTable daysAfter={settings.data.date_window_after} admin={auth.admin} {...references} rows={rows} userId={auth.userId} today={new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())} kintoneBase={subdomain && app ? `https://${subdomain}.cybozu.com/k/${encodeURIComponent(app)}` : ""} />;
   } catch { return <p role="alert">収支を読み込めませんでした。時間をおいてもう一度お試しください。</p>; }
 }
+
+export default withInitialUrlView(BroadbandPage);

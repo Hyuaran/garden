@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
 
 
@@ -28,7 +29,7 @@ import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { BLOOM_PATHS } from "../_constants/routes";
 
@@ -80,23 +81,9 @@ export default function BloomSidebar() {
   const pathname = usePathname() || "";
 
   // default: expanded (collapsed = false)、localStorage で "1" の時のみ collapsed
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed,setCollapsed,viewReady]=useStoredView(STORAGE_KEY,false,raw=>raw==="1",value=>value?"1":"0");
 
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      // 明示的に "1" のみ collapsed、それ以外（null / "0" / 何でも）は expanded
-      const isCollapsed = stored === "1";
-      setCollapsed(isCollapsed);
-      document.body.classList.toggle("nav-pages-collapsed", isCollapsed);
-    } catch {
-      /* ignore */
-    }
-    return () => {
-      document.body.classList.remove("nav-pages-collapsed");
-    };
-  }, []);
-
+  useLayoutEffect(()=>{document.body.classList.toggle("nav-pages-collapsed",collapsed);return()=>document.body.classList.remove("nav-pages-collapsed");},[collapsed]);
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
@@ -108,12 +95,12 @@ export default function BloomSidebar() {
       document.body.classList.toggle("nav-pages-collapsed", next);
       return next;
     });
-  }, []);
+  }, [setCollapsed]);
 
   return (
     <>
       {/* プロト 1:1: <aside class="sidebar sidebar-dual"> でラップ */}
-      <aside className="sidebar sidebar-dual" id="sidebarDual">
+      <aside style={{visibility:viewReady?"visible":"hidden"}} className="sidebar sidebar-dual" id="sidebarDual">
         {/* 1 本目: nav-apps (Garden 12 モジュール icons column、hover で展開) */}
         <nav className="nav-apps" id="navApps" aria-label="Garden Series アプリ一覧">
           {NAV_APPS.filter(nav => nav.app !== 'bloom' || canView(nav.href)).map((nav) => {

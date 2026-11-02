@@ -1,5 +1,5 @@
 "use client";
-import { useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -15,14 +15,17 @@ export function useInjectedBudTabs(sourceHtml: string) {
   const [active, select] = useUrlTab(tabs[0]?.key ?? "", key => tabs.some(tab => tab.key === key));
   const selected = tabs.some(tab => tab.key === active) ? active : tabs[0]?.key ?? "";
   const root = useRef<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    const node = root.current;
-    if (!node || !selected) return;
-    node.querySelectorAll<HTMLElement>(".tab-content[id]").forEach(panel => panel.classList.toggle("active", panel.id === "tab-" + selected));
-  }, [sourceHtml, selected]);
+  const html = (nav ? sourceHtml.replace(nav, "") : sourceHtml).replace(/<([a-z][\w-]*)\b[^>]*>/gi, tag => {
+    const classes = tag.match(/\bclass=["']([^"']*)["']/);
+    const id = tag.match(/\bid=["']([^"']*)["']/)?.[1];
+    if (!classes || !classes[1].split(/\s+/).includes("tab-content") || !id) return tag;
+    const next = classes[1].split(/\s+/).filter(value => value !== "active");
+    if (id === "tab-" + selected) next.push("active");
+    return tag.replace(classes[0], 'class="' + next.join(" ") + '"');
+  });
   return {
     root,
-    html: nav ? sourceHtml.replace(nav, "") : sourceHtml,
+    html,
     count: tabs.length,
 
     navigation: <SystemTabs aria-label="表示切替" actions={<SystemViewButton tabKey={selected} />}>{tabs.map(tab => <button key={tab.key} type="button" role="tab" data-tab={tab.key} aria-selected={selected === tab.key} onClick={() => select(tab.key)}>{tab.label}{tab.badge && <span>{tab.badge}</span>}</button>)}</SystemTabs>,

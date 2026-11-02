@@ -1,4 +1,5 @@
 "use client";
+import { useViewportMatch } from "@/lib/ui/useViewportMatch";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
@@ -55,14 +56,8 @@ export default function BankAccountsPage() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [companies, setCompanies] = useState<BankCorporation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mobile, setMobile] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 760px)");
-    const sync = () => setMobile(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
+  const [mobile] = useViewportMatch("(max-width: 760px)");
+
   const [filterCompany, setFilterCompany] = useState<string>("");
   const [editTarget, setEditTarget] = useState<BankAccount | null>(null);
   const [saving, setSaving] = useState(false);
@@ -230,23 +225,31 @@ export default function BankAccountsPage() {
       actions={<FilterRow style={{
         display: "flex",
         gap: 8
-      }}>        <ChoiceFilter
+      }}>
+        <ChoiceFilter
           label="法人"
           value={filterCompany}
           onValueChange={value => setFilterCompany(value)}
-        >          <option value="">すべての法人</option>          {companies.map((c) => <option key={c.id} value={c.id}>{c.name_short}</option>)}        </ChoiceFilter>        <Button
+        >
+          <option value="">すべての法人</option>
+          {companies.map((c) => <option key={c.id} value={c.id}>{c.name_short}</option>)}
+        </ChoiceFilter>
+        <Button
           onClick={() => setEditTarget(empty(companies[0]?.id ?? ""))}
           disabled={companies.length === 0 || !canWrite}
           title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}
-        >+ 新規追加</Button>      </FilterRow>}
-    />    {error && !editTarget && <div role="alert" style={{
+        >+ 新規追加</Button>
+      </FilterRow>}
+    />
+    {error && !editTarget && <div role="alert" style={{
       background: colors.dangerBg,
       color: colors.danger,
       padding: "8px 12px",
       borderRadius: 4,
       marginBottom: 12,
       fontSize: 13
-    }}>{error}</div>}    {loading ? <div style={{
+    }}>{error}</div>}
+    {loading ? <div style={{
       color: colors.textMuted,
       padding: 40,
       textAlign: "center"
@@ -267,13 +270,17 @@ export default function BankAccountsPage() {
       rows={filtered}
       activeIndex={activeIndex}
       onRowClick={canWrite ? setEditTarget : undefined}
-    /></div>}    <Modal
+    /></div>}
+    <Modal
       open={!!editTarget}
       onClose={() => setEditTarget(null)}
       onSubmit={handleSave}
       title={editTarget?.id ? "銀行口座を編集" : "銀行口座を追加"}
       width={720}
-    >      {editTarget && (<div>        <div className={styles.formGrid}>          <SelectField
+    >
+      {editTarget && (<div>
+        <div className={styles.formGrid}>
+          <SelectField
             label="法人"
             required
             disabled={!!editTarget.id}
@@ -393,7 +400,8 @@ export default function BankAccountsPage() {
               notes: e.target.value
             })}
           />
-        </div>        {error && <div role="alert" style={{
+        </div>
+        {error && <div role="alert" style={{
           background: colors.dangerBg,
           color: colors.danger,
           padding: "8px 12px",
@@ -408,14 +416,21 @@ export default function BankAccountsPage() {
           marginTop: 16,
           borderTop: `1px solid ${colors.border}`,
           paddingTop: 16
-        }}>          {editTarget.id && <ConfirmedDangerAction label={editTarget.is_active ? "停止" : "再開"} disabled={saving || !canWrite} onConfirm={() => handleToggleActive(editTarget)} />}
+        }}>
+          {editTarget.id && <ConfirmedDangerAction label={editTarget.is_active ? "停止" : "再開"} disabled={saving || !canWrite} onConfirm={() => handleToggleActive(editTarget)} />}
               <Button
             variant="secondary"
             onClick={() => setEditTarget(null)}
             disabled={saving}
-          >キャンセル</Button>          <Button
+          >キャンセル</Button>
+          <Button
             onClick={handleSave}
             disabled={saving || !canWrite}
             title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}
-          >{saving ? "保存中..." : "保存"}</Button>        </div>      </div>      )}    </Modal>  </div>);
+          >{saving ? "保存中..." : "保存"}</Button>
+        </div>
+      </div>
+      )}
+    </Modal>
+  </div>);
 }

@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { isRoleAtLeast } from "@/app/root/_constants/types";
@@ -37,4 +38,4 @@ async function ManualsHubPage({ searchParams }: { searchParams: Promise<{ tab?: 
   return <ManualsHubClient modules={modules} manuals={manuals} conceptHtml={conceptHtml} selectedTab={(await searchParams).tab} />;
 }
 
-export default withSystemView("system-manuals", ManualsHubPage);
+export default withInitialUrlView(withSystemView("system-manuals", ManualsHubPage));

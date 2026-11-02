@@ -1,4 +1,4 @@
-﻿import {beforeEach,it,expect,vi} from 'vitest';
+import {beforeEach,it,expect,vi} from 'vitest';
 const m=vi.hoisted(()=>({ingest:vi.fn(),report:vi.fn()}));
 vi.mock('@/lib/sprout/baitoru.server',()=>({ingestBaitoru:m.ingest,reportBaitoruFailure:m.report}));
 import {POST} from './route';

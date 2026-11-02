@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
 /**
  * GardenShell 窶・Bloom 蜴溷・讒矩 (position: fixed) + CSS 螟画焚迚ｩ逅・｣蜍・
@@ -14,7 +15,7 @@
  */
 
 import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 
 import { useTheme } from "@/app/_lib/theme/ThemeProvider";
@@ -138,22 +139,9 @@ export default function GardenShell({
   const themeIconUrl = `${T}/images/theme_icons/theme_${theme === "dark" ? "moon" : "sun"}.png`;
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return document.documentElement.dataset.preNavCollapsed === "1";
-  });
-  const [activityCollapsed, setActivityCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return document.documentElement.dataset.preActivityCollapsed === "1";
-  });
-  const favoriteSnapshot = useSyncExternalStore(subscribeFavorites, readFavoritesRaw, () => "[]");
-  const headerFavorites = useMemo(() => {
-    try {
-      return JSON.parse(favoriteSnapshot) as FavoriteItem[];
-    } catch {
-      return [];
-    }
-  }, [favoriteSnapshot]);
+  const [navCollapsed,setNavCollapsed,navReady]=useStoredView("garden_nav_pages_collapsed",false,raw=>raw==="1",value=>value?"1":"0");
+  const [activityCollapsed,setActivityCollapsed,activityReady]=useStoredView("garden_activity_collapsed",false,raw=>raw==="1",value=>value?"1":"0");
+  const [headerFavorites,,favoritesReady]=useStoredView<FavoriteItem[]>(FAV_KEY,[],raw=>{const value=JSON.parse(raw);return Array.isArray(value)?value:[];},JSON.stringify,"localStorage","garden-favorites-change");
   const [favoriteOpen, setFavoriteOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -166,13 +154,13 @@ export default function GardenShell({
   });
 
   // body classlist + localStorage 蜷梧悄
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.body.classList.toggle("nav-pages-collapsed", navCollapsed);
-    try { localStorage.setItem("garden_nav_pages_collapsed", navCollapsed ? "1" : "0"); } catch { /* ignore */ }
+
   }, [navCollapsed]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.body.classList.remove("activity-collapsed");
-    try { localStorage.setItem("garden_activity_collapsed", activityCollapsed ? "1" : "0"); } catch { /* ignore */ }
+
   }, [activityCollapsed]);
 
   useEffect(() => {
@@ -825,7 +813,7 @@ export default function GardenShell({
   }, []);
 
   return (
-    <>
+    <div style={{display:"contents",visibility:navReady && activityReady && favoritesReady?"visible":"hidden"}}>
       {/* 閭梧勹 (逕ｻ髱｢蜈ｨ菴薙↓蝗ｺ螳・ */}
       <div
         className="bg-layer"
@@ -1080,7 +1068,7 @@ export default function GardenShell({
       </div>
 
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-    </>
+    </div>
   );
 }
 

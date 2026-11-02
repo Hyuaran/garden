@@ -1,5 +1,6 @@
+import { renderWithInitialUrl as render } from "@/lib/ui/initial-url.test-helper";
 import "@/lib/auth/__tests__/system-view-fixture";
-import { render, screen } from "@testing-library/react";
+import {screen} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({

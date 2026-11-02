@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { BudGardenFrame } from "../../_components/BudGardenFrame";
 import { TransferFormRegular } from "../_components/TransferFormRegular";
 
@@ -5,7 +6,7 @@ type NewRegularPageProps = {
   searchParams: Promise<{ inboxId?: string | string[] }>;
 };
 
-export default async function NewRegularPage({
+async function NewRegularPage({
   searchParams,
 }: NewRegularPageProps) {
   const params = await searchParams;
@@ -26,3 +27,5 @@ export default async function NewRegularPage({
     </BudGardenFrame>
   );
 }
+
+export default withInitialUrlView(NewRegularPage);

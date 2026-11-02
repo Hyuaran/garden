@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import { ContractTypeFields } from "@/app/root/contracts/_components/ContractTypeFields";
 import { contractDefaults, defaultContractType, type EmploymentContractPayload } from "@/app/root/contracts/_lib/employment-contract";
 
@@ -13,7 +14,8 @@ import { initializeContract, japanToday, updateContract } from "./_lib/hire-cont
 const base="/api/system/onboarding/hire-candidates/";
 export default function HireConfirmationSteps({row,canWrite,documents,toggleFilemaker,skip,onRefresh,onReconciled}:{row:HireCandidate;canWrite:boolean;documents:ReactNode;toggleFilemaker:()=>void;skip:()=>void;onRefresh:()=>Promise<unknown>;onReconciled?:()=>Promise<unknown>}) {
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[code,setCode]=useState(""),[sent,setSent]=useState(false),[confirm,setConfirm]=useState(false);
- const [deadline,setDeadline]=useState<number|null>(null),[seconds,setSeconds]=useState(0),[showWait,setShowWait]=useState(false);
+ const [deadline,setDeadline,viewReady]=useStoredView<number|null>("hire-fm:"+row.id,null,raw=>Number(raw)>0?Number(raw):null,value=>value===null?"":String(value));
+ const [seconds,setSeconds]=useState(0),[showWait,setShowWait]=useState(false);
  const [result,setResult]=useState<HireCandidate["filemaker_request"]>();
  const [today]=useState(()=>japanToday(new Date()));
  const automaticStart=useRef(true), automaticEnd=useRef(true), automaticConcluded=useRef(true);
@@ -32,9 +34,6 @@ export default function HireConfirmationSteps({row,canWrite,documents,toggleFile
  }
  async function run(action:()=>Promise<void>,refresh=true) {setBusy(true);setError("");try{await action();if(refresh)await onRefresh();}catch(e){setError(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}}
  async function reconcile() { const data=await call("/filemaker");if(data.request)setResult(data.request);await onReconciled?.(); }
- useEffect(()=>{
-  try {const stored=Number(localStorage.getItem("hire-fm:"+row.id));if(stored>0)setDeadline(stored);}catch{}
- },[row.id]);
  usePolling(async ()=>{
   if(deadline===null)return;
   const tick=async ()=>{
@@ -48,7 +47,7 @@ export default function HireConfirmationSteps({row,canWrite,documents,toggleFile
   await tick();
  },1000,{enabled:deadline!==null});
  const locked=!canWrite||busy||deadline!==null;
- return <div className={layout.steps}>
+ return <div className={layout.steps} style={{visibility:viewReady?"visible":"hidden"}}>
   {hireInformationPending(row)&&<section><h3>⓪ 名前・生年月日</h3>
    <form onSubmit={e=>{e.preventDefault();void run(async()=>{const res=await fetch(base+row.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({identity})});const data=await res.json();if(!res.ok)throw new Error(data.error||"保存できませんでした");setIdentityNotice(data.warning||"保存しました");});}}>
     <div className={layout.grid}>{([["first_name","名","text"],["first_name_kana","メイ","text"],["birthday","生年月日","date"]] as const).map(([key,label,type])=><label key={key}><span>{label}<span className="garden-required" aria-hidden="true">＊</span></span><input required aria-required="true" type={type} value={identity[key]} disabled={locked} onChange={e=>setIdentity({...identity,[key]:e.target.value})}/></label>)}

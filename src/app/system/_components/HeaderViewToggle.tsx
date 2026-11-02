@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import styles from "./header-view-toggle.module.css";
 const Target = createContext<HTMLElement | null | undefined>(undefined);
@@ -12,7 +12,7 @@ export function HeaderViewSlot({ mobile = false }: { mobile?: boolean }) {
   const register = useContext(Register);
   const [node, setNode] = useState<HTMLDivElement | null>(null);
   const [occupied, setOccupied] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const target = node;
     if (!target) return;
     const update = () => setOccupied(target.childElementCount > 0);
@@ -21,7 +21,7 @@ export function HeaderViewSlot({ mobile = false }: { mobile?: boolean }) {
     update();
     return () => observer.disconnect();
   }, [node]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!window.matchMedia) {
       if (!mobile) register(node);
       return;
@@ -33,7 +33,7 @@ export function HeaderViewSlot({ mobile = false }: { mobile?: boolean }) {
     return () => query.removeEventListener("change", update);
   }, [node, mobile, register]);
   return <div className={styles.slot}>
-    {!occupied && <span className={styles.fallback} tabIndex={0}>
+    {!occupied && <span className={styles.fallback} style={{ visibility: "hidden" }} aria-hidden="true">
       <button type="button" disabled aria-label="この画面は表示の切り替えがありません">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11" /></svg>
       </button>
@@ -42,8 +42,8 @@ export function HeaderViewSlot({ mobile = false }: { mobile?: boolean }) {
     <div ref={setNode} />
   </div>;
 }
-export default function HeaderViewToggle({ children }: { children: ReactNode }) {
+export default function HeaderViewToggle({ children, ready = true }: { children: ReactNode; ready?: boolean }) {
   const target = useContext(Target);
-  const content = <div className={styles.toggle} role="group" aria-label="表示形式">{children}</div>;
+  const content = <div className={styles.toggle} style={{visibility:ready?"visible":"hidden"}} role="group" aria-label="表示形式">{children}</div>;
   return target === undefined ? content : target ? createPortal(content, target) : null;
 }

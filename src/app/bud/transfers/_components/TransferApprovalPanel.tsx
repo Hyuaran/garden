@@ -1,4 +1,5 @@
 "use client";
+import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import { useActionDialog } from "@/app/system/_components/Modal/useActionDialog";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
@@ -97,7 +98,8 @@ export function TransferApprovalPanel({
   const [schemaReady, setSchemaReady] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const initialSearch=useInitialSearch();
+  const [detailId, setDetailId] = useState<string | null>(()=>new URLSearchParams(initialSearch).get("detail"));
   const detailPushedRef = useRef(false);
 
   const loadRows = useCallback(async () => {
@@ -146,7 +148,6 @@ export function TransferApprovalPanel({
       setDetailId(id);
       if (!id) detailPushedRef.current = false;
     };
-    syncDetailFromUrl();
     window.addEventListener("popstate", syncDetailFromUrl);
     return () => window.removeEventListener("popstate", syncDetailFromUrl);
   }, []);

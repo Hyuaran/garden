@@ -1,5 +1,7 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
+import { useBrowserLocation } from "@/lib/ui/useBrowserLocation";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -93,9 +95,8 @@ export default function PageHeader({
   favoriteIcon = "/themes/garden-shell/images/icons_bloom/orb_bud.png",
 }: PageHeaderProps) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const favoriteSnapshot = useSyncExternalStore(subscribeFavorites, readFavoritesRaw, () => "[]");
-  const favorites = useMemo(() => parseFavorites(favoriteSnapshot), [favoriteSnapshot]);
-  const url = getCurrentUrl();
+  const [favorites,,favoritesReady]=useStoredView<FavoriteItem[]>(FAV_KEY,[],parseFavorites,JSON.stringify,"localStorage","garden-favorites-change");
+  const url=useBrowserLocation(title);
   const favorite = isFavorite || (url ? favorites.some(item => item.url === url) : false);
   const [toast, setToast] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
@@ -134,6 +135,7 @@ export default function PageHeader({
     <div className="page-header">
       <button
         className="page-favorite-btn"
+        style={{visibility:favoritesReady && url!==null?"visible":"hidden"}}
         type="button"
         title={favorite ? "お気に入りから外す" : "このページをお気に入りに追加"}
         aria-pressed={favorite}

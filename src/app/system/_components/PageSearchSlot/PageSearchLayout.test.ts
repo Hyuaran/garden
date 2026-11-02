@@ -17,7 +17,7 @@ it("protects onboarding tabs for both table modes", () => {
   expect(read("../../onboarding/onboarding.module.css")).toContain("min-height:max(86px, calc(var(--page-search-bottom, 0px) - 30px))");
 });
 it("protects Root employees actions, LINE tabs and Bud broadband update stamps", () => {
-  expect(read("../../../root/employees/page.tsx")).toContain("<PageHeader");
+  expect(read("../../../root/employees/UrlViewClient.tsx")).toContain("<PageHeader");
   const root = read("../../../root/_components/root-shell.module.css");
   expect(root).toContain("margin-right:var(--page-search-width, 0px)");
   expect(root).toContain("min-height:calc(var(--page-search-bottom, 0px) - 30px)");
@@ -27,5 +27,5 @@ it("protects Root employees actions, LINE tabs and Bud broadband update stamps",
     expect(page.indexOf("</header>")).toBeLessThan(page.indexOf("<UpdatedStampRow>"));
     expect(page.indexOf("</header>")).toBeLessThan(page.indexOf("<SystemTabs"));
   }
-  expect(read("./PageSearchSlot.module.css")).toContain("min-height:calc(var(--page-search-bottom, 0px) - var(--page-search-heading-top, 30px))");
+  expect(read("./PageSearchSlot.module.css")).toContain("min-height:calc(var(--page-search-bottom, 120px) - var(--page-search-heading-top, 30px))");
 });

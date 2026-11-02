@@ -117,3 +117,8 @@
 @media(max-width:800px) { .topRow .controls .searchBox { flex:1 1 100%; max-width:none; width:100%; } }
 
 .headerSearch .searchInput::placeholder { color:var(--sub,#617286); opacity:1; }
+
+.localSearch { display:contents; }
+.loading { min-height:132px; display:grid; place-items:center; }
+/* 初期 HTML から PC の仮の検索窓を隠す。ダイアログ内は対象外。 */
+@media(min-width:801px) { .root .localSearch { display:none; } :global(dialog) .root .localSearch, :global([role="dialog"]) .root .localSearch, :global([role="alertdialog"]) .root .localSearch { display:contents; } }

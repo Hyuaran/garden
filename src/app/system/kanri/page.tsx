@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
@@ -85,4 +86,4 @@ async function KanriPortalPage({
   />;
 }
 
-export default withSystemView("system-kanri", KanriPortalPage);
+export default withInitialUrlView(withSystemView("system-kanri", KanriPortalPage));

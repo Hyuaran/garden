@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import { useEffect, useState } from "react";
 import SystemTabs, { TabActionButton } from "../_components/SystemTabs/SystemTabs";
@@ -17,9 +18,10 @@ function Icon({id}:{id:string}) { if(id!=="system" && id!=="common" && id!=="all
 const moduleName=(id:string)=>modules.find(m=>m.id===id)?.name || id;
 const date=(s:string|null)=>s?new Date(s).toLocaleString("ja-JP"):"";
 export default function BoardClient({userId}:{userId?:string}) {
+ const [loading,setLoading]=useState(true);
  const [rows,setRows]=useState<Question[]>([]),[tab,setTab]=useState("all"),[done,setDone]=useState(false),[error,setError]=useState(""),[adding,setAdding]=useState(false),[target,setTarget]=useState<string|null>(null);
  async function reload(){const r=await fetch(endpoint,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error);setRows(d.questions);}
- useEffect(()=>{void reload().catch(e=>setError(e.message));},[]);
+ useEffect(()=>{void reload().catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);
  useEffect(()=>{if(target && tab!=="all"){const card=document.getElementById(`question-${target}`);const group=card?.closest("details");if(group)group.open=true;card?.scrollIntoView?.({behavior:"smooth",block:"start"});card?.focus();setTarget(null);}},[target,tab,rows]);
  const visible=rows.filter(q=>done || q.status!=="done"), selected=rows.filter(q=>q.module===tab);
  const waiting=selected.filter(q=>q.status==="open").length,working=selected.filter(q=>q.status==="answered" || q.status==="in_progress").length;
@@ -28,7 +30,7 @@ export default function BoardClient({userId}:{userId?:string}) {
  return <section className={styles.board}><SystemBreadcrumb items={[{label:"開発ボード"}]}/><header><div className="garden-help-heading"><h1>開発ボード</h1><HelpButton /></div></header>
  <SystemTabs aria-label="モジュール" variant="icons" actions={<TabActionButton label="質問を足す" icon="plus" pressed={adding} onClick={()=>setAdding(true)}/>}>{[{id:"all",name:"一覧"},...modules].map(m=><button role="tab" aria-selected={tab===m.id} key={m.id} disabled={m.id!=="all" && !rows.some(q=>q.module===m.id)} title={m.id==="system"?"社内システム":m.id==="common"?"共通（外部連携・インフラ）":m.id==="all"?"一覧":MODULE_META[m.id as GardenModuleId].role} onClick={()=>setTab(m.id)}><Icon id={m.id}/><small>{m.name}</small></button>)}</SystemTabs>
  {error && <p role="alert">{error}</p>}
- {tab==="all"?<DataTable rows={visible} columns={columns} rowKey={q=>q.id} searchText={q=>`${moduleName(q.module)} ${q.title} ${q.body} ${statuses[q.status]}`} defaultSort={{id:"created_at",direction:"desc"}} searchPlaceholder="モジュール・質問・状態" onRowClick={q=>{setTab(q.module);setTarget(q.id);}}/>:<><div className={styles.progress}><StepProgress total={waiting+working} value={working} name={progressName} label={waiting+working===0?"すべて完了しています":<>{waiting?<>残り <strong>{waiting}</strong>件（回答待ち）</>:"回答待ちなし"}・対応中 <strong>{working}</strong>件</>}/></div>
+ {tab==="all"?<DataTable loading={loading} rows={visible} columns={columns} rowKey={q=>q.id} searchText={q=>`${moduleName(q.module)} ${q.title} ${q.body} ${statuses[q.status]}`} defaultSort={{id:"created_at",direction:"desc"}} searchPlaceholder="モジュール・質問・状態" onRowClick={q=>{setTab(q.module);setTarget(q.id);}}/>:<><div className={styles.progress}><StepProgress total={waiting+working} value={working} name={progressName} label={waiting+working===0?"すべて完了しています":<>{waiting?<>残り <strong>{waiting}</strong>件（回答待ち）</>:"回答待ちなし"}・対応中 <strong>{working}</strong>件</>}/></div>
  {orderedQuestions(selected.filter(q=>q.status==="open")).map(q=><QuestionCard key={q.id} q={q} saved={async warning=>{await reload();setError(warning || "");}}/>)}
  <QuestionGroup key={`${userId}:${tab}:answered`} title="回答済み" rows={selected.filter(q=>q.status==="answered" || q.status==="in_progress")} storageKey={userId?`dev-board:${userId}:${tab}:answered`:undefined} target={target} saved={async warning=>{await reload();setError(warning || "");}}/>
  {done && <QuestionGroup key={`${userId}:${tab}:done`} title="完了" rows={selected.filter(q=>q.status==="done")} storageKey={userId?`dev-board:${userId}:${tab}:done`:undefined} target={target} saved={async warning=>{await reload();setError(warning || "");}}/>}</>}
@@ -37,11 +39,10 @@ export default function BoardClient({userId}:{userId?:string}) {
  </section>;
 }
 function QuestionGroup({title,rows,storageKey,target,saved}:{title:string;rows:Question[];storageKey?:string;target:string|null;saved:(warning?:string)=>Promise<void>}) {
- const [open,setOpen]=useState(false);
- useEffect(()=>{try{setOpen(Boolean(storageKey && localStorage.getItem(storageKey)==="true"));}catch{}},[storageKey]);
- useEffect(()=>{if(target && rows.some(q=>q.id===target))setOpen(true);},[target,rows]);
+ const [savedOpen,setOpen,viewReady]=useStoredView(storageKey ?? "garden.dev-board.group",false,raw=>raw==="true",String);
+ const open=savedOpen || !!(target && rows.some(q=>q.id===target));
  if(!rows.length)return null;
- return <details className={styles.group} open={open} onToggle={e=>{const next=e.currentTarget.open;setOpen(next);try{if(storageKey)localStorage.setItem(storageKey,String(next));}catch{}}}><summary><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M5 10h10"/><path className={styles.plusVertical} d="M10 5v10"/></svg>{title}（{rows.length}件）</summary>{orderedQuestions(rows).map(q=><QuestionCard key={q.id} q={q} saved={saved}/>)}</details>;
+ return <details className={styles.group} style={{visibility:viewReady?"visible":"hidden"}} open={open} onToggle={e=>{const next=e.currentTarget.open;setOpen(next);try{if(storageKey)localStorage.setItem(storageKey,String(next));}catch{}}}><summary><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M5 10h10"/><path className={styles.plusVertical} d="M10 5v10"/></svg>{title}（{rows.length}件）</summary>{orderedQuestions(rows).map(q=><QuestionCard key={q.id} q={q} saved={saved}/>)}</details>;
 }
 function QuestionCard({q,saved}:{q:Question;saved:(warning?:string)=>Promise<void>}) {
  const [editing,setEditing]=useState(!q.answered_at),[choice,setChoice]=useState(q.answer_choice||""),[text,setText]=useState(""),[preview,setPreview]=useState<{raw:string;text:string;warning?:string}|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);

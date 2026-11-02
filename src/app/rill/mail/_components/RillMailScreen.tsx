@@ -1,4 +1,5 @@
 "use client";
+import { useViewportMatch } from "@/lib/ui/useViewportMatch";
 import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -116,7 +117,7 @@ export function RillMailScreen({ canWrite = true }: { canWrite?: boolean }) {
   const [pinSortOrder, setPinSortOrder] = useState<PinSortOrder>("newest");
   const [connected, setConnected] = useState<boolean | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("list");
-  const [narrowMail, setNarrowMail] = useState(false);
+  const [narrowMail,viewportReady] = useViewportMatch("(max-width: 1024px)");
   const [anomalyResult, setAnomalyResult] = useState<MailAnomalyResponse | null>(null);
   const [anomalyLoading, setAnomalyLoading] = useState(false);
   const [anomalyError, setAnomalyError] = useState("");
@@ -284,13 +285,7 @@ export function RillMailScreen({ canWrite = true }: { canWrite?: boolean }) {
   }, [loadMessages, loadPinnedMessages, initialBox]);
 
   useEffect(() => { void initialize(); }, [initialize]);
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 1024px)");
-    const apply = () => setNarrowMail(media.matches);
-    apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
-  }, []);
+
   useEffect(() => {
     if (!connected || !gardenUserId.current || automaticAnomalyAttempted.current) return;
     automaticAnomalyAttempted.current = true;
@@ -872,7 +867,7 @@ export function RillMailScreen({ canWrite = true }: { canWrite?: boolean }) {
     void openMessage(message);
   };
 
-  return <section className={styles.surface} aria-label="Rill Mail">
+  return <section style={{visibility:viewportReady?"visible":"hidden"}} className={styles.surface} aria-label="Rill Mail">
       <div className={styles.toolbar}>
         <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading}><RefreshIcon />更新</button>
         <button className={styles.anomalyCheckButton} onClick={() => void checkAnomalies(true)} disabled={anomalyLoading}><AnomalyIcon />{anomalyLoading ? "確認中…" : "異常チェック"}</button>

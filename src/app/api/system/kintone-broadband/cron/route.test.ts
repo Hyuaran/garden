@@ -1,4 +1,4 @@
-﻿import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 vi.mock("@/lib/kintone-broadband/kanden-sync",()=>({runKandenSync:vi.fn().mockResolvedValue({actions:[]})}));
 import {runKandenSync} from "@/lib/kintone-broadband/kanden-sync";
 import {GET} from "./route";

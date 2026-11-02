@@ -155,6 +155,8 @@ describe("relay queue", () => {
   });
 
   it("enqueues and pulls the oldest queued job as running", async () => {
+    // A zero-wait pull must stay on the same clock tick while the mock queries resolve.
+    vi.useFakeTimers({ toFake: ["Date"] });
     const first = await enqueueRelayJob("innovera", { ckey: "cdr", akey: "search" }, "screen");
     await enqueueRelayJob("kot", { api: "daily" }, "cron");
 
@@ -162,6 +164,7 @@ describe("relay queue", () => {
     expect(pulled?.id).toBe(first.id);
     expect(pulled?.status).toBe("running");
     expect(state.jobs[0].status).toBe("running");
+    vi.useRealTimers();
   });
 
   it("returns null when no queued job appears within waitMs", async () => {

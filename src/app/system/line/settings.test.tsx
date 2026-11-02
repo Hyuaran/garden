@@ -1,3 +1,4 @@
+import { InitialUrlView } from "@/lib/ui/InitialUrlView";
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import LineManager from './LineManager';
@@ -18,7 +19,7 @@ it('人とタグは見出しで自由タグを個別に絞り、一斉送信の�
   const tags=[{id:'t1',kind:'free',name:'研修',sort:0},{id:'t2',kind:'free',name:'通知',sort:1}];
   const members=[{employee_id:'E1',tag_id:'t1',source:'manual'},{employee_id:'E1',tag_id:'t2',source:'manual'},{employee_id:'E2',tag_id:'t2',source:'manual'}];
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({...data,employees:people,tags,members})}));
-  render(<LineManager/>);
+  render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
   await screen.findByText('山田 花子');
   for(const label of ['雇用形態','事業','在籍','役割','チーム','自由タグ']) expect(screen.queryByRole('button',{name:label})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'自由タグの並べ替え・絞り込み'}));
@@ -76,7 +77,7 @@ it('担当者が未登録なら宮永さん、従業員以外の方はお問い�
 });
 it('あいさつ文は一覧が初期表示で、編集・試し送信確認・カード切り替えと保存ができる',async()=>{
   const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>data});vi.stubGlobal('fetch',fetcher);
-  render(<LineManager/>);
+  render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
   expect(screen.getByRole('button',{name:'カード表示にする'})).toBeDisabled();
   fireEvent.click(screen.getByRole('tab',{name:'あいさつ文'}));
   fireEvent.click((await screen.findByText('こんにちは よろしくお願いします')).closest('tr')!);
@@ -96,7 +97,7 @@ it('一斉送信の記録は行を押すと送った文と相手を小窓で見�
   const tags=[{id:'t1',kind:'free',name:'研修',sort:0}];
   const history=[{id:'b1',title:'連絡のテスト',body:'1行目\n2行目',tag_ids:['t1'],recipient_count:3,sent_count:3,failed_count:0,created_at:'2026-11-02T03:18:03Z',sent_at:'2026-11-02T03:18:05Z'}];
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({...data,tags,history})}));
-  render(<LineManager/>);
+  render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
   fireEvent.click(await screen.findByText('連絡のテスト'));
   const dialog=within(screen.getByRole('dialog'));
   expect(dialog.getByText(/1行目/).textContent).toBe('1行目\n2行目');

@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -12,7 +13,7 @@ import { resolveMyTab } from "./tabs";
 import styles from "./my.module.css";
 const ONBOARDING_START = "2026-10-25";
 export const metadata = { title: "マイページ | Garden" };
-export default async function MyPage({searchParams}: {searchParams: Promise<{tab?: string | string[]}>}) {
+async function MyPage({searchParams}: {searchParams: Promise<{tab?: string | string[]}>}) {
  const query = await searchParams;
  const tab = resolveMyTab(query.tab);
  const returnTo = typeof query.tab === "string" ? "/my?tab=" + encodeURIComponent(query.tab) : "/my";
@@ -29,3 +30,5 @@ export default async function MyPage({searchParams}: {searchParams: Promise<{tab
  {(tab === "report" || tab === "review") ? <ApDailyReport history={tab === "review"} /> : tab === "calls" ? <InnoveraCallsContent embedded /> : <MyPageSectionPage section={tab as MyPageTab} embedded />}
  </MyShell>;
 }
+
+export default withInitialUrlView(MyPage);

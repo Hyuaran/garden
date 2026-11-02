@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { renderWithInitialUrl as render } from "@/lib/ui/initial-url.test-helper";
+import {act, fireEvent,  screen} from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import Page from "./page";
+import Page from "./UrlViewClient";
 vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useParams: () => ({ transfer_id: "T1" }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("../../_components/BudGardenFrame", () => ({ BudGardenFrame: ({ children }: { children: ReactNode }) => children }));
 vi.mock("../../_lib/transfer-queries", () => ({ fetchTransferById: async () => ({ transfer_id: "T1", amount: 1000, payee_name: "支払先", status: "draft" }) }));

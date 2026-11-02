@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { renderWithInitialUrl as render } from "@/lib/ui/initial-url.test-helper";
+import {fireEvent,  screen, waitFor, within} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EMPTY_OPTION_VALUE } from "../_lib/list-fields";

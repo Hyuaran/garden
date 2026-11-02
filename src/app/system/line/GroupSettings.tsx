@@ -6,6 +6,7 @@ import { ActionButton, ActionRow, FormRow, RadioGroup, ResultMessage, SubmitButt
 import type { LineGroup } from '@/lib/line/groups';
 type Draft = {id?:string;label:string;room:string;notify:boolean};
 export default function GroupSettings() {
+  const [loading,setLoading]=useState(true);
   const [groups,setGroups]=useState<LineGroup[]>([]);
   const [draft,setDraft]=useState<Draft>();
   const [code,setCode]=useState('');
@@ -17,7 +18,7 @@ export default function GroupSettings() {
     if(!r.ok) throw new Error('グループを読み込めませんでした。');
     setGroups((await r.json()).groups);
   },[]);
-  useEffect(()=>{load().catch(e=>setError(e.message));},[load]);
+  useEffect(()=>{load().catch(e=>setError(e.message)).finally(()=>setLoading(false));},[load]);
   function open(value:Draft) {setDraft(value);setCode('');setError('');setConfirm(false);}
   async function act(action:'save'|'code'|'remove') {
     if(busy || !draft) return;
@@ -35,7 +36,7 @@ export default function GroupSettings() {
   return <>
     <ActionRow><ActionButton onClick={()=>open({label:'',room:'',notify:false})}>グループを追加する</ActionButton></ActionRow>
     {error&&!draft&&<ResultMessage>{error}</ResultMessage>}
-    <DataTable rows={groups} rowKey={g=>g.id} searchPlaceholder="グループ名・ルームID" searchText={g=>`${g.label||''} ${g.chatwork_room_id||''}`} defaultSort={{id:'label',direction:'asc'}} onRowClick={g=>open({id:g.id,label:g.label||'',room:g.chatwork_room_id||'',notify:g.notify_enabled})} columns={[
+    <DataTable loading={loading} rows={groups} rowKey={g=>g.id} searchPlaceholder="グループ名・ルームID" searchText={g=>`${g.label||''} ${g.chatwork_room_id||''}`} defaultSort={{id:'label',direction:'asc'}} onRowClick={g=>open({id:g.id,label:g.label||'',room:g.chatwork_room_id||'',notify:g.notify_enabled})} columns={[
       {id:'label',label:'グループの名前',type:'text',value:g=>g.label||'（名前なし）'},
       {id:'account',label:'アカウント',type:'text',value:g=>g.account==='dev'?'開発用':'従業員向け'},
       {id:'room',label:'知らせ先のルーム',type:'text',align:'fixed',value:g=>g.chatwork_room_id||'—'},

@@ -1,7 +1,8 @@
 "use client";
+import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import { normalizeSearch } from "@/lib/search/match";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePageSearchTarget } from "../PageSearchSlot/PageSearchSlot";
 import styles from "./DataTable.module.css";
@@ -20,19 +21,34 @@ const filterKeys = <T,>(column: DataColumn<T>, row: T): string[] => {
   const value = column.filterValue?.(row) ?? String(column.value(row));
   return Array.isArray(value) ? [...new Set(value.length ? value : [""])] : [value];
 };
-export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText }: {
+export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText, loading = false }: {
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
   searchText: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
   defaultSort: Sort; defaultFilters?: Record<string, string[]>; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
   onRowClick?: (row: T) => void; rowClickable?: (row: T) => boolean;
   /** 0 件のときの文（既定「該当する明細はありません。」） */
   emptyText?: string;
+  loading?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const searchId = useId();
+  const localSearch = useRef<HTMLDivElement>(null);
+  const [searchHost, setSearchHost] = useState<HTMLDivElement | null>(null);
+  useLayoutEffect(() => { const host = document.createElement("div"); setSearchHost(host); return () => host.remove(); }, []);
   const searchTarget = usePageSearchTarget(rootRef, searchable);
-  const [search, setSearch] = useState("");
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!searchHost) return;
+    const parent = searchTarget ?? localSearch.current;
+    if (!parent || searchHost.parentElement === parent) return;
+    const focused = searchHost.contains(document.activeElement) ? document.activeElement as HTMLElement : null;
+    const selection = focused instanceof HTMLInputElement && focused.selectionStart !== null ? { input:focused,start:focused.selectionStart,end:focused.selectionEnd,direction:focused.selectionDirection } : null;
+    parent.appendChild(searchHost);
+    focused?.focus({ preventScroll: true });
+    if (selection) selection.input.setSelectionRange(selection.start,selection.end,selection.direction ?? undefined);
+  }, [searchHost, searchTarget]);
+  const initialSearch = useInitialSearch();
+  const [search, setSearch] = useState(() => new URLSearchParams(initialSearch).get("q") ?? "");
+  useLayoutEffect(() => {
     const read = () => { setSearch(new URLSearchParams(window.location.search).get("q") ?? ""); setPage(1); };
     const navigate = (event: Event) => { const url = new URL((event as CustomEvent<string>).detail, window.location.origin); if (url.pathname === window.location.pathname) { setSearch(url.searchParams.get("q") ?? ""); setPage(1); } };
     const initialQuery = new URLSearchParams(window.location.search).get("q");
@@ -84,10 +100,10 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
   };
   const searchControl = <div className={`${styles.search} ${searchTarget ? styles.headerSearch : styles.searchBox}`}>{!searchTarget && <small>検索</small>}<div className={styles.searchRow}><label className={styles.searchLabel}><span className={styles.searchField}><svg className={styles.searchIcon} viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input className={styles.searchInput} id={searchId} type="search" aria-label={searchTarget ? "この画面の中を検索" : "検索"} placeholder={searchPlaceholder} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></span></label><button type="button" className={styles.clear} disabled={!search && !Object.keys(filters).length} aria-label="絞り込みをすべて解除" title="絞り込みをすべて解除" onClick={() => { setSearch(""); setFilters({}); setPage(1); close(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" /><path d="m16 15 5 5M21 15l-5 5" /></svg></button></div></div>;
   return <div ref={rootRef} data-table-search-id={searchId} className={styles.root}>
-    {searchTarget && createPortal(searchControl, searchTarget)}
+    {searchable && searchHost && createPortal(searchControl, searchHost)}
     <div className={styles.topRow}>{summary && <div className={styles.summary}>{summary(filtered)}</div>}
-    <div className={[styles.toolbar, styles.controls].join(" ")}>{toolbar}{searchable && !searchTarget && searchControl}</div></div>
-    <div className={styles.tableWrap}><StickyTable><thead><tr>{columns.map(column => <th key={column.id} aria-sort={sort.id === column.id ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" aria-label={`${column.label}の並べ替え・絞り込み`} aria-haspopup="dialog" aria-expanded={menu === column.id} onClick={event => {
+    <div className={[styles.toolbar, styles.controls].join(" ")}>{toolbar}{searchable && <div ref={localSearch} className={styles.localSearch} data-local-table-search="">{!searchHost && searchControl}</div>}</div></div>
+    <div className={styles.tableWrap} aria-busy={loading}><StickyTable><thead><tr>{columns.map(column => <th key={column.id} aria-sort={sort.id === column.id ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" aria-label={`${column.label}の並べ替え・絞り込み`} aria-haspopup="dialog" aria-expanded={menu === column.id} onClick={event => {
       if (menu === column.id) { close(); return; }
       trigger.current = event.currentTarget;
       const rect = event.currentTarget.getBoundingClientRect();
@@ -96,7 +112,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     }}>{column.label}<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="m4 6 4 4 4-4" /></svg>{filters[column.id] && <svg aria-label="絞り込み中" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2 3h12L9 9v4l-2 1V9Z" /></svg>}</button><button type="button" className={[styles.sortButton, sort.id === column.id ? styles.sortActive : ""].join(" ")} aria-label={sort.id === column.id ? `${column.label}を${sort.direction === "asc" ? "降順" : "昇順"}に並べ替える（今は${sort.direction === "asc" ? "昇順" : "降順"}）` : `${column.label}で並べ替える`} title={sort.id === column.id ? (sort.direction === "asc" ? "昇順（押すと降順）" : "降順（押すと昇順）") : "並べ替え"} onClick={() => { setSort(sort.id === column.id ? { id: column.id, direction: sort.direction === "asc" ? "desc" : "asc" } : { id: column.id, direction: column.type === "text" ? "asc" : "desc" }); setPage(1); close(); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d={sort.id !== column.id ? "M5 2v12M2.5 4.5 5 2l2.5 2.5M11 14V2m-2.5 9.5L11 14l2.5-2.5" : sort.direction === "asc" ? "M8 14V2m-4 4 4-4 4 4" : "M8 2v12m-4-4 4 4 4-4"} /></svg></button></th>)}</tr></thead><tbody>{sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(row => <tr key={rowKey(row)} className={onRowClick && (rowClickable?.(row) ?? true) ? styles.clickableRow : undefined}
  tabIndex={onRowClick && (rowClickable?.(row) ?? true) ? 0 : undefined}
  onClick={event=>{if(onRowClick && (rowClickable?.(row) ?? true) && !(event.target as Element).closest('button, a, input, select, textarea, label, [role="button"], [contenteditable]')) onRowClick(row);}}
- onKeyDown={event=>{if(event.target===event.currentTarget && onRowClick && (rowClickable?.(row) ?? true) && (event.key==="Enter" || event.key===" ")){event.preventDefault();onRowClick(row);}}}>{columns.map(column => <td key={column.id} className={[`garden-cell-${cellAlignment(column)}`, column.wrap ? styles.wrap : ""].join(" ")}>{column.render ? column.render(row) : column.value(row)}</td>)}</tr>)}</tbody></StickyTable>{!sorted.length && <p>{emptyText ?? "該当する明細はありません。"}</p>}</div>
+ onKeyDown={event=>{if(event.target===event.currentTarget && onRowClick && (rowClickable?.(row) ?? true) && (event.key==="Enter" || event.key===" ")){event.preventDefault();onRowClick(row);}}}>{columns.map(column => <td key={column.id} className={[`garden-cell-${cellAlignment(column)}`, column.wrap ? styles.wrap : ""].join(" ")}>{column.render ? column.render(row) : column.value(row)}</td>)}</tr>)}</tbody></StickyTable>{loading && !sorted.length && <p role="status" className={styles.loading}>読み込み中…</p>}{!loading && !sorted.length && <p>{emptyText ?? "該当する明細はありません。"}</p>}</div>
     <div className={styles.toolbar}><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>前へ</button><span>{currentPage} / {pages}</span><button type="button" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>次へ</button></div>
     {column && <div ref={menuRef} role="dialog" aria-label={`${column.label}の並べ替え・絞り込み`} className={styles.menu} style={{ ...position, maxHeight: `calc(100dvh - ${position.top + 8}px)` }}>
       <div className={styles.sortRow}>{(["asc", "desc"] as const).map(direction => <button type="button" key={direction} aria-pressed={sort.id === column.id && sort.direction === direction} onClick={() => { setSort({ id: column.id, direction }); setPage(1); close(true); }}>{direction === "asc" ? "昇順" : "降順"}</button>)}</div>

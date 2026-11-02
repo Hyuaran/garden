@@ -1,4 +1,4 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildRows, monthEnd, reconcile, applyActions, type Action } from "./kanden-sync";
 const expense = (ym: string, n: number) => ({ 日付: {value:"2024-07-10"}, 事業選択:{value:["関電"]}, 文字列__1行__4:{value:ym}, 数値:{value:String(n)} });
 it("settlement aggregation, rounding, month ends and zero omission", () => {

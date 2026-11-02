@@ -21,9 +21,10 @@ it.each([false, true])("moves controls to the active header and removes them on 
   fireEvent.click(button);
   expect(button).toHaveAttribute("aria-pressed", "true");
   rerender(shell(false));
-  await waitFor(() => expect(screen.getAllByRole("button")).toHaveLength(2));
-  for (const fallback of screen.getAllByRole("button")) {
+  await waitFor(() => expect(screen.getAllByRole("button",{hidden:true})).toHaveLength(2));
+  for (const fallback of screen.getAllByRole("button",{hidden:true})) {
     expect(fallback).toBeDisabled();
-    expect(fallback).toHaveAccessibleName("この画面は表示の切り替えがありません");
+    expect(fallback).not.toBeVisible();
+    expect(fallback).toHaveAttribute("aria-label","この画面は表示の切り替えがありません");
   }
 });

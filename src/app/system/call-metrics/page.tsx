@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
@@ -24,4 +25,4 @@ async function CallMetricsPage() {
   return <CallMetricsClient />;
 }
 
-export default withSystemView("system-call-metrics", CallMetricsPage);
+export default withInitialUrlView(withSystemView("system-call-metrics", CallMetricsPage));

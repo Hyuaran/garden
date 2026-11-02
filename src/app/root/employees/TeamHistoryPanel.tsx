@@ -10,10 +10,11 @@ export default function TeamHistoryPanel({employeeId,canWrite,onChanged}:{employ
   const [edit,setEdit]=useState<Partial<TeamHistory>>();
   const [message,setMessage]=useState('');
   const [busy,setBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
   const url=`/api/root/employees/${encodeURIComponent(employeeId)}/team-history`;
   useEffect(()=>{
-    const abort=new AbortController();
-    fetch(url,{signal:abort.signal,cache:'no-store'}).then(async r=>{const data=await r.json();if(!r.ok || !Array.isArray(data.rows))throw new Error(data.error||'読み込めませんでした。');setRows(data.rows);}).catch(e=>{if(!abort.signal.aborted)setMessage(e.message);});
+    const abort=new AbortController();setLoading(true);
+    fetch(url,{signal:abort.signal,cache:'no-store'}).then(async r=>{const data=await r.json();if(!r.ok || !Array.isArray(data.rows))throw new Error(data.error||'読み込めませんでした。');setRows(data.rows);}).catch(e=>{if(!abort.signal.aborted)setMessage(e.message);}).finally(()=>{if(!abort.signal.aborted)setLoading(false);});
     return ()=>abort.abort();
   },[url]);
   async function save(method:'POST'|'PATCH'|'DELETE') {
@@ -28,7 +29,7 @@ export default function TeamHistoryPanel({employeeId,canWrite,onChanged}:{employ
   }
   return <section><h3>チーム所属</h3>{canWrite&&<ActionButton onClick={()=>setEdit({effective_date:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}),team:'',memo:''})}>所属を追加する</ActionButton>}
     {message&&<ResultMessage>{message}</ResultMessage>}
-    <DataTable rows={rows} rowKey={r=>r.id} searchPlaceholder="チーム・メモ" searchText={r=>r.team+(r.memo||'')} defaultSort={{id:'date',direction:'desc'}} onRowClick={r=>setEdit({...r})} columns={[
+    <DataTable loading={loading} rows={rows} rowKey={r=>r.id} searchPlaceholder="チーム・メモ" searchText={r=>r.team+(r.memo||'')} defaultSort={{id:'date',direction:'desc'}} onRowClick={r=>setEdit({...r})} columns={[
       {id:'date',label:'移動日',type:'text',align:'fixed',value:r=>r.effective_date},
       {id:'team',label:'チーム',type:'text',value:r=>r.team},
       {id:'memo',label:'メモ',type:'text',wrap:true,value:r=>r.memo||'—'},

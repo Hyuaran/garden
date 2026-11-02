@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
 /**
  * 表示モード切替（👥みんな向け / ⚙️開発向け）
@@ -36,47 +37,15 @@ type ViewModeContextValue = {
 const ViewModeContext = createContext<ViewModeContextValue | null>(null);
 
 export function ViewModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ViewMode>(DEFAULT_MODE);
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved === "simple" || saved === "detail") {
-        setModeState(saved);
-      }
-    } catch {
-      // localStorage unavailable (private mode / SSR); keep default
-    }
-  }, []);
-
-  const setMode = useCallback((m: ViewMode) => {
-    setModeState(m);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, m);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const toggle = useCallback(() => {
-    setModeState((prev) => {
-      const next: ViewMode = prev === "simple" ? "detail" : "simple";
-      try {
-        window.localStorage.setItem(STORAGE_KEY, next);
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
-
+  const [mode,setMode,viewReady]=useStoredView<ViewMode>(STORAGE_KEY,DEFAULT_MODE,raw=>raw==="detail"?"detail":"simple",value=>value);
+  const toggle=useCallback(()=>setMode(previous=>previous==="simple"?"detail":"simple"),[setMode]);
   const value = useMemo<ViewModeContextValue>(
     () => ({ mode, setMode, toggle, simple: mode === "simple" }),
     [mode, setMode, toggle],
   );
 
   return (
-    <ViewModeContext.Provider value={value}>{children}</ViewModeContext.Provider>
+    <ViewModeContext.Provider value={value}><div style={{visibility:viewReady?"visible":"hidden",display:"contents"}}>{children}</div></ViewModeContext.Provider>
   );
 }
 

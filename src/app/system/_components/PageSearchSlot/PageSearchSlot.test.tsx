@@ -51,12 +51,23 @@ it("keeps search local without a slot", () => {
 });
 it("moves search back at 800px and retains the query", () => {
   render(<Fixture />);
-  fireEvent.change(screen.getByRole("searchbox"), {target:{value:"田中"}});
+  const input=screen.getByRole("searchbox");
+  input.focus();
+  fireEvent.change(input, {target:{value:"田中"}});
+  (input as HTMLInputElement).setSelectionRange(1,2);
   act(() => { desktop = false; resize(); });
   expect(document.querySelector("[data-page-search-slot]")).toBeEmptyDOMElement();
   expect(within(screen.getByTestId("table")).getByRole("searchbox",{name:"検索"})).toHaveValue("田中");
+  expect(screen.getByRole("searchbox")).toBe(input);
+  expect(input).toHaveFocus();
+  expect((input as HTMLInputElement).selectionStart).toBe(1);
+  expect((input as HTMLInputElement).selectionEnd).toBe(2);
   act(() => { desktop = true; resize(); });
   expect(screen.getByRole("searchbox",{name:"この画面の中を検索"})).toHaveValue("田中");
+  expect(screen.getByRole("searchbox")).toBe(input);
+  expect(input).toHaveFocus();
+  expect((input as HTMLInputElement).selectionStart).toBe(1);
+  expect((input as HTMLInputElement).selectionEnd).toBe(2);
 });
 
 function ShortcutTable() {
@@ -71,7 +82,7 @@ it("focuses the portaled search with Root's Ctrl+Shift+G handler", () => {
 });
 
 
-it.each(["System", "Root", "Bud", "My", "Rill"])("%s measures search clearance and removes it when search leaves", async shell => {
+it.each(["System", "Root", "Bud", "My", "Rill"])("%s reserves search clearance before mounting and after search leaves", async shell => {
   let width = 280;
   let notifyResize = () => {};
   vi.stubGlobal("ResizeObserver", class {
@@ -101,7 +112,7 @@ it.each(["System", "Root", "Bud", "My", "Rill"])("%s measures search clearance a
     act(() => { desktop = true; resize(); });
     await waitFor(() => expect(main.style.getPropertyValue("--page-search-width")).toBe("356px"));
     view.rerender(<ShellFixture show={false} />);
-    await waitFor(() => expect(main.style.getPropertyValue("--page-search-bottom")).toBe(""));
-    expect(main.style.getPropertyValue("--page-search-width")).toBe("");
+    await waitFor(() => expect(main.style.getPropertyValue("--page-search-bottom")).toBe("120px"));
+    expect(main.style.getPropertyValue("--page-search-width")).toBe("356px");
   } finally { rectSpy.mockRestore(); }
 });

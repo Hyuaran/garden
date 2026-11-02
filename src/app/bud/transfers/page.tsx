@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import Link from "next/link";
 
 import { BudFaithfulFrame } from "../_components/BudFaithfulFrame";
@@ -300,7 +301,7 @@ ${renamedFbRow}
     );
 }
 
-export default function TransfersPage() {
+function TransfersPage() {
   return (
     <BudFaithfulFrame
       route="/bud/transfers"
@@ -324,3 +325,5 @@ export default function TransfersPage() {
     </BudFaithfulFrame>
   );
 }
+
+export default withInitialUrlView(TransfersPage);

@@ -8,7 +8,7 @@ vi.mock("@/app/system/_components/UpdatedStamp/UpdatedStamp", () => ({ default: 
 vi.mock("@/app/system/_components/Modal/Modal", () => ({ default: ({ title, children }: { title: string; children: React.ReactNode }) => <div role="dialog" aria-label={title}>{children}</div> }));
 vi.mock("@/app/system/_components/DataTable/DataTable", () => ({ default: ({ rows, columns, toolbar, onRowClick }: { rows: { id: string }[]; columns: { id: string; value: (r: unknown) => string; render?: (r: unknown) => React.ReactNode }[]; toolbar: React.ReactNode; onRowClick: (r: unknown) => void }) => <>{toolbar}{rows.map(row => <div key={row.id}><button onClick={() => onRowClick(row)}>行を開く</button>{columns.map(c => <span key={c.id}>{c.render ? c.render(row) : c.value(row)}</span>)}</div>)}</> }));
 vi.mock("./AddressInputs", () => ({ default: ({ name }: { name: string }) => <><input name={`${name}_postal`} defaultValue="1000001"/><input name={`${name}_address`} defaultValue="東京都千代田区"/></> }));
-import Page from "./page";
+import Page from "./UrlViewClient";
 beforeEach(() => { vi.clearAllMocks(); m.rows = [{ id: "a", holder: "会社", from_address: "元", to_address: "先", stopped: false, notes: "", guide_path: "a.png", filings: [] }]; m.rpc.mockResolvedValue({}); m.insert.mockResolvedValue({}); });
 it("待ちの表示と画像リンク、最初の届出で期限が付く", async () => {
   render(<Page/>);

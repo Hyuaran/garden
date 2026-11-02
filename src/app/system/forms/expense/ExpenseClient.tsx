@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useStoredView } from "@/lib/ui/useStoredView";
+import { useInitialSearch } from "@/lib/ui/InitialUrlView";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 import SystemTabs from '@/app/system/_components/SystemTabs/SystemTabs';
 import DataTable, { type DataColumn } from '@/app/system/_components/DataTable/DataTable';
@@ -16,28 +18,30 @@ const columns: DataColumn<ExpenseReport>[] = [
 ];
 // fixedForm＝スマホの入口（/m/expense/<種類>）。タブを出さず、その種類だけを開く
 export default function ExpenseClient({ submitterName, employeeNumber, fixedForm }: { submitterName: string; employeeNumber: string; fixedForm?: ExpenseForm }) {
-  const [form, setForm] = useState<ExpenseForm>('nhk');
+  const initialSearch=useInitialSearch();
+  const query=new URLSearchParams(initialSearch).get('form');
+  const [savedForm,setSavedForm,viewReady]=useStoredView<ExpenseForm>(`expense-form:${employeeNumber}`,'nhk',raw=>isExpenseForm(raw)?raw:'nhk',value=>value);
+  const [chosenForm,setForm]=useState<ExpenseForm|null>(null);
+  const form=chosenForm ?? fixedForm ?? (isExpenseForm(query)?query:savedForm);
   const [business, setBusiness] = useState('NHK');
   const [payment, setPayment] = useState('現金');
   const [paidOn, setPaidOn] = useState(() => jstTimestamp().slice(0, 10));
   const [amount, setAmount] = useState(''); const [purpose, setPurpose] = useState('');
   const [detail, setDetail] = useState(''); const [note, setNote] = useState('');
+  const [historyLoading,setHistoryLoading]=useState(true);
   const [reports, setReports] = useState<ExpenseReport[]>([]);
   const [older, setOlder] = useState<ExpenseReport[]>([]);
   const [status, setStatus] = useState(''); const [sending, setSending] = useState(false);
-  const busy = useRef(false); const selected = useRef<ExpenseForm>('nhk'); const last = useRef<Partial<Record<ExpenseForm, string>>>({});
+  const busy = useRef(false); const selected = useRef<ExpenseForm>(form); const last = useRef<Partial<Record<ExpenseForm, string>>>({});
+  useLayoutEffect(()=>{selected.current=form;setBusiness(form==='nhk'?'NHK':last.current[form]??'');},[form]);
   function switchForm(next: ExpenseForm) {
     selected.current = next; setForm(next); setBusiness(next === 'nhk' ? 'NHK' : last.current[next] ?? '');
     if (fixedForm) return;
     const url = new URL(window.location.href); url.searchParams.set('form', next); window.history.replaceState(null, '', url);
-    try { localStorage.setItem(`expense-form:${employeeNumber}`, next); } catch { /* Storage unavailable */ }
+    setSavedForm(next);
   }
   useEffect(() => {
     let active = true;
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(`expense-form:${employeeNumber}`); } catch { /* Storage unavailable */ }
-    const query = new URL(window.location.href).searchParams.get('form');
-    switchForm(fixedForm ?? (isExpenseForm(query) ? query : isExpenseForm(saved) ? saved : 'nhk'));
     void fetch('/api/system/expense-report?recent=1', { cache: 'no-store' }).then(async response => {
       if (!response.ok) throw new Error('history');
       const body = await response.json(); if (!active) return;
@@ -45,11 +49,12 @@ export default function ExpenseClient({ submitterName, employeeNumber, fixedForm
       last.current = body.lastBusinesses ?? {};
       rows.forEach(row => { if (!last.current[row.form]) last.current[row.form] = row.business; });
       setBusiness(current => current || last.current[selected.current] || '');
-    }).catch(() => { if (active) setStatus('最近の報告を読み込めませんでした。時間をおいて開き直してください。'); });
+    }).catch(() => { if (active) setStatus('最近の報告を読み込めませんでした。時間をおいて開き直してください。'); }).finally(()=>{if(active)setHistoryLoading(false);});
     return () => { active = false; };
     // This identity is a server-provided string, never an inline parent object.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeNumber]);
+  selected.current=form;
   const combinations = recentCombinations([...reports, ...older]);
   async function submit(event: FormEvent) {
     event.preventDefault(); if (busy.current) return;
@@ -68,7 +73,7 @@ export default function ExpenseClient({ submitterName, employeeNumber, fixedForm
     finally { busy.current = false; setSending(false); }
   }
 
-  return <FormPage compactTitle mobile={!!fixedForm} title={fixedForm ? '経費 報告（' + FORM_LABELS[fixedForm] + '）' : '経費 報告'} submitterName={submitterName} employeeNumber={employeeNumber} tabs={<SystemTabs aria-label="経費の種類" actions={<SystemViewButton />}>{(Object.keys(FORM_LABELS) as ExpenseForm[]).map(key => <button type="button" role="tab" aria-selected={form === key} disabled={sending} key={key} onClick={() => switchForm(key)}>{FORM_LABELS[key]}</button>)}</SystemTabs>}>
+  return <div style={{visibility:viewReady?"visible":"hidden"}}><FormPage compactTitle mobile={!!fixedForm} title={fixedForm ? '経費 報告（' + FORM_LABELS[fixedForm] + '）' : '経費 報告'} submitterName={submitterName} employeeNumber={employeeNumber} tabs={<SystemTabs aria-label="経費の種類" actions={<SystemViewButton />}>{(Object.keys(FORM_LABELS) as ExpenseForm[]).map(key => <button type="button" role="tab" aria-selected={form === key} disabled={sending} key={key} onClick={() => switchForm(key)}>{FORM_LABELS[key]}</button>)}</SystemTabs>}>
     <form onSubmit={submit}><fieldset disabled={sending} className={styles.fields}>
       {combinations.length > 0 && <div className={local.reuse}><label>よく使う入力から選ぶ<SelectField value="" onChange={event => { if (event.target.value === '') return; const row = combinations[Number(event.target.value)]; if (row) { setPurpose(row.purpose); setDetail(row.purpose_detail); setAmount(String(row.amount)); } }}>{combinations.map((row, index) => <option key={index} value={index}>{row.purpose}｜{row.purpose_detail}｜{row.amount.toLocaleString()} 円</option>)}</SelectField></label><p>選ぶと、使用用途・用途の詳細・金額がまとめて入ります</p></div>}
       <FormRow required={form !== 'nhk'} label={<>1 事業</>}>{form === 'nhk' ? <FixedValue>NHK</FixedValue> : form === 'ueda' ? <SelectField aria-label="事業" required value={business} onChange={e => setBusiness(e.target.value)}>{BUSINESSES.ueda.map(item => <option key={item}>{item}</option>)}</SelectField> : <RadioGroup label="事業" name="business" options={BUSINESSES[form]} value={business} onChange={setBusiness} required />}</FormRow>
@@ -81,6 +86,6 @@ export default function ExpenseClient({ submitterName, employeeNumber, fixedForm
       <SubmitButton type="submit" busy={sending}>{fixedForm ? '送信する' : '報告内容を送信する'}</SubmitButton>
     </fieldset></form>
     <ResultMessage success={status === '送信しました'}>{status}</ResultMessage>
-    <RecentList title="自分の最近の報告（直近 1 週間）" items={reports.map(row => <p key={row.id}>{row.paid_on}　{row.business}　{row.purpose}　{row.purpose_detail}　{row.amount.toLocaleString()} 円　{jstTimestamp(new Date(row.created_at))}</p>)}>{!fixedForm ? <DataTable rows={reports} columns={columns} rowKey={row => row.id} searchPlaceholder="事業・目的" searchText={row => [row.business, row.purpose, row.purpose_detail].join(" ")} defaultSort={{ id: 'created', direction: 'desc' }} /> : undefined}</RecentList>
-  </FormPage>;
+    <RecentList title="自分の最近の報告（直近 1 週間）" items={reports.map(row => <p key={row.id}>{row.paid_on}　{row.business}　{row.purpose}　{row.purpose_detail}　{row.amount.toLocaleString()} 円　{jstTimestamp(new Date(row.created_at))}</p>)}>{!fixedForm ? <DataTable loading={historyLoading} rows={reports} columns={columns} rowKey={row => row.id} searchPlaceholder="事業・目的" searchText={row => [row.business, row.purpose, row.purpose_detail].join(" ")} defaultSort={{ id: 'created', direction: 'desc' }} /> : undefined}</RecentList>
+  </FormPage></div>;
 }

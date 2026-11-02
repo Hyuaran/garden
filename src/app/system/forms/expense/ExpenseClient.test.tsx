@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react';
+import { renderWithInitialUrl as render } from "@/lib/ui/initial-url.test-helper";
+import {fireEvent,  screen, waitFor, cleanup} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/app/system/_components/DataTable/DataTable', () => ({ default: () => <div>報告一覧</div> }));
 import ExpenseClient from './ExpenseClient';

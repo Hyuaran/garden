@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import { useState, useEffect, useRef } from "react";
 import { usePolling } from "@/lib/hooks/usePolling";
 import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
@@ -17,21 +18,13 @@ async function api(path = "", method = "GET", body?: unknown) {
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
 const steps = [["number","社員番号を決める"],["kot","KING OF TIME に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
 const stopped = (r:HireCandidate)=>steps.find(([key])=>key!=="filemaker"&&!!r.steps[key]?.error);
-export default function HireCandidatesClient({userId,tab,canWrite = true}:{userId:string;tab:"candidates"|"confirmations";canWrite?:boolean}) {
+export default function HireCandidatesClient({userId,tab,initialRows,canWrite = true}:{initialRows?:HireCandidate[];userId:string;tab:"candidates"|"confirmations";canWrite?:boolean}) {
  const [reviewId,setReviewId]=useState<string|null>(null);
- const [showNoShow,setShowNoShow]=useState(false), [showComplete,setShowComplete]=useState(false);
+ const [visibility, setVisibility, visibilityReady] = useStoredView('hire-candidates:'+userId, {showNoShow:false,showComplete:false}, raw => { const v=JSON.parse(raw); return {showNoShow:v?.showNoShow===true,showComplete:v?.showComplete===true}; });
+ const {showNoShow,showComplete}=visibility;
  const [resultRows,setResultRows]=useState<string[]>([]);
- useEffect(()=>{
-  try {
-   const saved=JSON.parse(localStorage.getItem('hire-candidates:'+userId) ?? "{}");
-   setShowNoShow(saved?.showNoShow===true);setShowComplete(saved?.showComplete===true);
-  } catch {setShowNoShow(false);setShowComplete(false);}
- },[userId]);
- const saveVisibility=(noShow:boolean,complete:boolean)=>{
-  setShowNoShow(noShow);setShowComplete(complete);
-  try {localStorage.setItem('hire-candidates:'+userId,JSON.stringify({showNoShow:noShow,showComplete:complete}));} catch {}
- };
- const [rows,setRows]=useState<HireCandidate[]>([]), [message,setMessage]=useState(""), [busy,setBusy]=useState(false);
+ const saveVisibility=(showNoShow:boolean,showComplete:boolean)=>setVisibility({showNoShow,showComplete});
+ const [rows,setRows]=useState<HireCandidate[]>(initialRows ?? []), [message,setMessage]=useState(""), [busy,setBusy]=useState(false);
  const [options,setOptions]=useState<Options|null>(null), [form,setForm]=useState<HireInput|null>(null), [editing,setEditing]=useState<string|null>(null), [confirmation,setConfirmation]=useState<HireCandidate|null>(null);
  const formDialog=useRef<HTMLDialogElement>(null);
  useEffect(()=>{
@@ -88,7 +81,9 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
   const current=refreshed.find(r=>r.id===id) ?? updated;
   if(stopped(current))setFailure(current);
  };
- useEffect(()=>{load().catch(e=>setMessage(e.message));},[tab]);
+ const [loading,setLoading]=useState(!initialRows);
+ const firstLoad=useRef(true);
+ useEffect(()=>{if(firstLoad.current && initialRows){firstLoad.current=false;return;} firstLoad.current=false;let active=true;setLoading(true);api("?tab="+tab).then(data=>{if(active)setRows(data);}).catch(e=>{if(active)setMessage(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[tab,initialRows]);
  usePolling(load,1200,{enabled:busy,immediate:false});
  const run = async (action:()=>Promise<void>)=>{setBusy(true);setMessage("");try{await action();await load();}catch(e){setMessage(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}};
  // KOT の選択肢は画面を開いた時に先に読んでおく（行を押してから小窓が出るまで 5 秒かかったため 2026-10-26）
@@ -135,7 +130,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  const reviewRow=rows.find(r=>r.id===reviewId);
  const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));
  const confirmationRows=rows.filter(r=>r.status==="hired"&&(showComplete||resultRows.includes(r.id)||!checklistComplete(r)));
- return <>
+ return <div style={{visibility:visibilityReady?"visible":"hidden"}}>
  {tab==="confirmations"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
  {reviewRow&&<Modal title={`${reviewRow.last_name} ${reviewRow.first_name} さんの入社後の確認`} className={layout.dialog} onClose={()=>setReviewId(null)} actions={<button onClick={()=>setReviewId(null)} data-modal-action="secondary">閉じる</button>}>
  {((r:HireCandidate)=><HireConfirmationSteps row={r} canWrite={canWrite&&!busy&&!saving} onRefresh={load} onReconciled={async()=>{setResultRows(old=>old.includes(r.id)?old:[...old,r.id]);await load();}} toggleFilemaker={()=>void toggleChecklist(r,"filemaker_added",!r.checklist?.filemaker_added)} skip={()=>r.checklist?.line_skipped?void toggleChecklist(r,"line_skipped",false):setLineSkip(r)} documents={<>{([["contract","雇用契約書"],["nda","秘密保持誓約書"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}{check(r,`${key}_not_required`,"締結しない")}{r.employment_type === "派遣" && <small>派遣のため締結しません</small>}</div>)}</>}/>)(reviewRow)}
@@ -147,12 +142,12 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
 <button disabled={!canWrite||busy||!!saving} onClick={()=>{const row=lineSkip;setLineSkip(null);void toggleChecklist(row,"line_skipped",true);}} data-modal-action="primary">登録しない</button></div>
  </dialog>}
  {message&&<p role="alert">{message}</p>}
- <DataTable onRowClick={r=>setReviewId(r.id)} rowClickable={()=>true} key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>
+ <DataTable loading={loading || !visibilityReady} onRowClick={r=>setReviewId(r.id)} rowClickable={()=>true} key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>
  <label className={styles.hireCheck}><input type="checkbox" checked={showComplete} onChange={e=>saveVisibility(showNoShow,e.target.checked)}/>完了も表示</label>
  </section>}
  {tab==="candidates"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
  {message&&<p role="alert">{message}</p>}
- <DataTable key="candidates" onRowClick={r=>{if(busy||saving)return;if(r.status==="hiring"&&stopped(r))setFailure(r);else if(canWrite&&r.status==="planned")openForm(r);}} rowClickable={r=>(canWrite&&r.status==="planned")||(r.status==="hiring"&&!!stopped(r))} rows={candidateRows} columns={columns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"date",direction:"asc"}} toolbar={canWrite && <button disabled={!canWrite||busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
+ <DataTable loading={loading || !visibilityReady} key="candidates" onRowClick={r=>{if(busy||saving)return;if(r.status==="hiring"&&stopped(r))setFailure(r);else if(canWrite&&r.status==="planned")openForm(r);}} rowClickable={r=>(canWrite&&r.status==="planned")||(r.status==="hiring"&&!!stopped(r))} rows={candidateRows} columns={columns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"date",direction:"asc"}} toolbar={canWrite && <button disabled={!canWrite||busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
  <label className={styles.hireCheck}><input type="checkbox" checked={showNoShow} onChange={e=>saveVisibility(e.target.checked,showComplete)}/>辞退した人も表示</label>
  {form&&options&&<dialog ref={formDialog} aria-labelledby="hire-form-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setForm(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setForm(null);}}} data-garden-modal="panel">
  <h2 id="hire-form-title">{editing?"入社予定者を修正":"入社予定者を登録"}</h2>
@@ -188,5 +183,5 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  <p>{confirmation.last_name} {confirmation.first_name}さんを社員番号 {confirmation.employee_number} で KING OF TIME と Garden に登録します。KING OF TIME はこの時点から料金の対象になります。</p>
  <div className={styles.hireRowActions} data-modal-actions><button disabled={!canWrite||busy||!!saving} onClick={()=>setConfirmation(null)} data-modal-action="secondary">やめる</button>
 <button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await register(id);})} data-modal-action="primary">登録する</button></div></dialog>}
- </section>}</>;
+ </section>}</div>;
 }

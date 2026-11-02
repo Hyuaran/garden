@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { renderWithInitialUrl as render } from "@/lib/ui/initial-url.test-helper";
+import {fireEvent,  screen} from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import MonitoringPage from "./page";
+import MonitoringPage from "./UrlViewClient";
 describe("monitoring tabs", () => {
   beforeEach(() => window.history.replaceState(null, "", "/tree/monitoring"));
   it("restores seats from the URL and keeps employee filters inside the list", () => {

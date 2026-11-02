@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -25,14 +26,7 @@ function GridViewIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg>;
 }
 
-function readViewMode(): ViewMode {
-  try {
-    if (typeof window === "undefined") return "list";
-    return window.localStorage.getItem(VIEW_MODE_KEY) === "grid" ? "grid" : "list";
-  } catch {
-    return "list";
-  }
-}
+
 
 function storeViewMode(mode: ViewMode) {
   try {
@@ -44,14 +38,7 @@ function storeViewMode(mode: ViewMode) {
 
 const TAB_KEY = "garden.forms.tab";
 
-function readTab(): string {
-  try {
-    if (typeof window === "undefined") return "input";
-    return window.localStorage.getItem(TAB_KEY) ?? "input";
-  } catch {
-    return "input";
-  }
-}
+
 
 function storeTab(key: string) {
   try {
@@ -128,11 +115,11 @@ function ToolDetails({ details }: { details?: string[] }) {
 }
 
 export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFormDefinition[]; tools?: GyomuTool[] }) {
-  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
+  const [viewMode, setViewMode, viewReady] = useStoredView<ViewMode>(VIEW_MODE_KEY, "list", raw => raw === "grid" ? "grid" : "list", value => value);
   const { allowedTab } = useSystemView();
   const sections = groupedTools(forms, tools).filter(section => allowedTab(section.key));
   // 項目が増えても見やすいよう、区分はタブで切り替える（東海林さん 2026-10-19）。表示形式（リスト／グリッド）はタブと別にそのまま使える
-  const [tabKey, setTabKey] = useState<string>(() => readTab());
+  const [tabKey, setTabKey, tabReady] = useStoredView<string>(TAB_KEY, "input", raw => raw, value => value);
   const active = sections.find((section) => section.key === tabKey) ?? sections[0];
 
   function changeTab(key: string) {
@@ -145,7 +132,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
     storeViewMode(mode);
   }
 
-  return <div className={styles.pageShell}>
+  return <div className={styles.pageShell} style={{ visibility: viewReady && tabReady ? "visible" : "hidden" }}>
     <header className={styles.header}>
       <div>
         <SystemBreadcrumb items={[{ label: "業務管理ツール" }]} />
@@ -157,7 +144,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
       <SystemTabs actions={<SystemViewButton tabKey={active?.key} />} aria-label="区分">
         {sections.map((section) => <button key={section.key} type="button" role="tab" id={`tab-${section.key}`} aria-controls={`panel-${section.key}`} aria-selected={section.key === active?.key} className={section.key === active?.key ? styles.tabOn : undefined} onClick={() => changeTab(section.key)}>{section.title}<span className={styles.tabCount}>{section.items.length}</span></button>)}
       </SystemTabs>
-      <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
+      <HeaderViewToggle ready={viewReady}><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
     </div>
 
     {active && [active].map((section) => <section key={section.key} className={styles.toolSection} role="tabpanel" id={`panel-${section.key}`} aria-labelledby={`tab-${section.key}`}>

@@ -5,4 +5,4 @@ vi.mock("next/navigation",()=>({ useRouter: () => ({ refresh: vi.fn(), push: vi.
 vi.mock("./BoardClient",()=>({default:()=>null}));
 import Page from "./page";
 import { ViewPermissionError } from "@/lib/auth/view-permission.server";
-it("権限のないURL直打ちは404",async()=>{m.auth.mockRejectedValue(new ViewPermissionError("閲覧権限がありません"));await expect(Page()).rejects.toThrow("404");});
+it("権限のないURL直打ちは404",async()=>{m.auth.mockRejectedValue(new ViewPermissionError("閲覧権限がありません"));await expect(Page({})).rejects.toThrow("404");});

@@ -1,5 +1,8 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import ProgressDashboard from "./components/ProgressDashboard";
 
-export default function BloomProgressPage() {
+function BloomProgressPage() {
   return <ProgressDashboard />;
 }
+
+export default withInitialUrlView(BloomProgressPage);

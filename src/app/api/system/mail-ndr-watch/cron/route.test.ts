@@ -1,4 +1,4 @@
-﻿import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/mail-ndr-watch/service", () => ({ runMailNdrWatch: vi.fn(async () => ({ ok: true, alerts: [] })) }));
 import { runMailNdrWatch } from "@/lib/mail-ndr-watch/service";
 import { GET } from "./route";

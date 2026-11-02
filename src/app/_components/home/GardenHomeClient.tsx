@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -99,14 +100,7 @@ const ALL_MODULES: HomeModule[] = [
   })),
 ];
 
-function readFavorites(): string[] {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
-  } catch {
-    return [];
-  }
-}
+
 
 function storeFavorites(favorites: string[]) {
   try {
@@ -153,7 +147,7 @@ function ModuleCard({ module, favorite, compact, onToggleFavorite }: {
 export default function GardenHomeClient({ visibleModules, employeeName }: Props = {}) {
   const { theme, toggleTheme } = useTheme();
   const [greeting, setGreeting] = useState("おはようございます");
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites,setFavorites,viewReady]=useStoredView<string[]>(FAVORITES_KEY,[],raw=>{const v=JSON.parse(raw);return Array.isArray(v)?v.filter((id:unknown)=>typeof id==="string"):[];});
   const displayName = employeeName?.trim() || "ユーザー";
 
   useEffect(() => {
@@ -161,11 +155,6 @@ export default function GardenHomeClient({ visibleModules, employeeName }: Props
     return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    // 初回描画を空で揃え、hydration後に端末ごとの保存値を復元する。
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFavorites(readFavorites());
-  }, []);
 
   const visible = useMemo(() => {
     if (!visibleModules) return ALL_MODULES;
@@ -192,7 +181,7 @@ export default function GardenHomeClient({ visibleModules, employeeName }: Props
 
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
 
-  return <main className={styles.pageShell} data-home-mode="series-cards">
+  return <main style={{visibility:viewReady?"visible":"hidden"}} className={styles.pageShell} data-home-mode="series-cards">
     <header className={styles.top}>
       <Link href="/" className={styles.brand} aria-label="Garden ホーム">
         <Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized />

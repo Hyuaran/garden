@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -148,23 +149,9 @@ function createSearchSheet(mode: "include" | "omit" = "include"): SearchSheet {
   return { ...EMPTY_SEARCH_FORM, mode };
 }
 
-function readInitialCorpFilter() {
-  if (typeof window === "undefined") return "all";
-  try {
-    return window.sessionStorage.getItem(CORP_FILTER_STORAGE_KEY) ?? "all";
-  } catch {
-    return "all";
-  }
-}
 
-function readInitialCardReversed() {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(CARD_ORDER_STORAGE_KEY) === "receipt-left";
-  } catch {
-    return false;
-  }
-}
+
+
 
 function displayDescription(value: string | null) {
   return value === OCR_CONFIRM_DESCRIPTION ? "" : value ?? "";
@@ -209,7 +196,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [deletedByNames, setDeletedByNames] = useState<Record<string, string>>({});
   // root_companies(COMP-00X) → bud_corporations(hyuaran 等) の対応（法人名の部分一致で構築）
   const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
-  const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
+  const [corpFilter, setCorpFilterState, corpReady] = useStoredView(CORP_FILTER_STORAGE_KEY,"all",raw=>raw,value=>value,"sessionStorage");
   const [idx, setIdx] = useState(0);
   const [form, setForm] = useState<Form | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
@@ -230,7 +217,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [activeSearchSheet, setActiveSearchSheet] = useState(0);
   const [foundIds, setFoundIds] = useState<string[] | null>(null);
   const [searchSummary, setSearchSummary] = useState("");
-  const [cardsReversed, setCardsReversed] = useState(readInitialCardReversed);
+  const [cardsReversed, setCardsReversed, cardsReady] = useStoredView(CARD_ORDER_STORAGE_KEY, false, raw=>raw==="receipt-left", value=>value?"receipt-left":"info-left");
   const [receiptZoomOpen, setReceiptZoomOpen] = useState(false);
   const [receiptZoomScale, setReceiptZoomScale] = useState(1.6);
   const [receiptInlineScale, setReceiptInlineScale] = useState(1);
@@ -1032,7 +1019,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   };
 
   return (
-    <div>
+    <div style={{visibility:cardsReady && corpReady?"visible":"hidden"}}>
       <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
       {!embedded && (
         <>

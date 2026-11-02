@@ -158,7 +158,7 @@ export default function InnoveraCallsClient({
   useEffect(() => {
     if (embedded) return;
     const sync = () => setTab(new URLSearchParams(window.location.search).get("tab") === "line" ? "line" : "calls");
-    sync(); window.addEventListener("popstate", sync);
+    window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
   }, [embedded]);
   function changeTab(next: "calls" | "line") {

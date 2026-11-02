@@ -1,3 +1,4 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -31,4 +32,4 @@ async function ListMasterPage() {
   return <ListMasterClient canSyncCalls={isRoleAtLeast(role, "manager")} />;
 }
 
-export default withSystemView("system-list", ListMasterPage);
+export default withInitialUrlView(withSystemView("system-list", ListMasterPage));

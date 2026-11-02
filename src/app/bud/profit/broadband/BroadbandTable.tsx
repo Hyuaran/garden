@@ -1,4 +1,7 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
+import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import { agentName } from "@/lib/bud/broadband/agent-names";
 import { useStickyTable } from "@/app/system/_components/StickyTable/useStickyTable";
@@ -55,9 +58,11 @@ export function Details({rows: base, kintoneBase, onClose,title="収支の明細
     </dl><div className={styles.detailLinks}>{kintoneBase && !r.kintone_record_id.startsWith("agent-") && <a href={kintoneLink(kintoneBase,r.kintone_record_id)} target="_blank" rel="noopener noreferrer">Kintoneレコード</a>}{driveLink(r.drive_link) && <a href={driveLink(r.drive_link)!} target="_blank" rel="noopener noreferrer">Googleドライブ明細</a>}</div></article>)}</Modal>;
 }
 export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],bank=[],admin=false,daysAfter=7}: {daysAfter?:number;admin?:boolean;rows:TableRecord[];userId:string;today:string;kintoneBase:string;agents?:AgentDetail[];bank?:Bank[]}) {
-  const [tab,setTab]=useState<BusinessTab>("broadband");
-  useEffect(()=>{try {const value=new URL(window.location.href).searchParams.get('tab')??localStorage.getItem('bud-bb-tab:'+userId);setTab(businessTabs.some(([key])=>key===value)?value as BusinessTab:'broadband');}catch {}},[userId]);
-  const changeTab=(key:BusinessTab)=>{setTab(key);try {localStorage.setItem('bud-bb-tab:'+userId,key);}catch {}try {const url=new URL(window.location.href);url.searchParams.set('tab',key);window.history.replaceState(null,'',url);}catch {}};
+  const initialSearch=useInitialSearch();
+  const [savedTab,setSavedTab,tabReady]=useStoredView<BusinessTab>('bud-bb-tab:'+userId,'broadband',raw=>businessTabs.some(([key])=>key===raw)?raw as BusinessTab:'broadband',value=>value);
+  const [urlTab,setUrlTab]=useUrlTab<BusinessTab>(savedTab,key=>businessTabs.some(([value])=>value===key));
+  const tab=urlTab;
+  const changeTab=(key:BusinessTab)=>{setSavedTab(key);setUrlTab(key);};
   const hasTable=tab!=="nhk" && tab!=="ses";
   const filteredRows=tab==="broadband" ? rows : rows.filter(r=>businessCodes[tab]?.includes(r.business.slice(0,3)));
   const [detailTitle,setDetailTitle]=useState('収支の明細'),[showDifferences,setShowDifferences]=useState(true);
@@ -75,20 +80,20 @@ export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],
     catch(error) {setViewerError(error instanceof Error ? error.message : "保存できませんでした");}
     finally {setSavingViewers(false);}
   };
-  const [expanded,setExpanded]=useState<string[]>([]), [childrenOrder,setChildrenOrder]=useState<Record<string,string[]>>({});
+  const [details,setDetails,detailsReady]=useStoredView<{expanded:string[];order:Record<string,string[]>}>('bud-bb-details:'+userId,{expanded:[],order:{}},raw=>{const v=JSON.parse(raw);return {expanded:Array.isArray(v?.expanded)?v.expanded.filter((k:unknown)=>typeof k==='string'):[],order:v?.order??{}};});
+  const {expanded,order:childrenOrder}=details;
   const [reference,setReference]=useState<{records:TableRecord[];bank:Bank[]}|null>(null);
-  useEffect(()=>{try {const v=JSON.parse(localStorage.getItem('bud-bb-details:'+userId)??'{}');setExpanded(Array.isArray(v.expanded)?v.expanded:[]);setChildrenOrder(v.order??{});}catch {setExpanded([]);setChildrenOrder({});}},[userId]);
-  const remember=(open:string[],order:Record<string,string[]>)=>{setExpanded(open);setChildrenOrder(order);try {localStorage.setItem('bud-bb-details:'+userId,JSON.stringify({expanded:open,order}));}catch {}};
+  const remember=(expanded:string[],order:Record<string,string[]>)=>setDetails({expanded,order});
   const toggle=(key:string)=>remember(expanded.includes(key)?expanded.filter(k=>k!==key):[...expanded,key],childrenOrder);
   const agentRecords=(parent:PivotRow)=>agents.map((a,i)=>({kintone_record_id:'agent-'+i,business:parent.business,partner:agentName(a.payee),scheduled_date:a.payment_date,actual_period:a.target_month+'-01',profit_net:a.net==null?null:-a.net,product:a.review_reason ? '要確認：'+a.review_reason : a.source_file,updated_at:a.imported_at,recon_status:'excluded',confirmation:'',expected_gross:a.gross} as TableRecord));
   const nttLabel=(name:string)=>name==='NTT原価（壱）' || name==='NTT原価(壱)' ? 'NTT原価（東西）センターライズ' : 'NTT原価（東西）ヒュアラン';
   const router=useRouter();
-  const [periods,setPeriods]=useState([defaultPeriod(today)]), [order,setOrder]=useState<BroadbandOrder|null>(null), [sorting,setSorting]=useState(false), [selected,setSelected]=useState<TableRecord[]|null>(null), [busy,setBusy]=useState(false), [message,setMessage]=useState("");
+  const [periods,setPeriods]=useState([defaultPeriod(today)]), [sorting,setSorting]=useState(false), [selected,setSelected]=useState<TableRecord[]|null>(null), [busy,setBusy]=useState(false), [message,setMessage]=useState("");
   // 縦はページのスクロールだけ（表の中に縦スクロールを作らない・東海林さん 2026-10-21）。
   // 横スクロールのバーは画面の下に張り付けて、表の下まで行かなくても動かせるようにする
   const scrollRef=useRef<HTMLDivElement>(null);
   useStickyTable(scrollRef, `${tab}:${settings}`);
-  useEffect(()=>{try {setOrder(readOrder(window.localStorage,userId));}catch {setOrder(null);}},[userId]);
+  const [order,setOrder,orderReady]=useStoredView<BroadbandOrder|null>('bud-broadband-order:'+userId,null,raw=>readOrder({getItem:()=>raw},userId));
   const months=periodMonths(periods,today,rows), allMonths=[...new Set(rows.flatMap(r=>r.scheduled_date ? [r.scheduled_date.slice(0,7)] : []))];
   const groupNtt=(source:TableRecord[])=>source.map(r=>isNtt(r.partner)?{...r,partner:nttLabel(r.partner)}:r);
   const fullPivot=applyOrder(buildPivot(groupNtt(rows),allMonths,"cash"),order), pivot=applyOrder(buildPivot(groupNtt(filteredRows),months,"cash"),orderFromPivot(fullPivot));
@@ -109,7 +114,7 @@ export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],
     const diff=total(records)-total(detail);
     return <>{cell(records,row.partner+(month??' 合計'),!row.subtotal && !row.parent,title)}{detail.length>0 && diff!==0 && <small className={styles.reference}>明細との差 {money(diff)}</small>}{row.parent && records.some(r=>r.profit_net==null || r.product.startsWith('要確認')) && <small>要確認</small>}</>;
   };
-  const persist=(next:BroadbandOrder)=>{setOrder(next);try {saveOrder(window.localStorage,userId,next);}catch {}};
+  const persist=(next:BroadbandOrder)=>setOrder(next);
   const [dragging,setDragging]=useState<string|null>(null),[target,setTarget]=useState<string|null>(null);
   const stop=()=>{setDragging(null);setTarget(null);};
   const compatible=(a:PivotRow,b:PivotRow)=>b.key!=="grand" && a.subtotal===b.subtotal && (a.subtotal || a.business===b.business);
@@ -117,7 +122,7 @@ export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],
 
   // 行の無い欄は空にする（0 円を並べない）。小計・総合計の行は色を付けない（色は取引先の行だけ）
   const cell=(records:TableRecord[], label:string, toned=true,title="収支の明細") => records.length ? <button aria-label={`${label} ${money(total(records))}の明細`} className={toned ? styles[cellTone(records)] : undefined} disabled={sorting} onClick={() => {if(!sorting) {setDetailTitle(title);setShowDifferences(toned && cellTone(records)==="red");setReference(null);setSelected(records);}}}>{money(total(records))}</button> : null;
-  return <div className={styles.pageShell}><header data-page-search-heading className={pageSearchStyles.heading}><SystemBreadcrumb root={{label:"Bud",href:"/bud/dashboard"}} items={[{label:"損益管理",href:"/bud/profit"},{label:"事業の収支"}]} /><div className="garden-help-heading"><h1>事業の収支</h1><HelpButton /></div></header>
+  return <div className={styles.pageShell} style={{visibility:tabReady && detailsReady && orderReady?"visible":"hidden"}}><header data-page-search-heading className={pageSearchStyles.heading}><SystemBreadcrumb root={{label:"Bud",href:"/bud/dashboard"}} items={[{label:"損益管理",href:"/bud/profit"},{label:"事業の収支"}]} /><div className="garden-help-heading"><h1>事業の収支</h1><HelpButton /></div></header>
     <UpdatedStampRow><UpdatedStamp label="Kintone" date={rows.map(r=>r.updated_at).sort().at(-1)} busy={busy} refreshLabel="収支を更新" onRefresh={async()=>{setBusy(true);setMessage("確認中です");try {const response=await fetch("/api/bud/broadband/refresh",{method:"POST"});const result=await response.json();if(!response.ok) throw new Error(result.error);setMessage(result.message ?? "");router.refresh();}catch {setMessage("収支を更新できませんでした。時間をおいてもう一度お試しください。");}finally {setBusy(false);}}} /></UpdatedStampRow>
     <div className={styles.tabRow}><SystemTabs actions={<>{hasTable && <TabActionButton icon="sort" label="並べ替え" pressed={sorting} onClick={()=>{if(savingViewers || loadingViewers)return;stop();setSorting(!sorting);setSelected(null);setSettings(false);}} />}{admin && <TabActionButton icon="settings" label="閲覧権限" pressed={settings} onClick={()=>{if(savingViewers || loadingViewers)return;if(settings)setSettings(false);else void openSettings();}} />}</>}>{businessTabs.map(([key,label])=><button key={key} role="tab" aria-selected={tab===key} id={`${key}-tab`} aria-controls={`${key}-panel`} onClick={()=>{if(tab===key)return;stop();setSorting(false);setSelected(null);setReference(null);changeTab(key);}}>{label}</button>)}</SystemTabs></div>
     {settings && <section className={viewerStyles.settings} aria-label="事業の収支の閲覧権限"><h2>事業の収支の閲覧権限</h2><p>ここに入れた人は、事業の収支（すべての事業のタブ）を見られます</p>{loadingViewers ? <p role="status">読み込み中…</p> : viewersLoaded && <><h3>閲覧権限</h3><ViewerPicker employees={employees} value={viewers} onChange={setViewers} disabled={savingViewers} /></>}{viewerError && <p role="alert">{viewerError}</p>}<div className={viewerStyles.actions}><button disabled={!viewersLoaded || loadingViewers || savingViewers} onClick={()=>void saveViewers()}>{savingViewers ? "保存中…" : "保存"}</button><button disabled={savingViewers || loadingViewers} onClick={()=>setSettings(false)}>閉じる</button></div></section>}

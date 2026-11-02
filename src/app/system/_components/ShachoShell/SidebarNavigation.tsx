@@ -1,29 +1,17 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import styles from "./shacho-shell.module.css";
 
 export const UPCOMING_STORAGE_KEY = "garden.system.upcoming.open";
 
-function readStoredOpen() {
-  try { return window.localStorage.getItem(UPCOMING_STORAGE_KEY) === "true"; }
-  catch { return false; }
-}
-
-function subscribeToStorage(onChange: () => void) {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-}
-
 export default function SidebarNavigation({ children, upcoming, upcomingCount }: {
   children: ReactNode;
   upcoming: ReactNode;
   upcomingCount: number;
 }) {
-  // SSRと初回hydrationは閉じる。ブラウザの保存値はReactの外部ストアとして復元する。
-  const savedOpen = useSyncExternalStore(subscribeToStorage, readStoredOpen, () => false);
-  const [selection, setSelection] = useState<boolean | null>(null);
-  const open = selection ?? savedOpen;
+  const [open, setSelection, viewReady] = useStoredView(UPCOMING_STORAGE_KEY, false, raw => raw === "true", String);
   const [edges, setEdges] = useState({ top: false, bottom: false });
   const navRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -63,7 +51,7 @@ export default function SidebarNavigation({ children, upcoming, upcomingCount }:
     catch { /* 保存できなくても、その画面での開閉は継続できる。 */ }
   }
 
-  return <div className={styles.navFrame}>
+  return <div className={styles.navFrame} style={{visibility:viewReady?"visible":"hidden"}}>
     <nav ref={navRef} className={styles.nav} aria-label="Systemメニュー" tabIndex={0}>
       <div ref={contentRef} className={styles.navContent}>
         <div className={styles.navLabel}>メニュー</div>

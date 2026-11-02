@@ -1,4 +1,4 @@
-﻿import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/mail-payment-check/graph-mail", () => ({ getGraphToken: vi.fn(async () => "mock-token"), graphFetch: vi.fn() }));
 import { graphFetch } from "@/lib/mail-payment-check/graph-mail";
 import { collect, mailboxes } from "./graph";

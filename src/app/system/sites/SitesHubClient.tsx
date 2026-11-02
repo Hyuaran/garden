@@ -1,5 +1,7 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import SiteNotifyEditor, { useSiteNotify } from "./_components/SiteNotifyEditor";
 import type { NotifyState } from "@/lib/sites/notify";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -44,14 +46,7 @@ function MapPinIcon() {
   return <svg className={styles.mapPinIcon} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/></svg>;
 }
 
-function readViewMode(): ViewMode {
-  try {
-    if (typeof window === "undefined") return "grid";
-    return window.localStorage.getItem(VIEW_MODE_KEY) === "list" ? "list" : "grid";
-  } catch {
-    return "grid";
-  }
-}
+
 
 function storeViewMode(mode: ViewMode) {
   try {
@@ -61,14 +56,7 @@ function storeViewMode(mode: ViewMode) {
   }
 }
 
-function readTab(): TopTab {
-  try {
-    if (typeof window === "undefined") return "sites";
-    return new URLSearchParams(window.location.search).get("tab") === "news" ? "news" : "sites";
-  } catch {
-    return "sites";
-  }
-}
+
 
 function storeTab(tab: TopTab) {
   try {
@@ -299,9 +287,9 @@ export default function SitesHubClient({ data, role, notifyState }: { data: Corp
  return <SiteNotifyEditor initial={notifyState} canEdit={role==="super_admin"}><SitesHubContent data={data} role={role}/></SiteNotifyEditor>;
 }
 function SitesHubContent({ data, role }: { data: CorporateSitesData; role: GardenRole }) {
-  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
+  const [viewMode, setViewMode, viewReady] = useStoredView<ViewMode>(VIEW_MODE_KEY, "grid", raw => raw === "grid" ? "grid" : "list", value => value);
   const { allowedTab } = useSystemView();
-  const [requestedTab, setTab] = useState<TopTab>(() => readTab());
+  const [requestedTab, setTab] = useUrlTab<TopTab>("sites", key=>key==="sites"||key==="news");
   const tab = allowedTab(requestedTab) ? requestedTab : allowedTab("sites") ? "sites" : "news";
   const [summaries, setSummaries] = useState<Record<string, NewsSummary>>({});
   const [publicCompanies, setPublicCompanies] = useState<Record<string, PublicCompany>>({});
@@ -374,7 +362,7 @@ function SitesHubContent({ data, role }: { data: CorporateSitesData; role: Garde
     };
   }, [publicSlugs]);
 
-  return <div className={styles.pageShell}>
+  return <div className={styles.pageShell} style={{ visibility: viewReady ? "visible" : "hidden" }}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "コーポレートサイト" }]} />
       <SystemViewHeading  ><h1>コーポレートサイト</h1></SystemViewHeading>
@@ -390,7 +378,7 @@ function SitesHubContent({ data, role }: { data: CorporateSitesData; role: Garde
       <h2>サイトの一覧（稼働 {counts.live}／移管待ち {counts.pending}／新規作成待ち {counts.planned}）</h2>
       <div className={styles.headerAside}>
         <span>更新日 {formatDate(data.as_of)}</span>
-        <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
+        <HeaderViewToggle ready={viewReady}><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
       </div>
     </div>
 

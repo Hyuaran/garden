@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ role: "toss", settings: [] as import("@/lib/auth/view-permission").ViewPermission[], admin: vi.fn(), hire: vi.fn(), self: vi.fn(), list: vi.fn() }));
 vi.mock("./_lib/onboarding-admin.server", () => ({ onboardingAdminContext: mocks.admin, readAdminOnboardingList: mocks.list }));
-vi.mock("./_lib/hire-candidates.server", () => ({ hireAdminContext: mocks.hire }));
+vi.mock("./_lib/hire-candidates.server", () => ({ hireAdminContext: mocks.hire, listCandidates: vi.fn(async()=>[]) }));
 vi.mock("./_lib/onboarding.server", () => ({
   OnboardingError: class extends Error {}, onboardingEmployee: vi.fn(async () => ({})), readOnboarding: mocks.self,
 }));

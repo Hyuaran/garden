@@ -13,14 +13,14 @@
  *   - documentElement.setAttribute("data-theme", theme) で globals.css 発火
  *   - documentElement.classList.toggle("dark", theme === "dark") で next-themes 互換
  *   - localStorage キー `garden.theme` で永続化（default: "light"）
- *   - SSR safe: 初回 render は default、useEffect で復元
+ *   - SSR safe: 初回 render は default、useLayoutEffect で復元
  */
 
 import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -71,7 +71,7 @@ export function ThemeProvider({
   const [mounted, setMounted] = useState(false);
 
   // mount 後に localStorage から復元
-  useEffect(() => {
+  useLayoutEffect(() => {
     const stored = readStoredTheme();
     setThemeState(stored);
     applyThemeToDOM(stored);
@@ -79,7 +79,7 @@ export function ThemeProvider({
   }, []);
 
   // theme 変更時に DOM + localStorage 反映
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mounted) return;
     applyThemeToDOM(theme);
     if (typeof window !== "undefined") {

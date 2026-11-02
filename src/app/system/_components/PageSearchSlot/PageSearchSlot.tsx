@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import styles from "./PageSearchSlot.module.css";
 const Context = createContext<{ target: HTMLDivElement | null; register: (id: symbol) => () => void; owner: symbol | undefined; setTarget: (node: HTMLDivElement | null) => void } | null>(null);
 export function PageSearchProvider({ children }: { children: ReactNode }) {
@@ -15,23 +15,23 @@ export function PageSearchProvider({ children }: { children: ReactNode }) {
 export function PageSearchSlot() {
   const context = useContext(Context);
   const target = context?.target;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!target) return;
     const main = target.closest("main") ?? target.closest("header")?.parentElement?.querySelector("main");
     if (!main) return;
-    const headings = Array.from(main.querySelectorAll<HTMLElement>("[data-page-search-heading]"));
+    const headings = () => Array.from(main.querySelectorAll<HTMLElement>("[data-page-search-heading]"));
     const clear = () => {
       main.style.removeProperty("--page-search-width");
       main.style.removeProperty("--page-search-bottom");
-      headings.forEach(heading => heading.style.removeProperty("--page-search-heading-top"));
+      headings().forEach(heading => heading.style.removeProperty("--page-search-heading-top"));
     };
     const measure = () => {
-      if (!target.childElementCount || !window.matchMedia("(min-width: 801px)").matches) { clear(); return; }
+      if (!window.matchMedia?.("(min-width: 801px)").matches) { clear(); return; }
       const rect = target.getBoundingClientRect();
       const mainRect = main.getBoundingClientRect();
       // Garden zoom scales viewport rectangles; the custom properties use CSS pixels.
       const scale = main.offsetWidth && mainRect.width ? mainRect.width / main.offsetWidth : 1;
-      headings.forEach(heading => heading.style.setProperty("--page-search-heading-top", `${(heading.getBoundingClientRect().top - mainRect.top) / scale}px`));
+      headings().forEach(heading => heading.style.setProperty("--page-search-heading-top", `${(heading.getBoundingClientRect().top - mainRect.top) / scale}px`));
       main.style.setProperty("--page-search-width", `${rect.width / scale + 16}px`);
       main.style.setProperty("--page-search-bottom", `${Math.max(0, (rect.bottom - mainRect.top) / scale)}px`);
     };
@@ -55,14 +55,14 @@ export function usePageSearchTarget(ref: RefObject<HTMLDivElement | null>, enabl
   const id = useRef(Symbol("page-search"));
   const [desktop, setDesktop] = useState(false);
   const register = context?.register;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!register || typeof window.matchMedia !== "function") return;
     const query = window.matchMedia("(min-width: 801px)");
     const update = () => setDesktop(query.matches);
     update(); query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, [register]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled || !desktop || ref.current?.closest('dialog, [role="dialog"], [role="alertdialog"]')) return;
     return register?.(id.current);
   }, [register, desktop, enabled, ref]);

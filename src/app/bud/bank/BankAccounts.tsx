@@ -1,4 +1,6 @@
 "use client";
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
+import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
 import { visibleAccounts } from "@/lib/bud/mf/balances";
@@ -83,10 +85,10 @@ function Settings({ account, employees, inherited, onSave, onClose }: { account:
 export default function BankAccounts() {
   const [linkAlerts, setLinkAlerts] = useState<LinkAlert[]>([]);
   const [snapshot, setSnapshot] = useState<Snapshot>({ accounts: [], transactions: [], employees: [], admin: false });
-  const [tab, setTab] = useState("bank");
-  const [period, setPeriod] = useState("current");
+  const [tab, setTab] = useUrlTab<string>("bank", key=>key==="bank"||key==="card");
+  const initialSearch = useInitialSearch();
+  const [period, setPeriod] = useState(() => { const value = new URLSearchParams(initialSearch).get("period"); return value && validTransactionPeriod(value) ? value : "current"; });
   const card = "";
-  useEffect(() => { const params = new URLSearchParams(window.location.search); if (params.get("tab") === "card") setTab("card"); const initial = params.get("period"); if (initial && validTransactionPeriod(initial)) setPeriod(initial); }, []);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

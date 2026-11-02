@@ -65,7 +65,7 @@ describe("RootShell", () => {
     render(<RootShell><div>本文</div></RootShell>);
 
     expect(screen.getAllByLabelText("お知らせ")).toHaveLength(2);
-    const viewButtons = screen.getAllByRole("button", { name: "この画面は表示の切り替えがありません" });
+    const viewButtons = Array.from(document.querySelectorAll('button[aria-label="この画面は表示の切り替えがありません"]'));
     expect(viewButtons).toHaveLength(2);
     for (const button of viewButtons) expect(button).toBeDisabled();
     const rail = screen.getByLabelText("Gardenシリーズ");

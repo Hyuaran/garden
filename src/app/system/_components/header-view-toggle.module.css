@@ -1,11 +1,11 @@
-.slot { flex-shrink:0; }
+.slot { position:relative; flex-shrink:0; min-width:42px; min-height:42px; }
 .toggle { display:flex; gap:8px; }
 .toggle button, .fallback button { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; padding:9px; border:1px solid var(--btn-line); border-radius:13px; background:var(--btn); color:var(--btn-ink); box-shadow:var(--shadow-s); cursor:pointer; }
 .toggle button[aria-pressed="true"] { color:var(--teal); border-color:var(--teal); background:rgba(14,165,160,.1); }
 .toggle svg, .fallback svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; }
-@media(max-width:760px) { .toggle { gap:4px; } .toggle button, .fallback button { width:30px; height:30px; padding:5px; border-radius:8px; } }
+@media(max-width:760px) { .slot { min-width:30px; min-height:30px; } .toggle { gap:4px; } .toggle button, .fallback button { width:30px; height:30px; padding:5px; border-radius:8px; } }
 
-.fallback { position:relative; display:inline-flex; }
+.fallback { position:absolute; top:0; left:0; display:inline-flex; }
 .fallback button:disabled { color:var(--sub); opacity:.45; cursor:not-allowed; }
 /* ほかのボタン（明暗・ログアウト）の説明と同じ見た目・同じ距離（ボタンの上端から 50px）。Chrome の標準の説明（title）は出さない */
 .tooltip { display:none; position:absolute; z-index:60; left:50%; top:50px; transform:translateX(-50%); width:max-content; max-width:260px; padding:5px 10px; border:1px solid var(--side-line, var(--line)); border-radius:9px; background:var(--side, var(--card)); color:var(--side-ink, var(--sub)); font-size:11.5px; white-space:nowrap; pointer-events:none; }

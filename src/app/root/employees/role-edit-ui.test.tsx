@@ -36,7 +36,7 @@ vi.mock("../_lib/useMasterShortcuts", () => ({
   useMasterShortcuts: () => ({ activeIndex: -1 }),
 }));
 
-import EmployeesPage from "./page";
+import EmployeesPage from "./UrlViewClient";
 import { GardenRoleField } from "./GardenRoleField";
 import { VALIDATION_ERROR_BANNER } from "../_lib/validators";
 

@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -61,13 +62,7 @@ export default function QASearchPage() {
   const [showFavOnly, setShowFavOnly] = useState(false);
 
   // --- お気に入り（localStorage 永続化） ---
-  const [favs, setFavs] = useState<number[]>([]);
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem("gl_qa_favs");
-      if (s) setFavs(JSON.parse(s));
-    } catch { /* ignore */ }
-  }, []);
+  const [favs,setFavs,viewReady]=useStoredView<number[]>("gl_qa_favs",[],raw=>{const v=JSON.parse(raw);return Array.isArray(v)?v.filter((id:unknown)=>typeof id==="number"):[];});
   const toggleFav = (qIdx: number) => {
     setFavs((prev) => {
       const next = prev.includes(qIdx)
@@ -125,7 +120,7 @@ export default function QASearchPage() {
   const canSubmit = newQ.trim() && (newAToss.trim() || newACloser.trim());
 
   return (
-    <div style={{ padding: "24px 40px 80px", maxWidth: 800, margin: "0 auto" }}>
+    <div style={{ visibility:viewReady?"visible":"hidden", padding: "24px 40px 80px", maxWidth: 800, margin: "0 auto" }}>
       {/* ワイヤーフレームラベル */}
       <div style={{ position: "relative", marginBottom: 20 }}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1 style={{fontSize:18,margin:0}}>Q&A検索</h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />

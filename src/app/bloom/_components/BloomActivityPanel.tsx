@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 
 /**
  * BloomActivityPanel — 試作版 1:1 移植版 Activity Panel (dispatch main- No.16)
@@ -17,7 +18,7 @@
  *   - body.activity-collapsed クラスで CSS 折り畳み
  */
 
-import { forwardRef, useCallback, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 type ActivityEntry = {
   time: string;
@@ -70,22 +71,9 @@ const BloomActivityPanel = forwardRef<HTMLElement>(function BloomActivityPanel(
   _props,
   ref,
 ) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed,setCollapsed,viewReady]=useStoredView(STORAGE_KEY,false,raw=>raw==="1",value=>value?"1":"0");
 
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      const isCollapsed = stored === "1";
-      setCollapsed(isCollapsed);
-      document.body.classList.toggle("activity-collapsed", isCollapsed);
-    } catch {
-      /* ignore */
-    }
-    return () => {
-      document.body.classList.remove("activity-collapsed");
-    };
-  }, []);
-
+  useLayoutEffect(()=>{document.body.classList.toggle("activity-collapsed",collapsed);return()=>document.body.classList.remove("activity-collapsed");},[collapsed]);
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
@@ -97,14 +85,14 @@ const BloomActivityPanel = forwardRef<HTMLElement>(function BloomActivityPanel(
       document.body.classList.toggle("activity-collapsed", next);
       return next;
     });
-  }, []);
+  }, [setCollapsed]);
 
   return (
     <>
       {/* Activity Panel トグルボタン (panel 外配置、親 transform/opacity 影響回避) */}
       <button
         type="button"
-        className="activity-toggle"
+        style={{visibility:viewReady?"visible":"hidden"}} className="activity-toggle"
         title="Activity Panel 収納/展開"
         aria-expanded={!collapsed}
         onClick={toggleCollapsed}
@@ -114,7 +102,7 @@ const BloomActivityPanel = forwardRef<HTMLElement>(function BloomActivityPanel(
         </span>
       </button>
 
-      <aside className="activity-panel" ref={ref}>
+      <aside style={{visibility:viewReady?"visible":"hidden"}} className="activity-panel" ref={ref}>
         <div className="activity-header">
           <div className="activity-title">
             <h3>Today&apos;s Activity</h3>

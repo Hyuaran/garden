@@ -1,4 +1,5 @@
 "use client";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import { useActionDialog } from "@/app/system/_components/Modal/useActionDialog";
 import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
@@ -88,14 +89,7 @@ async function readActiveExpenseRequests(
   return makeFallbackQuery(REQUEST_SELECT);
 }
 
-function readInitialCorpFilter() {
-  if (typeof window === "undefined") return "all";
-  try {
-    return window.sessionStorage.getItem(CORP_FILTER_STORAGE_KEY) ?? "all";
-  } catch {
-    return "all";
-  }
-}
+
 
 export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) {
   const actionDialog = useActionDialog();
@@ -109,7 +103,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   const [corps, setCorps] = useState<Corp[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
   const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
-  const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
+  const [corpFilter, setCorpFilterState, viewReady] = useStoredView(CORP_FILTER_STORAGE_KEY,"all",raw=>raw,value=>value,"sessionStorage");
   const [applicantFilter, setApplicantFilter] = useState("all");
   const [idx, setIdx] = useState(0);
   const [detail, setDetail] = useState<Req | null>(null);
@@ -524,7 +518,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   };
 
   return (
-    <div>
+    <div style={{visibility:viewReady?"visible":"hidden"}}>
       {actionDialog.dialog}
       <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} progress={processing ? { done: processing.done, total: processing.count } : null} />
       {!embedded && (

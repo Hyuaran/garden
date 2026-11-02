@@ -7,7 +7,8 @@ vi.mock('./baitoru-panel',()=>({default:()=> <div>掲載の登録</div>}));
 import PostingsPage from './page';
 it('shows the preparation message when super-admin access is denied',async()=>{
  m.user.mockResolvedValue(null);
- const page = await PostingsPage();
+ const wrapped = await PostingsPage({});
+ const page = wrapped.props.children as React.ReactElement;
  render(await (page.type as (props: typeof page.props)=>Promise<React.ReactNode>)(page.props));expect(screen.getByText('準備中です')).toBeInTheDocument();
  expect(screen.queryByText('掲載の登録')).not.toBeInTheDocument();
 });

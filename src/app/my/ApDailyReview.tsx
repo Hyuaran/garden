@@ -1,5 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useStoredView } from "@/lib/ui/useStoredView";
+import { useThemeAppearance } from '@/lib/ui/useThemeAppearance';
+import { useState } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import DataTable, { type DataColumn } from '@/app/system/_components/DataTable/DataTable';
@@ -14,19 +16,9 @@ const hours = (n: number) => `${(n / 60).toFixed(1)}時間`;
 const time = (r: Report) => `${r.start_time.slice(0,5)}～${r.end_time.slice(0,5)}`;
 const percent = (value: number, calls: number) => calls ? `${value.toFixed(1)}%` : '—';
 export default function ApDailyReview({ recent, loading }: { recent: Report[]; loading: boolean }) {
-  const [view,setView] = useState<'chart'|'table'>('chart');
-  const [dark,setDark] = useState(false);
+  const [view,setView,viewReady] = useStoredView<'chart'|'table'>(storageKey,'chart',raw=>raw==='table'?'table':'chart',value=>value);
+  const [dark,themeReady]=useThemeAppearance();
   const [selected,setSelected] = useState<Report|null>(null);
-  useEffect(() => {
-    try { if (localStorage.getItem(storageKey) === 'table') setView('table'); } catch {}
-    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
-    const update = () => { const theme = document.documentElement.dataset.theme; setDark(theme === 'dark' || (theme !== 'light' && !!media?.matches)); };
-    update();
-    const observer = new MutationObserver(update);
-    observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-    media?.addEventListener('change',update);
-    return () => { observer.disconnect(); media?.removeEventListener('change',update); };
-  },[]);
   const rows = [...recent].sort((a,b)=>a.report_date.localeCompare(b.report_date));
   const mixed = new Set(rows.map(r=>r.kind)).size > 1;
   const countLabel = mixed ? 'トス・獲得' : rows.at(-1)?.kind === 'toss' ? 'トス' : '獲得';
@@ -53,10 +45,10 @@ export default function ApDailyReview({ recent, loading }: { recent: Report[]; l
     const closers = filtered.filter(r=>r.kind === 'closer');
     return <div className={styles.summary} aria-label="1日平均"><strong>1日平均（{days}日）</strong><span>稼働時間 {days ? hours(sum('work_minutes')/days) : '—'}</span>{(['calls','absent','prospect','count','coin_created'] as const).map((key,i)=><span key={key}>{['総コール','留守','見込み',countLabel,'コイン作成数'][i]} {avg(key)}</span>)}<span>有効率 {percent(weighted/calls,calls)}</span>{(['absent','prospect','count'] as const).map((key,i)=><span key={key}>{['留守率','見込み率',`${countLabel}率`][i]} {percent(sum(key)/calls*100,calls)}</span>)}{hasCloser && <span>効率 {closers.length ? (closers.reduce((n,r)=>n+Number(r.efficiency),0)/closers.length).toFixed(2) : '—'}</span>}</div>;
   }
-  return <section className={styles.root}>
+  return <section className={styles.root} style={{visibility:viewReady && themeReady?"visible":"hidden"}}>
     {/* グラフ⇄表の切り替えは見出しの横（右上の一覧／カードの場所は使わない） */}
     <div className={styles.heading}><h2>直近31日</h2><button type="button" className={styles.viewButton} aria-label={view === 'chart' ? '表で見る' : 'グラフで見る'} title={view === 'chart' ? '表で見る' : 'グラフで見る'} onClick={()=>{const next=view === 'chart' ? 'table':'chart';setView(next);try {localStorage.setItem(storageKey,next);} catch {}}}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">{view === 'chart' ? <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M10 4v16"/></> : <><path d="M3 3v18h18M5 16l5-6 4 3 6-8"/></>}</svg></button></div>
-    {loading ? <p>読み込み中...</p> : !rows.length ? <p>まだありません</p> : view === 'chart' ? <div className={styles.chart}><Line aria-label="日報の推移" data={{labels:rows.map(r=>r.report_date.split('-').slice(1).map(Number).join('/')),datasets:(['calls','absent','prospect','count','coin_created'] as const).map((key,i)=>({label:['総コール','留守','見込み',countLabel,'コイン作成数'][i]+(i<2 ? '（左）':'（右）'),data:rows.map(r=>r[key] ?? 0),yAxisID:i<2 ? 'y':'yRight',borderColor:colors[i],backgroundColor:colors[i],borderWidth:2,borderDash:i<2 ? [] : [6,4],pointRadius:3}))}} options={{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{color:ink}},tooltip:{mode:'index',callbacks:{title:items=>rows[items[0]?.dataIndex]?.report_date ?? '',label:ctx=>`${String(ctx.dataset.label).replace(/（[左右]）$/,'')} ${ctx.parsed.y}件`}}},scales:{x:{ticks:{color:ink},grid:{color:grid}},y:{beginAtZero:true,position:'left',title:{display:true,text:'件',color:ink},ticks:{precision:0,color:ink},grid:{color:grid}},yRight:{beginAtZero:true,position:'right',title:{display:true,text:'件',color:ink},ticks:{precision:0,color:ink},grid:{drawOnChartArea:false,color:grid}}}}}/></div> : <DataTable rows={rows} columns={columns} rowKey={r=>r.report_date} searchText={r=>r.report_date} searchPlaceholder="日付で探す" defaultSort={{id:'date',direction:'desc'}} summary={summary} searchable={false} onRowClick={setSelected}/>}
+    {loading ? <p>読み込み中...</p> : !rows.length ? <p>まだありません</p> : view === 'chart' ? <div className={styles.chart}><Line aria-label="日報の推移" data={{labels:rows.map(r=>r.report_date.split('-').slice(1).map(Number).join('/')),datasets:(['calls','absent','prospect','count','coin_created'] as const).map((key,i)=>({label:['総コール','留守','見込み',countLabel,'コイン作成数'][i]+(i<2 ? '（左）':'（右）'),data:rows.map(r=>r[key] ?? 0),yAxisID:i<2 ? 'y':'yRight',borderColor:colors[i],backgroundColor:colors[i],borderWidth:2,borderDash:i<2 ? [] : [6,4],pointRadius:3}))}} options={{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{color:ink}},tooltip:{mode:'index',callbacks:{title:items=>rows[items[0]?.dataIndex]?.report_date ?? '',label:ctx=>`${String(ctx.dataset.label).replace(/（[左右]）$/,'')} ${ctx.parsed.y}件`}}},scales:{x:{ticks:{color:ink},grid:{color:grid}},y:{beginAtZero:true,position:'left',title:{display:true,text:'件',color:ink},ticks:{precision:0,color:ink},grid:{color:grid}},yRight:{beginAtZero:true,position:'right',title:{display:true,text:'件',color:ink},ticks:{precision:0,color:ink},grid:{drawOnChartArea:false,color:grid}}}}}/></div> : <DataTable loading={loading} rows={rows} columns={columns} rowKey={r=>r.report_date} searchText={r=>r.report_date} searchPlaceholder="日付で探す" defaultSort={{id:'date',direction:'desc'}} summary={summary} searchable={false} onRowClick={setSelected}/>}
     {selected && <Modal title={`${selected.report_date} の日報`} size="md" onClose={()=>setSelected(null)} actions={<button type="button" onClick={()=>setSelected(null)}>閉じる</button>}><dl className={styles.details}>{[
       ['区分',selected.kind === 'toss' ? 'トス':'クローザー'],['時間',time(selected)],['稼働時間',hours(selected.work_minutes)],['総コール',`${number(selected.calls)}件`],['留守',`${number(selected.absent)}件`],['見込み',`${number(selected.prospect)}件`],['有効率',percent(Number(selected.effective_rate),selected.calls)],
       [selected.kind === 'toss' ? 'トス':'本日獲得',`${number(selected.count)}件`],...(selected.kind === 'closer' ? [['現状合計',`${Number(selected.month_total).toFixed(1)}件`],['効率',Number(selected.efficiency).toFixed(2)]]:[]),

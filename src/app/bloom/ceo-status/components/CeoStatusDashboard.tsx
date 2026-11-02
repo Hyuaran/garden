@@ -1,11 +1,13 @@
 "use client";
+import { useInitialSearch } from "@/lib/ui/InitialUrlView";
+import { useStoredView } from "@/lib/ui/useStoredView";
 import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
 import { useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
 
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
@@ -55,21 +57,7 @@ function moduleStatusLabel(status: string) {
   return "未着手";
 }
 
-function readPreviewRole(): "admin" | "staff" | null {
-  if (typeof window === "undefined" || process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS !== "1") return null;
-  // 1. URL クエリ優先 (起動時 or クエリ付きで明示的に開いたとき): sessionStorage に保存
-  const roleParam = new URLSearchParams(window.location.search).get("ceoPreviewRole");
-  if (roleParam === "admin" || roleParam === "staff") {
-    try { window.sessionStorage.setItem("ceoPreviewRole", roleParam); } catch {}
-    return roleParam;
-  }
-  // 2. sessionStorage fallback: サイドバー経由で再訪した時にクエリパラメータが消えても role を維持
-  try {
-    const stored = window.sessionStorage.getItem("ceoPreviewRole");
-    if (stored === "admin" || stored === "staff") return stored;
-  } catch {}
-  return null;
-}
+
 
 function subscribePreviewRole() {
   return () => {};
@@ -122,7 +110,11 @@ export default function CeoStatusDashboard() {
   const [selectedTab, setActiveTab] = useUrlTab<CeoStatusTab>("overview");
   const { allowedTab } = useSystemView();
   const activeTab = TABS.some(t => t.key === selectedTab && allowedTab(t.key)) ? selectedTab : TABS.find(t => allowedTab(t.key))?.key;
-  const previewRole = useSyncExternalStore(subscribePreviewRole, readPreviewRole, () => null);
+  const initialSearch=useInitialSearch();
+  const roleParam=new URLSearchParams(initialSearch).get("ceoPreviewRole");
+  const [savedPreviewRole,setPreviewRole,previewReady]=useStoredView<"admin"|"staff"|null>("ceoPreviewRole",null,raw=>raw==="admin"||raw==="staff"?raw:null,value=>value??"","sessionStorage");
+  useLayoutEffect(()=>{if(process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === "1" && (roleParam==="admin"||roleParam==="staff"))setPreviewRole(roleParam);},[roleParam,setPreviewRole]);
+  const previewRole=process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === "1" ? (roleParam==="admin"||roleParam==="staff"?roleParam:savedPreviewRole) : null;
   const contentRef = useRef<HTMLDivElement>(null);
 
   const isSuperAdmin = previewRole === "admin" || (previewRole !== "staff" && bloomUser?.garden_role === "super_admin");
@@ -145,7 +137,7 @@ export default function CeoStatusDashboard() {
       userRoleLabel={roleLabel(role)}
       onLogout={() => lockAndLogout("manual")}
     >
-      <div className={styles.page}>
+      <div className={styles.page} style={{visibility:process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS !== "1" || previewReady?"visible":"hidden"}}>
         <PageHeader
           titleAddon={<TabHeadingAction items={TABS.map(tab => ({ key: tab.key, label: tab.jp }))} active={activeTab} />}
           title="経営状況"

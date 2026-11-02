@@ -4,29 +4,7 @@ import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import styles from "./ScopedTabs.module.css";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 type Item = { key: string; label: string };
-function subscribeUrlTab(read: () => void) {
-  window.addEventListener("popstate", read);
-  window.addEventListener("garden-tab-change", read);
-  return () => {
-    window.removeEventListener("popstate", read);
-    window.removeEventListener("garden-tab-change", read);
-  };
-}
-function readSearch() { return window.location.search; }
-function serverSearch() { return ""; }
-
-/** Keep tab navigation reloadable without adding a Suspense boundary to static pages. */
-export function useUrlTab<T extends string>(fallback: T) {
-  const search = useSyncExternalStore(subscribeUrlTab, readSearch, serverSearch);
-  const tab = (new URLSearchParams(search).get("tab") || fallback) as T;
-  const select = (value: T) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", value);
-    window.history.pushState(null, "", url);
-    window.dispatchEvent(new Event("garden-tab-change"));
-  };
-  return [tab, select] as const;
-}
+export { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 export function TabHeadingAction({ items, active }: { items: Item[]; active?: string }) {
   return null;
 }

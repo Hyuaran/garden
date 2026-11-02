@@ -1,4 +1,4 @@
-﻿import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { syncRootRoster } from "./roster-sync.server";
 import { getAllRecords, getFormFields } from "@/lib/kintone/records";
 vi.mock("@/lib/kintone/records", () => ({ getAllRecords: vi.fn(), getFormFields: vi.fn() }));

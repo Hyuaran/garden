@@ -1,3 +1,4 @@
+import { InitialUrlView } from "@/lib/ui/InitialUrlView";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
@@ -10,7 +11,7 @@ function Harness() {
   return <><h1>見出し<TabHeadingAction items={items} active={active} /></h1><ScopedTabs items={items} active={active} onChange={select} label="切り替え" /><p>{active === "second" ? "次の内容" : active === "first" ? "最初の内容" : "閲覧不可"}</p></>;
 }
 function show(allowed = [true, true]) {
-  return render(<SystemViewProvider value={{ pageKey: "test", admin: false, canAdd: false, tabs: items.map((item, i) => ({ ...item, allowed: allowed[i], canAdd: false })) }}><Harness /></SystemViewProvider>);
+  return render(<SystemViewProvider value={{ pageKey: "test", admin: false, canAdd: false, tabs: items.map((item, i) => ({ ...item, allowed: allowed[i], canAdd: false })) }}><InitialUrlView search={window.location.search}><Harness /></InitialUrlView></SystemViewProvider>);
 }
 describe("ScopedTabs", () => {
   beforeEach(() => window.history.replaceState(null, "", "/bloom/progress"));

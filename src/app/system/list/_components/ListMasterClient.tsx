@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
@@ -684,11 +685,7 @@ async function readJson<T>(response: Response): Promise<T> {
   return data;
 }
 
-function tabFromLocation(): ActiveTab {
-  if (typeof window === "undefined") return "list";
-  const tab = new URLSearchParams(window.location.search).get("tab");
-  return tab === "upload" || tab === "analysis" || tab === "history" || tab === "internal-block" || tab === "guide" ? tab : "list";
-}
+
 
 function fileExtension(name: string): string {
   const match = /\.([^.]+)$/.exec(name.toLowerCase());
@@ -1220,7 +1217,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [fmExportListNameTouched, setFmExportListNameTouched] = useState(false);
   const [fmExportRecordAssignment, setFmExportRecordAssignment] = useState(true);
   const { allowedTab } = useSystemView();
-  const [requestedTab, setActiveTab] = useState<ActiveTab>("list");
+  const [requestedTab, setActiveTab] = useUrlTab<ActiveTab>("list", key=>TAB_LABELS.some(tab=>tab.key===key) && allowedTab(key));
   const visibleTabs = TAB_LABELS.filter(tab => allowedTab(tab.key));
   const activeTab = visibleTabs.find(tab => tab.key === requestedTab)?.key ?? visibleTabs[0]?.key;
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -1398,7 +1395,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   useEffect(() => {
-    setActiveTab(tabFromLocation());
     Promise.all([...(allowedTab("list") ? [loadSaved(), loadOptions(), loadCallSyncState(), loadOrderSyncState()] : []), ...(allowedTab("upload") ? [loadUploadHistory(), loadPurchaseVendors()] : [])]).catch((error: unknown) =>
       setMessage(error instanceof Error ? error.message : "取得できませんでした"),
     );
