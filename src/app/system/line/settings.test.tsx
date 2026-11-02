@@ -115,3 +115,24 @@ it('一斉送信の定型文ボタンで題名・文・絞り込みが入る',as
   expect((screen.getByLabelText('送信内容') as HTMLTextAreaElement).value).toContain('【雇用契約書】のクラウドサインをお送りしてますので');
   for (const name of ['アルバイト','ブロードバンド事業','在籍中']) expect(screen.getAllByText(name).length).toBeGreaterThan(0);
 });
+it('一斉送信が終わると全画面で「〇人に送信しました」を出し、絞り込み・題名・送信内容を空に戻す',async()=>{
+  window.history.replaceState(null,'','/?tab=broadcast');
+  const tags=[{id:'e2',kind:'employment',name:'アルバイト',sort:0},{id:'b1',kind:'business',name:'ブロードバンド事業',sort:0},{id:'s1',kind:'status',name:'在籍中',sort:0}];
+  const fetchMock=vi.fn(async(_url:string,init?:{method?:string;body?:string})=>{
+    const action=init?.body?JSON.parse(init.body).action:undefined;
+    if(action==='preview')return {ok:true,json:async()=>({people:[{employee_id:'1',name:'山田 一郎'},{employee_id:'2',name:'鈴木 花子'}],remaining:100,id:'d1',expires:1,signature:'s'})};
+    if(action==='send')return {ok:true,json:async()=>({sent:2,failed:0})};
+    return {ok:true,json:async()=>({...data,tags})};
+  });
+  vi.stubGlobal('fetch',fetchMock);
+  render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
+  fireEvent.click(await screen.findByRole('button',{name:'雇用契約書のお知らせ'}));
+  fireEvent.click(screen.getByRole('button',{name:'送る人と残り通数を確認する'}));
+  const dialog=within(await screen.findByRole('dialog'));
+  fireEvent.click(dialog.getByRole('button',{name:'送信する'}));
+  expect(await screen.findByRole('status',{name:'2人に送信しました'})).toBeTruthy();
+  expect((screen.getByLabelText('題名') as HTMLInputElement).value).toBe('');
+  expect((screen.getByLabelText('送信内容') as HTMLTextAreaElement).value).toBe('');
+  expect(screen.queryByText('2人に送信しました。')).toBeNull();
+  expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='send')).toBe(true);
+});
