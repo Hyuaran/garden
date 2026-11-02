@@ -112,6 +112,6 @@ it('一斉送信の定型文ボタンで題名・文・絞り込みが入る',as
   render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
   fireEvent.click(await screen.findByRole('button',{name:'雇用契約書のお知らせ'}));
   expect((screen.getByLabelText('題名') as HTMLInputElement).value).toMatch(/^\d{4}年\d{1,2}月分 雇用契約書$/);
-  expect((screen.getByLabelText('送る文') as HTMLTextAreaElement).value).toContain('【雇用契約書】のクラウドサインをお送りしてますので');
+  expect((screen.getByLabelText('送信内容') as HTMLTextAreaElement).value).toContain('【雇用契約書】のクラウドサインをお送りしてますので');
   for (const name of ['アルバイト','ブロードバンド事業','在籍中']) expect(screen.getAllByText(name).length).toBeGreaterThan(0);
 });
