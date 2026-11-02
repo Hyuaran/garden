@@ -3641,8 +3641,9 @@ button[data-modal-action="danger"], [data-garden-modal="panel"] button[data-moda
 .garden-help-heading > h1 { min-width:0; }
 
 /* 必須の入力欄のラベル */
+/* 小窓の中の文字の色をそろえる決まり（[data-garden-modal="panel"] … color: inherit）に負けないよう !important */
 .garden-required {
-  color: var(--modal-danger);
+  color: var(--modal-danger) !important;
   margin-left: 0.2em;
   font-weight: 400;
   line-height: inherit;
