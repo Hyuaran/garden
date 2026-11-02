@@ -6,6 +6,13 @@ export function transactionRange(period: string, fiscalStart?: string | null, no
     const year = Number(period.slice(3));
     return { start: `${year}-04-01`, end: `${year + 1}-03-31` };
   }
+  if (period === "recent31") {
+    // 今日を含めて 31 日（月が替わっても前の月の分が消えないように）
+    const end = monthRange("current", now).end;
+    const start = new Date(`${end}T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() - 30);
+    return { start: start.toISOString().slice(0, 10), end };
+  }
   const range = monthRange(period, now);
   if (period === "year") {
     if (!fiscalStart) throw new Error("今年度の取引を読み直してください");
@@ -29,7 +36,7 @@ export function fiscalYearLabel(fiscalStart?: string | null, now = new Date()) {
   return `${m >= 4 ? y : y - 1}年度`;
 }
 
-export const validTransactionPeriod = (period: string) => period.split(",").every(value => ["current", "last", "year"].includes(value) || /^fy:[1-9][0-9]{3}$/.test(value));
+export const validTransactionPeriod = (period: string) => period.split(",").every(value => ["recent31", "current", "last", "year"].includes(value) || /^fy:[1-9][0-9]{3}$/.test(value));
 export function transactionYears(rows: { date: string }[]) {
   return [...new Set(rows.map(t => Number(t.date.slice(0,4)) - (Number(t.date.slice(5,7)) < 4 ? 1 : 0)))].sort((a,b) => b-a);
 }

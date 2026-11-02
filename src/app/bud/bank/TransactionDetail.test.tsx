@@ -62,7 +62,7 @@ it("offers available past fiscal years and opens a past-year deep link", async (
   render(<TransactionDetail id="b" initialPeriod="fy:2025" />);
   await screen.findByText("今の残高");
   fireEvent.click(screen.getByRole("button",{name:"期間"}));
-  expect(screen.getAllByRole("checkbox").map(o=>o.parentElement?.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
+  expect(screen.getAllByRole("checkbox").map(o=>o.parentElement?.textContent)).toEqual(["直近31日","今月","先月","2026年度","2025年度","2023年度"]);
   expect(fetcher.mock.calls[0][0]).toContain("period=fy%3A2025");
 });
 

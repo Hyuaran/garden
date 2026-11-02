@@ -97,7 +97,7 @@ it("offers available card fiscal years and carries the selected period into deta
   await screen.findByText("マネーフォワード最終更新：2026/10/20(火) 09:30");
   fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
   fireEvent.click(screen.getByRole("button",{name:"期間"}));
-  expect(screen.getAllByRole("checkbox").map(o=>o.parentElement?.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
+  expect(screen.getAllByRole("checkbox").map(o=>o.parentElement?.textContent)).toEqual(["直近31日","今月","先月","2026年度","2025年度","2023年度"]);
   fireEvent.click(screen.getByRole("button",{name:"すべて解除"}));
   fireEvent.click(screen.getByRole("checkbox",{name:"2025年度"}));
   fireEvent.click(screen.getByRole("button",{name:"OK"}));

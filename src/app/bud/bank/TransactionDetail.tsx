@@ -14,8 +14,8 @@ type Detail = { fiscalYears?: number[]; account: MfAccount; transactions: CardTr
 const yen = (n: number) => `${n.toLocaleString("ja-JP")} 円`;
 const income = (t: CardTransaction) => t.side === "INCOME" ? Number(t.value) : 0;
 const expense = (t: CardTransaction) => t.side === "EXPENSE" ? Number(t.value) : 0;
-export default function TransactionDetail({ id, initialPeriod = "current" }: { id: string; initialPeriod?: string }) {
-  const [period,setPeriod] = useState(validTransactionPeriod(initialPeriod) ? initialPeriod : "current");
+export default function TransactionDetail({ id, initialPeriod = "recent31" }: { id: string; initialPeriod?: string }) {
+  const [period,setPeriod] = useState(validTransactionPeriod(initialPeriod) ? initialPeriod : "recent31");
   const [data,setData] = useState<Detail | null>(null);
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);

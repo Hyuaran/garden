@@ -27,3 +27,8 @@ it("accepts old and comma-separated periods and excludes gaps in their union", (
   const overlap = transactionUnion("current,year", "2026-04-01", new Date("2026-10-21T00:00:00Z"));
   expect(["2026-10-20","2026-05-01"].filter(overlap.includes)).toHaveLength(2);
 });
+it("直近31日は今日を含めて31日（月をまたいでも前の月が残る）", () => {
+  const now = new Date("2026-11-02T03:00:00Z");
+  expect(transactionRange("recent31", "2026-04-01", now)).toEqual({ start: "2026-10-03", end: "2026-11-02" });
+  expect(validTransactionPeriod("recent31")).toBe(true);
+});
