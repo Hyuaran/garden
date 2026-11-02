@@ -3617,8 +3617,9 @@ table :is(td, th):is(.garden-cell-text, .garden-cell-fixed, .garden-cell-mark, .
 .garden-modal-body { margin-top: 16px; }
 .garden-modal-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .garden-modal-heading > button { flex-shrink: 0; display: grid; place-items: center; padding: 6px; }
-.garden-modal-heading > h2 { margin-right: auto; }
-.garden-modal-heading-actions { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* 画面側の h2 の余白（Bud など）に負けないよう、題は左・ボタンは右に固定する */
+.garden-modal-heading > h2 { margin: 0 auto 0 0 !important; }
+.garden-modal-heading-actions { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto !important; }
 [data-modal-actions] { display: flex !important; justify-content: flex-end !important; align-items: center; flex-wrap: wrap; gap: 12px !important; margin-top: 20px; }
 /* 小窓の中のタブ（SystemTabs・role=tab）は下線のタブのままにする */
 [data-garden-modal="panel"] button:not([role="tab"]), button[data-modal-action] {
