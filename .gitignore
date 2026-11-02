@@ -57,3 +57,4 @@ next-env.d.ts
 .secrets/
 
 .bud-mf-backfill-progress.json*
+scripts/manual-gate/watch-manuals.log
