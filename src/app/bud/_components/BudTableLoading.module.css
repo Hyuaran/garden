@@ -1,0 +1,5 @@
+.frame { overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+.table { width:100%; border-collapse:collapse; font-size:14px; }
+.table th,.table td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
+.table th { height:42px; }
+.bar { display:block; width:70%; min-width:70px; height:12px; border-radius:4px; background:var(--line); }

@@ -1,4 +1,6 @@
 "use client";
+import BudTableLoading from "../_components/BudTableLoading";
+import { corporations } from "@/lib/bud/mf/corporations";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
@@ -148,7 +150,8 @@ export default function BankAccounts() {
     <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
       {settings && snapshot.admin && <article className={styles.account}><h2>{tab === "bank" ? "銀行すべての閲覧権限" : "カードすべての閲覧権限"}<TabActionButton icon="settings" label={tab === "bank" ? "銀行すべての閲覧権限の設定" : "カードすべての閲覧権限の設定"} onClick={() => setSelected("group")} /></h2>{selected === "group" && <GroupSettings key={tab} kind={tab as "bank" | "card"} viewers={snapshot.groupViewers?.find(g => g.kind === tab)?.employee_ids ?? []} employees={snapshot.employees} onSave={load} onClose={() => setSelected(null)} />}</article>}
       {!settings && tab === "bank" && <LinkAlerts accounts={permitted} onChange={setLinkAlerts} />}
-      {!settings && tab === "bank" && <BalanceMatrix linkAlerts={linkAlerts} arrivalTotal={snapshot.arrivalTotal} accounts={permitted} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
+      {loading && snapshot.accounts.length === 0 && tab === "bank" ? <><div className={styles.total}><span>グループ合計</span><strong>—</strong></div><BudTableLoading headers={tab === "bank" ? ["法人", "銀行", "合計"] : ["カード", "利用金額", "件数"]} rows={Object.keys(corporations).length + (tab === "bank" ? 1 : 0)} rowHeight={64} tableClassName={styles.matrix} /></> : null}
+      {!(loading && snapshot.accounts.length === 0) && !settings && tab === "bank" && <BalanceMatrix linkAlerts={linkAlerts} arrivalTotal={snapshot.arrivalTotal} accounts={permitted} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
       {(settings || (tab === "card" && reordering)) && <div className={styles.grid}>{shown.map((account) => <article key={account.mf_account_id} data-account={account.mf_account_id} className={styles.account}>
         <h2>{reordering && tab === "card" && <ReorderGrip label={accountDisplayName(account.name)} itemKey={account.mf_account_id} keys={shown.map(a=>a.mf_account_id)} selector="article[data-account]" attribute="data-account" onMove={move} />}{accountDisplayName(account.name)}{settings && <TabActionButton icon="settings" label={`${accountDisplayName(account.name)}の設定`} onClick={() => setSelected(account.mf_account_id)} />}</h2>
         {account.hidden && <small>表示しない設定</small>}
@@ -157,7 +160,7 @@ export default function BankAccounts() {
 
       </article>)}</div>}
       {!loading && shown.length === 0 && <p>表示できる{tab === "bank" ? "口座" : "カード"}はありません。</p>}
-      {!settings && tab === "card" && <><div className={styles.toolbar}><PeriodSelect value={period} onChange={value => { setPeriod(value); const url = new URL(window.location.href); url.searchParams.set("period", value); window.history.replaceState(null, "", url); }} fiscalStart={snapshot.accounts.find(a => a.fiscal_start_date)?.fiscal_start_date} years={Object.values(snapshot.yearsByAccount ?? {}).flat()} /></div><div className={styles.grid}>{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${encodeURIComponent(period)}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}
+      {!settings && tab === "card" && <><div className={styles.toolbar}><PeriodSelect value={period} onChange={value => { setPeriod(value); const url = new URL(window.location.href); url.searchParams.set("period", value); window.history.replaceState(null, "", url); }} fiscalStart={snapshot.accounts.find(a => a.fiscal_start_date)?.fiscal_start_date} years={Object.values(snapshot.yearsByAccount ?? {}).flat()} /></div><div className={styles.grid}>{loading && snapshot.accounts.length === 0 && <div style={{ gridColumn: "1 / -1" }}><BudTableLoading headers={["\u30ab\u30fc\u30c9", "\u5229\u7528\u91d1\u984d", "\u4ef6\u6570"]} rows={Object.keys(corporations).length} rowHeight={64} /></div>}{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${encodeURIComponent(period)}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}
     </section>
   </div>;
 }

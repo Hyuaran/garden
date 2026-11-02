@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 
 import { useEffect, useState } from "react";
 import {
@@ -37,7 +38,7 @@ export function StatusHistoryTab({ transferId }: Props) {
   }, [transferId]);
 
   if (loading) {
-    return <div className="text-sm text-gray-500 py-4">履歴を読み込み中…</div>;
+    return <BudTableLoading headers={["変更日時","状態","担当者"]} />;
   }
 
   if (error) {

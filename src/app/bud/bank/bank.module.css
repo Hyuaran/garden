@@ -63,6 +63,7 @@
 .pageShell > section { min-width:0; max-width:100%; }
 .tableWrap { width:100%; min-width:0; overscroll-behavior-inline:contain; }
 .matrix { border-collapse:separate !important; border-spacing:0; }
+.matrix tbody tr,.matrix tfoot tr { height:64px; }
 .matrix td { text-align:right; min-width:170px; }
 .matrix td:nth-child(3) { white-space:nowrap; min-width:170px; }
 .matrix td > * { display:block; margin:4px 0; }

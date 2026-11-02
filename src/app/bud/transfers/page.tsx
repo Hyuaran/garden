@@ -21,8 +21,16 @@ const REDESIGNED_SOURCE_CSS = `${SOURCE_CSS}
   width: 100%;
 }
 .trf-react-mount {
-  min-height: 1px;
+  min-height: 420px;
 }
+#trf-overview-calendar-mount { min-height: 860px; }
+.trf-react-mount:has(> section) > .trf-loading-placeholder,
+.trf-react-mount:has(> div:not(.trf-loading-placeholder)) > .trf-loading-placeholder {
+  display: none;
+}
+.trf-loading-placeholder { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.trf-loading-placeholder table { width: 100%; border-collapse: collapse; }
+.trf-loading-placeholder th, .trf-loading-placeholder td { height: 48px; padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; }
 .tab-nav .tab-item[data-tab="approval"] {
   position: relative;
   overflow: visible;
@@ -235,6 +243,7 @@ const REDESIGNED_SOURCE_CSS = `${SOURCE_CSS}
 const REDESIGNED_SOURCE_HTML = redesignTransfersHtml(SOURCE_HTML);
 
 function redesignTransfersHtml(html: string) {
+  const loadingTable = '<div class="trf-loading-placeholder" role="status" aria-label="読み込み中" aria-busy="true"><table><thead><tr><th>予定日</th><th>支払先</th><th>金額</th><th>状態</th></tr></thead><tbody>' + Array.from({ length: 7 }, (_, i) => '<tr><td>' + (i === 0 ? '読み込み中…' : '—') + '</td><td>—</td><td>—</td><td>—</td></tr>').join('') + '</tbody></table></div>';
   const navigation = `<nav class="tab-nav">
     <button class="tab-item active" data-tab="overview">
       <span class="tab-item-jp">全体</span>/ Overview
@@ -298,7 +307,7 @@ ${renamedFbRow}
     .replace(
       '<div class="tab-content" id="tab-master">',
       '<div class="tab-content" id="tab-list">\n    <div id="trf-list-mount" class="trf-react-mount"></div>\n  </div>\n\n  <div class="tab-content" id="tab-master">',
-    );
+    ).replace(/(<div id="trf-(?:overview-calendar|schedule|approval|list)-mount" class="trf-react-mount">)<\/div>/g, '$1' + loadingTable + '</div>');
 }
 
 function TransfersPage() {

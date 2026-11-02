@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 
 import { useEffect, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -136,7 +137,7 @@ export function ManualAssignModal({
               照合先候補（金額が近い順）
             </h3>
             {loading ? (
-              <div className="text-sm text-gray-500">読み込み中…</div>
+        <BudTableLoading headers={["照合先","金額"]} />
             ) : candidates.length === 0 ? (
               <div className="text-sm text-gray-500">
                 承認済み・未実行の振込がありません

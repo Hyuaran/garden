@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 
 import Modal from "@/app/system/_components/Modal/Modal";
 import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
@@ -214,9 +215,7 @@ export function TransferInboxTray({
       )}
 
       {loading ? (
-        <div style={noticeStyle}>
-          読み込み中…
-        </div>
+        <BudTableLoading headers={["受信日", "支払先", "金額", "状態"]} />
       ) : items.length === 0 ? (
         <div style={noticeStyle}>
           未処理データはありません

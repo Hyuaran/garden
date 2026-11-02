@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
@@ -56,7 +57,7 @@ function TransferDetailContent() {
 
   if (loading) {
     return (
-      <div className="p-6 text-center text-gray-500">読み込み中…</div>
+        <BudTableLoading headers={["振込詳細","内容"]} />
     );
   }
 

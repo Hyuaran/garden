@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useEffect, useMemo, useState } from "react";
@@ -104,7 +105,7 @@ export default function StatementsSummaryContent() {
 
       {accountError && <div role="alert">{accountError}</div>}
       {loading ? (
-        <div className="text-center py-8 text-gray-500">読み込み中…</div>
+    <BudTableLoading headers={["費目","入金","出金","差引"]} />
       ) : error ? (
         <div
           role="alert"

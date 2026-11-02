@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "../_components/BudTableLoading";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useState } from "react";
@@ -50,6 +51,7 @@ export default function TransactionDetail({ id, initialPeriod = "recent31" }: { 
     {error && <p role="alert">{error}</p>}
     <span role="status">{loading ? "読み込み中…" : ""}</span>
     {!data && error && <div className={styles.toolbar}>{periodControl}</div>}
+    {loading && !data && <BudTableLoading headers={["取引日", "内容", "金額"]} />}
     {data && <>
       <DataTable loading={loading} key={`${id}:${period}`} rows={data.transactions} columns={columns} rowKey={t => t.mf_transaction_id} defaultSort={{ id:"date", direction:"desc" }} toolbar={periodControl}
         searchPlaceholder="内容・金額" searchText={t => `${t.content} ${Number(t.value)} ${Number(t.value).toLocaleString("ja-JP")} ${transactionAmount(t)} ${transactionAmount(t).toLocaleString("ja-JP")}`}

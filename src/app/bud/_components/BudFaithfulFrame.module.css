@@ -162,3 +162,5 @@
     flex: 0 0 auto;
   }
 }
+
+.pageStack :global(.access-badge) { min-width:20em; justify-content:center; }

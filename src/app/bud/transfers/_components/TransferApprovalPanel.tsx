@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import { useActionDialog } from "@/app/system/_components/Modal/useActionDialog";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
@@ -476,7 +477,7 @@ export function TransferApprovalPanel({
         {error && <div style={errorStyle}>{error}</div>}
 
         {loading ? (
-          <div style={noticeStyle}>読み込み中…</div>
+    <BudTableLoading headers={["選択","緊急度","予定日","支払先","支払区分","金額","状態"]} />
         ) : visibleRows.length === 0 ? (
           <div style={noticeStyle}>承認待ちの振込はありません。</div>
         ) : (

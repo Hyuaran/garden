@@ -172,15 +172,11 @@ export function TransferAmountCalendar() {
             </div>
           ))}
         </div>
-        {loading ? (
-          <div className="trf-amount-message">
-            金額を集計しています…
-          </div>
-        ) : (
-          <div className="trf-amount-day-grid">
+        {(
+          <div className="trf-amount-day-grid" aria-busy={loading}>
             {days.map((date) => {
               const key = formatDateKey(date);
-              const amounts = dailyAmounts.get(key);
+              const amounts = loading ? undefined : dailyAmounts.get(key);
               const inMonth = date.getMonth() === month.getMonth();
               const isToday = key === formatDateKey(new Date());
               const isSunday = date.getDay() === 0;

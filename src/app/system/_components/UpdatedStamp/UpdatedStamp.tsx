@@ -13,7 +13,7 @@ export default function UpdatedStamp({ label, date, emptyText = "未取得", onR
 }) {
   const stamp = date ? formatSyncStamp(date) : "";
   return <div className={styles.stamp}>
-    <span>{label}最終更新：{stamp || emptyText}</span>
+    <span className={styles.text}><span className={styles.reserve} aria-hidden="true">{label}最終更新：2026/11/02(月) 15:18</span><span className={styles.value}>{label}最終更新：{stamp || emptyText}</span></span>
     {children}
     {!hideRefresh && <span className={styles.refresh} tabIndex={!onRefresh ? 0 : undefined}>
     <button type="button" className={styles.button} onClick={onRefresh} disabled={!onRefresh || busy || disabled} aria-busy={busy} aria-label={onRefresh ? refreshLabel : "自動で更新されます（手動の取り直しはできません）"}>

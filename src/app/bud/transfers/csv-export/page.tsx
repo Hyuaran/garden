@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -146,7 +147,7 @@ function CsvExportContent() {
       </h1><HelpButton /></div><SystemTabs />
 
       {loading ? (
-        <div className="text-center py-8 text-gray-500">読み込み中…</div>
+        <BudTableLoading headers={["予定日","支払先","金額","状態"]} />
       ) : error ? (
         <div
           role="alert"

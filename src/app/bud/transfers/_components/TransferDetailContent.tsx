@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
@@ -45,7 +46,7 @@ export function TransferDetailContent({ transferId }: { transferId: string }) {
 
   const loading = result.transferId !== transferId;
   const { row, error } = result;
-  if (loading) return <div style={noticeStyle}>詳細を読み込んでいます…</div>;
+  if (loading) return <BudTableLoading headers={["振込詳細","内容"]} />;
   if (error) return <div style={errorStyle}>{error}</div>;
   if (!row) return <div style={noticeStyle}>振込データが見つかりません。</div>;
 

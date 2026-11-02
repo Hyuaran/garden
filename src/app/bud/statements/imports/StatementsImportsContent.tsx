@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -88,7 +89,7 @@ export default function StatementsImportsContent() {
 
       {accountError && <div role="alert">{accountError}</div>}
       {loading ? (
-        <div className="text-center py-8 text-gray-500">読み込み中…</div>
+    <BudTableLoading headers={["取込日時","口座","形式","ファイル名","行数","成功","スキップ"]} />
       ) : error ? (
         <div
           role="alert"

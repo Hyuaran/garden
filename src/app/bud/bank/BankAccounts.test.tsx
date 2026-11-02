@@ -8,6 +8,16 @@ const data = (admin = true) => ({ admin,axes:[{axis:"corp",key:"HR",sort_order:0
 const fetcher = vi.fn();
 beforeEach(() => { vi.stubGlobal("fetch",fetcher); fetcher.mockReset(); fetcher.mockImplementation(async (_url:string,init?:RequestInit) => new Response(JSON.stringify(init?.method ? {ok:true} : data()))); });
 describe("bank accounts screen", () => {
+  it("reserves bank and card table space before the first response", () => {
+    fetcher.mockImplementation(() => new Promise(() => {}));
+    render(<BankAccounts />);
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByRole("table")).toBeInTheDocument();
+    expect(within(panel).getAllByRole("row")).toHaveLength(9);
+    fireEvent.click(screen.getByRole("tab", { name: "カード利用" }));
+    expect(within(panel).getByRole("table")).toBeInTheDocument();
+    expect(within(panel).getAllByRole("row")).toHaveLength(8);
+  });
   it("formats the loaded time in Japan", () => { expect(formatLoadedAt("2026-10-20T10:30:00Z")).toBe("2026/10/20(火) 19:30"); });
   it("shows only automatic bank balances in the total and card history without balances", async () => {
     render(<BankAccounts />);

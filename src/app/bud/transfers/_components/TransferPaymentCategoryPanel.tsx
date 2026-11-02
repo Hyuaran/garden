@@ -1,4 +1,5 @@
 "use client";
+import BudTableLoading from "@/app/bud/_components/BudTableLoading";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -440,7 +441,7 @@ export function TransferPaymentCategoryPanel({
         </div>
       )}
       {loading ? (
-        <div style={noticeStyle}>読み込み中…</div>
+    <BudTableLoading headers={["選択","予定日","支払先","支払区分","金額","支払情報"]} />
       ) : visibleRows.length === 0 ? (
         <div style={noticeStyle}>対象の支払はありません。</div>
       ) : (
