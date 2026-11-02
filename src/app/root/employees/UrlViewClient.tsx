@@ -776,9 +776,10 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         </div>
       )}
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <div ref={tableRef}><DataTable loading={loading} columns={columns} rows={employees} rowKey={(e) => e.employee_id} defaultSort={{ id: "num", direction: "asc" }} searchText={(e) => [e.name, e.name_kana, e.employee_number].join(" ")} searchPlaceholder="氏名・カナ・社員番号" pageSize={500} onRowClick={setEditTarget} toolbar={<>        <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
+      {/* 読み込み中も同じ表の枠を出す（「読込中...」から表へ切り替えると下へ跳ねる） */}
+      <div ref={tableRef}><DataTable loading={loading} columns={columns} rows={employees} rowKey={(e) => e.employee_id} defaultSort={{ id: "num", direction: "asc" }} searchText={(e) => [e.name, e.name_kana, e.employee_number].join(" ")} searchPlaceholder="氏名・カナ・社員番号" pageSize={500} onRowClick={setEditTarget} toolbar={<>        <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
         <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
-</>} /></div>}
+</>} /></div>
 
       <Modal open={!!historyTarget} onClose={() => setHistoryTarget(null)} title={`${historyTarget?.name ?? ""}（${historyTarget?.employee_number ?? ""}）の履歴`} width={960}>
         {historyLoading ? <div style={{ color: colors.textMuted }}>読込中...</div> : historyError ? <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4 }}>{historyError}</div> : profileHistory ? (
