@@ -11,7 +11,7 @@ import { proxyPayload } from "./onboarding-proxy";
 import { adminInputFromRow, buildAdminList, commuteDailyAllowance, initialAdminRecord, parseAdminEmailInput, parseAdminHouseholderInput, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
 
 const ADMIN_ONBOARDING_COLUMNS = `employee_id,${ONBOARDING_COLUMNS},office,weekly_hours,health_insurance,pension_insurance,employment_insurance,tax_class,salary_kind,base_salary,allowances,commute_fixed_monthly,commute_cap_monthly,admin_updated_at`;
-const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id";
+const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id,employment_type";
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerClient>>;
 export type AdminContext = { supabase: SupabaseClient; managerEmployeeId: string; canWrite?: boolean; sensitive?: boolean };
@@ -37,10 +37,10 @@ export async function onboardingAdminContext(readOnly = false): Promise<AdminCon
 }
 
 async function readEmployees(employeeIds: string[]) {
-  if (!employeeIds.length) return new Map<string, { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null }>();
+  if (!employeeIds.length) return new Map<string, { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null; employment_type?: string | null }>();
   const { data, error } = await getSupabaseAdmin().from("root_employees").select(EMPLOYEE_COLUMNS).in("employee_id", employeeIds).is("deleted_at", null);
   if (error) throw databaseError(error);
-  return new Map(((data ?? []) as Array<{ employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null }>).map(employee => [employee.employee_id, employee]));
+  return new Map(((data ?? []) as Array<{ employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null; employment_type?: string | null }>).map(employee => [employee.employee_id, employee]));
 }
 
 function maskDependentMyNumbers(value: unknown) {
@@ -52,7 +52,7 @@ function maskDependentMyNumbers(value: unknown) {
   });
 }
 
-function recordFromRow(row: Record<string, unknown>, employee: { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null }, options: { maskMyNumbers?: boolean } = {}): AdminOnboardingRecord {
+function recordFromRow(row: Record<string, unknown>, employee: { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null; employment_type?: string | null }, options: { maskMyNumbers?: boolean } = {}): AdminOnboardingRecord {
   const shouldMask = options.maskMyNumbers !== false;
   const values = parseInput({
     ...row,

@@ -18,7 +18,9 @@ export type Dependent = Record<typeof DEPENDENT_FIELDS[number], string>;
 export const COMMUTE_ROUTE_FIELDS = ["kind", "from_station", "to_station", "line", "pass_monthly", "fare_oneway"] as const;
 export type CommuteRoute = Record<typeof COMMUTE_ROUTE_FIELDS[number], string>;
 export type OnboardingInput = Record<TextField, string> & { dependents: Dependent[]; commute_routes: CommuteRoute[]; nda_agreed: boolean };
-export type OnboardingRecord = { values: OnboardingInput; status: "draft" | "submitted"; ndaAgreedAt: string | null; submittedAt: string | null };
+export const onboardingSteps = (employmentType?: string | null) => employmentType === "派遣" ? [0, 1, 10] : STEPS.map((_, index) => index);
+export const hakenFields: readonly TextField[] = ["name", "name_kana", "gender", "birth_date", "postal_code", "address", "address_kana", "phone", "email"];
+export type OnboardingRecord = { employmentType?: string | null; values: OnboardingInput; status: "draft" | "submitted"; ndaAgreedAt: string | null; submittedAt: string | null };
 export const emptyDependent = (): Dependent => ({ name: "", name_kana: "", my_number: "", relation: "", birth_date: "", annual_income: "", occupation: "" });
 export const emptyCommuteRoute = (): CommuteRoute => ({ kind: "", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "" });
 export function emptyInput(): OnboardingInput {

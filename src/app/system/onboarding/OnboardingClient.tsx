@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
-import { ACCOUNT_TYPE_OPTIONS, BANK_NAME_LEDGER_HINT, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, HOUSEHOLDER_RELATION_OPTIONS, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
+import { ACCOUNT_TYPE_OPTIONS, BANK_NAME_LEDGER_HINT, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, HOUSEHOLDER_RELATION_OPTIONS, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, onboardingSteps, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
 import LineLink from "./_components/LineLink";
 import styles from "./onboarding.module.css";
@@ -15,16 +15,18 @@ type Address = { address: string; addressKana: string };
 type BankChoice = { bankName: string; bankCode: string; expired?: boolean; validTo?: string | null };
 type BranchChoice = { branchName: string; branchCode: string; expired?: boolean; validTo?: string | null };
 
-function StepProgress({step}:{step:number}) {
- const label=`全${STEPS.length}画面のうち ${step+1}画面目`;
- return <SharedStepProgress total={STEPS.length} value={step+1} step={step} label={label} name={label} className={styles.stepProgress}/>;
+function StepProgress({step,total}:{step:number;total:number}) {
+ const label=`全${total}画面のうち ${step+1}画面目`;
+ return <SharedStepProgress total={total} value={step+1} step={step} label={label} name={label} className={styles.stepProgress}/>;
 }
 
 export default function OnboardingClient({ initial, proxy }: { initial: OnboardingRecord; proxy?: { employeeId: string; employeeName: string; actorName: string; sensitive: boolean } }) {
   const router = useRouter();
   const restricted = Boolean(proxy && !proxy.sensitive);
   const [values, setValues] = useState(initial.values);
+  const visibleSteps = onboardingSteps(initial.employmentType);
   const [step, setStep] = useState(0);
+  const position = visibleSteps.indexOf(step);
   const blockedStep = restricted && [6, 7].includes(step);
   const proxyBanner = proxy ? <div className={styles.proxyBanner}>代行入力中：{proxy.employeeName}さんの入社手続き（入力：{proxy.actorName}）<Link href={`/system/onboarding/admin/${encodeURIComponent(proxy.employeeId)}`}>代行をやめる</Link></div> : null;
   const [submitted, setSubmitted] = useState(initial.status === "submitted");
@@ -271,21 +273,21 @@ export default function OnboardingClient({ initial, proxy }: { initial: Onboardi
 
   if (submitted) return <section className={styles.panel}>
     {proxyBanner}
-    <StepProgress step={STEPS.length - 1} />
+    <StepProgress step={visibleSteps.length - 1} total={visibleSteps.length} />
     <h2 ref={heading} tabIndex={-1}>入社手続きを提出しました</h2>
     <p>ご入力ありがとうございました。提出した内容をご確認いただけます。</p>
     {/* 強制遷移せず、ホームは新しい状態を取得して案内を消す。 */}
     <a className={styles.button} href="/system">Systemのホームへ</a>
-    <OnboardingReview restricted={restricted} values={values} />
+    <OnboardingReview visibleSteps={visibleSteps} restricted={restricted} values={values} />
     {!proxy && <LineLink />}
   </section>;
 
   return <section className={styles.panel}>
     {proxyBanner}
-    <StepProgress step={step} />
+    <StepProgress step={position} total={visibleSteps.length} />
     <h2 ref={heading} tabIndex={-1}>{STEPS[step]}</h2>
     <p className={styles.hint}>空欄のままでも進めます。分かる範囲で入力してください。</p>
-    <form noValidate onSubmit={event => { event.preventDefault(); void save(step < STEPS.length - 1 ? step + 1 : undefined, step === STEPS.length - 1); }}>
+    <form noValidate onSubmit={event => { event.preventDefault(); void save(visibleSteps[position + 1], step === STEPS.length - 1); }}>
       <fieldset disabled={busy} className={styles.fields}>
         {!blockedStep && step !== 2 && step !== 9 && step !== 10 && STEP_FIELDS[step].filter(key => (key !== "employment_insurance_number" || values.employment_insurance_status === "yes") && (key !== "emergency_relation_other" || relationSelectValue(values.emergency_relation) === "その他")).map(field)}
         {step === 2 && <>
@@ -319,9 +321,9 @@ export default function OnboardingClient({ initial, proxy }: { initial: Onboardi
         {step === 7 && !restricted && <p className={styles.noticeLines}>税と社会保険の手続きにだけ使います。{"\n"}それ以外の目的では使いません。{"\n"}入力後は、下4桁だけが表示されます。</p>}
         {step === 8 && <p>災害や急なご病気のときの連絡先です。</p>}
         {step === 9 && <><div className={styles.pledge}>{NDA_FULL_TEXT}</div><label className={styles.agree}><input type="checkbox" checked={values.nda_agreed} onChange={event => setValues(previous => ({ ...previous, nda_agreed: event.target.checked }))} />内容を確認しました</label></>}
-        {step === 10 && <OnboardingReview restricted={restricted} values={values} onEdit={index => void save(index)} />}
+        {step === 10 && <OnboardingReview visibleSteps={visibleSteps} restricted={restricted} values={values} onEdit={index => void save(index)} />}
         <div className={styles.actions}>
-          {step > 0 && <button type="button" onClick={() => void save(step - 1)}>戻る</button>}
+          {step > 0 && <button type="button" onClick={() => void save(visibleSteps[position - 1])}>戻る</button>}
           {!blockedStep && <button type="button" onClick={() => void save()}>途中保存</button>}
           <button className={styles.primary} type="submit">{step === STEPS.length - 1 ? "提出する" : "次へ"}</button>
         </div>

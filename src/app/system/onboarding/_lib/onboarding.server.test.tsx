@@ -11,7 +11,7 @@ import { emptyInput, PREPARING_MESSAGE } from "./onboarding";
 import OnboardingPage from "../page";
 
 function fixture() {
-  const employee = { employee_id: "EMP-9999", name: "検証 太郎", name_kana: "ケンショウ タロウ", birthday: "2000-01-02", garden_role:"staff", is_active:true, termination_date:null, deleted_at:null };
+  const employee = { employee_id: "EMP-9999", name: "検証 太郎", name_kana: "ケンショウ タロウ", birthday: "2000-01-02", employment_type:"正社員", garden_role:"staff", is_active:true, termination_date:null, deleted_at:null };
   const employeeQuery = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), maybeSingle: vi.fn() };
   employeeQuery.maybeSingle.mockImplementation(async () => {
     const columns = String(employeeQuery.select.mock.lastCall?.[0] ?? "").split(",");
@@ -34,7 +34,7 @@ describe("入社手続きの本人専用保存", () => {
     const context = await onboardingEmployee();
     expect(context.employee.employee_id).toBe("EMP-9999");
     expect(context.employee).not.toHaveProperty("id");
-    expect(f.employeeQuery.select).toHaveBeenLastCalledWith("employee_id,name,name_kana,birthday");
+    expect(f.employeeQuery.select).toHaveBeenLastCalledWith("employee_id,name,name_kana,birthday,employment_type");
     await readOnboarding(context);
     expect(f.query.eq).toHaveBeenCalledWith("employee_id", "EMP-9999");
   });
@@ -162,4 +162,15 @@ describe("入社手続きの本人専用保存", () => {
     const f = fixture(); f.query.maybeSingle.mockResolvedValue({ data: null, error: { code: "PGRST205" } });
     expect(await needsOnboarding((await onboardingEmployee()).supabase, f.employee.employee_id)).toBe(true);
   });
+});
+
+it("派遣は非表示項目を保存せず既存値を維持する", async () => {
+ const f=fixture(); f.employee.employment_type="派遣";
+ f.query.maybeSingle.mockResolvedValue({data:{status:"draft",bank_name:"既存銀行",nda_agreed_at:"2026-01-01"},error:null});
+ const context=await onboardingEmployee();
+ expect((await readOnboarding(context)).employmentType).toBe("派遣");
+ await saveOnboarding(context,{...emptyInput(),name:"派遣本人",bank_name:"上書き",nda_agreed:true},true);
+ const payload=f.query.upsert.mock.calls[0][0];
+ expect(payload).toMatchObject({name:"派遣本人",status:"submitted"});
+ for(const key of ["bank_name","my_number","my_number_secret","dependents","commute_routes","nda_agreed_at","previous_employer_from"])expect(payload).not.toHaveProperty(key);
 });

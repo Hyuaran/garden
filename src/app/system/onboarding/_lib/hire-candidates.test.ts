@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:mocks.admin}));
 vi.mock("@/app/root/_lib/kot-api",()=>({fetchKotEmployeeByCode:mocks.byCode,updateKotEmployee:mocks.kotUpdate,fetchKotHireEmployees:mocks.employees,createKotEmployee:mocks.create,fetchKotHireOptions:mocks.options}));
 vi.mock("@/lib/kintone/records",()=>({updateRecord:mocks.update,getAllRecords:mocks.records,createRecord:mocks.record}));
 vi.mock("@/app/root/_lib/roster-sync.server",()=>({syncRootRoster:mocks.sync}));
-import { completeHireIdentity, candidateOptions, ensureRoster, hireCandidate, listCandidates } from "./hire-candidates.server";
+import { saveCandidate, completeHireIdentity, candidateOptions, ensureRoster, hireCandidate, listCandidates } from "./hire-candidates.server";
 import { GET, POST } from "@/app/api/system/onboarding/hire-candidates/route";
 import { PATCH } from "@/app/api/system/onboarding/hire-candidates/[id]/route";
 import { POST as hire } from "@/app/api/system/onboarding/hire-candidates/[id]/hire/route";
@@ -244,4 +244,9 @@ it.each([true,false])("⓪ synchronizes identity and handles KOT disabled=%s",as
   if(disabled)expect(result.warning).toBe("KING OF TIME は手で直してください");else expect(mocks.kotUpdate).toHaveBeenCalledWith("key-1571",expect.objectContaining({firstName:"太郎",birthDate:"2000-01-01"}));
   expect(row.first_name).toBe("太郎");expect(hireInformationPending(row)).toBe(false);
  } finally {vi.unstubAllEnvs();}
+});
+
+it.each(["contract_not_required","nda_not_required","emergency_not_required","contract_sent","nda_signed"])("現在派遣なら締結変更をAPIで拒否: %s",async key=>{
+ const db={from:(table:string)=>{const q={select:()=>q,eq:()=>q,maybeSingle:async()=>({data:table==="root_employees"?{employment_type:"派遣"}:{status:"hired",employee_id:"e",employment_type:"正社員",checklist:{}}})};return q;}};
+ await expect(saveCandidate({db:db as never,userId:"u"},{checklist:{[key]:false}},"c")).rejects.toMatchObject({status:409});
 });

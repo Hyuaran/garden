@@ -19,6 +19,9 @@ export function missingDocumentFields(values:Record<string,unknown>,company:Reco
 export async function hireDocuments({db}:Awaited<ReturnType<typeof hireAdminContext>>,id:string, overrides:Partial<EmploymentContractPayload> = {}) {
  const {data:c,error:ce}=await db.from("system_hire_candidates").select("status,employee_id,company_id,employment_type").eq("id",id).single();
  if(ce||c?.status!=="hired")throw new HireError("入社済みの方だけ書類を作れます",409);
+ const employee = await db.from("root_employees").select("employment_type").eq("employee_id",c.employee_id).maybeSingle();
+ if(employee.error)throw new HireError("雇用形態を読み込めませんでした",503);
+ if((employee.data?.employment_type ?? c.employment_type)==="派遣")return {note:"派遣のため締結しません",files:[]};
  const [input,company,contract]=await Promise.all([
   db.from("system_onboarding").select("status,name,address,phone,emergency_name,emergency_relation,emergency_relation_other,emergency_address,emergency_phone,nda_agreed_at,submitted_at,salary_kind,base_salary,weekly_hours").eq("employee_id",c.employee_id).maybeSingle(),
   db.from("root_companies").select("company_name,representative,address").eq("company_id",c.company_id).single(),

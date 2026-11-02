@@ -33,7 +33,7 @@ describe("事務用入社手続きサーバー処理", () => {
 
     expect(rows[0].hireDate).toBe("2026-09-01");
     expect(adminSupabase.from).toHaveBeenCalledWith("root_employees");
-    expect(employeeQuery.select).toHaveBeenCalledWith("employee_id,name,hire_date,birthday,company_id");
+    expect(employeeQuery.select).toHaveBeenCalledWith("employee_id,name,hire_date,birthday,company_id,employment_type");
     // 社員番号を取ってこないと台帳と結びつかず、入社日が空になり氏名のリンクも壊れる。
     expect(onboardingQuery.select).toHaveBeenCalledWith(expect.stringContaining("employee_id"));
     expect(JSON.stringify(rows)).not.toMatch(/123456785540|111122223333/);

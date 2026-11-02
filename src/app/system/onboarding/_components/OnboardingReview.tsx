@@ -26,8 +26,8 @@ function MoneyValue({ value }: { value: string }) {
 function RouteSummary({ route }: { route: CommuteRoute }) {
   return <>{route.kind || "未入力"}／{route.from_station || "未入力"} → {route.to_station || "未入力"}／{route.line || "未入力"}／定期代 <MoneyValue value={route.pass_monthly} />／片道 <MoneyValue value={route.fare_oneway} /></>;
 }
-export default function OnboardingReview({ values, onEdit, myNumberReveal, slots, restricted = false }: { restricted?: boolean; values: OnboardingInput; onEdit?: (step: number) => void; myNumberReveal?: MyNumberReveal; slots?: Partial<Record<TextField, ReactNode>> }) {
-  return <div className={styles.review}>{STEPS.slice(0, -1).map((title, index) => <section key={title} aria-label={title}>
+export default function OnboardingReview({ values, onEdit, myNumberReveal, slots, restricted = false, visibleSteps }: { visibleSteps?: number[]; restricted?: boolean; values: OnboardingInput; onEdit?: (step: number) => void; myNumberReveal?: MyNumberReveal; slots?: Partial<Record<TextField, ReactNode>> }) {
+  return <div className={styles.review}>{STEPS.slice(0, -1).map((title, index) => (!visibleSteps || visibleSteps.includes(index)) && <section key={title} aria-label={title}>
     <div className={styles.reviewHeading}><h3>{title}</h3>{onEdit && <button type="button" onClick={() => onEdit(index)} aria-label={`${title}を直す`}>直す</button>}</div>
     <dl>{restricted && [6, 7].includes(index) ? <p>{PROXY_RESTRICTED_MESSAGE}</p> : STEP_FIELDS[index].map(key => <div key={key}><dt>{FIELD_LABELS[key]}</dt><dd>{slots?.[key] ?? (key === "my_number" ? <MyNumberValue masked={displayValue(key, values[key])} kind="self" reveal={myNumberReveal} /> : <Value value={displayValue(key, values[key])} />)}</dd></div>)}</dl>
     {index === 2 && (values.dependents.length ? values.dependents.map((person, personIndex) => <div key={personIndex}>

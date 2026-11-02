@@ -55,12 +55,12 @@ export default function HireConfirmationSteps({row,canWrite,documents,toggleFile
     <label><span>性別<span className="garden-required" aria-hidden="true">＊</span></span><select required aria-required="true" value={identity.gender} disabled={locked} onChange={e=>setIdentity({...identity,gender:e.target.value})}><option value="">不明</option><option value="male">男性</option><option value="female">女性</option></select></label></div><button disabled={locked}>保存する</button>
    </form></section>}
   {identityNotice&&<p role="status">{identityNotice}</p>}
-  <section><header className={layout.sectionHeading}><h3>① 締結</h3><span>{signatureCount(row)}/3</span></header><div className={layout.documents}>{documents}</div>{!row.checklist?.contract_not_required&&<fieldset className={layout.contract} disabled={!canWrite}><legend>雇用契約書の中身</legend><div className={layout.grid}>
+  <section><header className={layout.sectionHeading}><h3>① 締結</h3><span>{signatureCount(row)}/3</span></header><div className={layout.documents}>{documents}</div>{row.employment_type!=="派遣"&&!row.checklist?.contract_not_required&&<fieldset className={layout.contract} disabled={!canWrite}><legend>雇用契約書の中身</legend><div className={layout.grid}>
    <ContractTypeFields value={contract} onChange={changeContract} renewalSelect/>
    {([['concludedOn','契約日','date'],['contractStart','契約開始日','date'],['contractEnd','契約終了日','date'],['workLocation','就業場所','text']] as const).map(([key,label,type])=><label key={key}>{label}<input type={type} value={contract[key]??""} placeholder="既存の契約書の値を使用" disabled={key==="contractEnd"&&contract.indefinite} onChange={e=>{if(key==="contractStart")automaticStart.current=false;if(key==="contractEnd")automaticEnd.current=false;if(key==="concludedOn")automaticConcluded.current=false;changeContract({...contract,[key]:e.target.value});}}/></label>)}
    </div></fieldset>}
    {documentNotice&&<p role="status">{documentNotice}</p>}
-   <button className={layout.primary} disabled={locked||row.onboarding_status!=="submitted"} onClick={()=>run(async()=>{
+   <button className={layout.primary} disabled={locked||row.employment_type==="派遣"||row.onboarding_status!=="submitted"} onClick={()=>run(async()=>{
     const overrides={...contract};
     if(automaticEnd.current)delete overrides.contractEnd;
     if(automaticStart.current)delete overrides.contractStart;

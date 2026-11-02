@@ -263,6 +263,6 @@ it("派遣の必須表示を切り替え、締結不要で送付と締結を無�
  vi.stubGlobal("fetch",vi.fn(async()=>Response.json([hired])));
  render(<CandidatePanel userId="agency-waiver" tab="confirmations"/>);
  fireEvent.click(await screen.findByText("山田",{selector:"span"}));
- expect(screen.getByRole("checkbox",{name:/雇用契約書 送った/})).toBeDisabled();expect(screen.getByRole("checkbox",{name:/雇用契約書 締結済み/})).toBeDisabled();expect(screen.getByRole("checkbox",{name:/雇用契約書 締結しない/})).toBeEnabled();
+ expect(screen.getByRole("checkbox",{name:/雇用契約書 送った/})).toBeDisabled();expect(screen.getByRole("checkbox",{name:/雇用契約書 締結済み/})).toBeDisabled();expect(screen.getByRole("checkbox",{name:/雇用契約書 締結しない/})).toBeDisabled();
  expect(screen.queryByText("雇用契約書の中身")).not.toBeInTheDocument();expect(screen.getByText("⓪ 名前・生年月日")).toBeVisible();
 });

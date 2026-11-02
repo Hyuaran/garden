@@ -46,11 +46,12 @@ export async function listCandidates({db}: Context, tab?: "candidates" | "confir
  if (!ids.length) return rows;
  const [onboarding, employees] = await Promise.all([
   db.from("system_onboarding").select("employee_id,status").in("employee_id",ids),
-  db.from("root_employees").select("employee_id,line_user_id").in("employee_id",ids).is("deleted_at",null),
+  db.from("root_employees").select("employee_id,line_user_id,employment_type").in("employee_id",ids).is("deleted_at",null),
  ]);
  const statuses = new Map((checked(onboarding) ?? []).map(r => [r.employee_id,r.status]));
+ const employmentTypes = new Map((checked(employees) ?? []).map(r => [r.employee_id,r.employment_type]));
  const lines = new Map((checked(employees) ?? []).map(r => [r.employee_id,!!r.line_user_id]));
- return rows.map(r => r.status === "hired" ? {...r,onboarding_status:statuses.get(r.employee_id) ?? null,line_registered:lines.get(r.employee_id) ?? false} : r)
+ return rows.map(r => r.status === "hired" ? {...r,employment_type:employmentTypes.get(r.employee_id) ?? r.employment_type,onboarding_status:statuses.get(r.employee_id) ?? null,line_registered:lines.get(r.employee_id) ?? false} : r)
   .sort((a,b) => checklistPriority(a)-checklistPriority(b));
 }
 export async function candidateOptions({db}: Context) {
@@ -84,8 +85,15 @@ export async function saveCandidate(context: Context, raw: unknown, id?: string)
   if (!id || Object.keys(raw).some(key => key !== "checklist")) throw new HireError("確認する項目を選び直してください");
   // line_skipped も共通の許可リストで検証し、操作者と時刻を保存する。
   const changes = parseChecklist((raw as {checklist:unknown}).checklist);
-  const current = checked(await db.from("system_hire_candidates").select("status,checklist,line_verified_at,line_display_renamed_at").eq("id",id).maybeSingle());
+  const current = checked(await db.from("system_hire_candidates").select("status,checklist,line_verified_at,line_display_renamed_at,employee_id,employment_type").eq("id",id).maybeSingle());
   if (!current || current.status !== "hired") throw new HireError("入社済みの方だけ確認できます");
+  let employmentType = current.employment_type;
+  if (current.employee_id) {
+   const employee = checked(await db.from("root_employees").select("employment_type").eq("employee_id",current.employee_id).maybeSingle());
+   employmentType = employee?.employment_type ?? employmentType;
+  }
+  current.employment_type = employmentType;
+  if (employmentType === "派遣" && Object.keys(changes).some(key => /^(contract|nda|emergency)_/.test(key))) throw new HireError("派遣のため締結の変更はできません",409);
   if (changes.line_skipped === true && !signaturesComplete(current)) throw new HireError("①の締結がそろうと進めます",409);
   if (changes.filemaker_added === true && (!signaturesComplete(current) || !lineComplete(current))) throw new HireError("①の締結と②の LINE 確認と表示名の変更が済むと進めます",409);
   for (const key of Object.keys(changes)) {

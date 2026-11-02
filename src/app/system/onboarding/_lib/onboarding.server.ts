@@ -2,9 +2,9 @@ import "server-only";
 import { encryptOnboardingNumbers } from '@/lib/my-number/crypto.server';
 import { isOnboardingLoginTarget } from "./onboarding-login";
 import { createServerClient } from "@/app/_lib/supabase/server";
-import { initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type Dependent, type OnboardingRecord } from "./onboarding";
+import { hakenFields, initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type Dependent, type OnboardingRecord } from "./onboarding";
 
-type OnboardingEmployee = { employee_id: string; name: string | null; name_kana: string | null; birthday: string | null };
+type OnboardingEmployee = { employee_id: string; name: string | null; name_kana: string | null; birthday: string | null; employment_type?: string | null };
 
 export class OnboardingError extends Error {
   constructor(message: string, public status = 500) { super(message); }
@@ -16,7 +16,7 @@ export async function onboardingEmployee() {
   const supabase = await createServerClient();
   const { data: auth, error } = await supabase.auth.getUser();
   if (error || !auth.user) throw new OnboardingError("ログインし直してください。", 401);
-  const employeeResult = await supabase.from("root_employees").select("employee_id,name,name_kana,birthday")
+  const employeeResult = await supabase.from("root_employees").select("employee_id,name,name_kana,birthday,employment_type")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (employeeResult.error || !employeeResult.data || typeof employeeResult.data.employee_id !== "string" || !employeeResult.data.employee_id) throw new OnboardingError("ログインし直してください。", 401);
   const employee: OnboardingEmployee = employeeResult.data;
@@ -62,7 +62,7 @@ function onboardingRecord(row: Record<string, unknown> | null, employee: Onboard
 }
 
 export async function readOnboarding(context: Context): Promise<OnboardingRecord> {
-  return onboardingRecord(await readOnboardingRow(context), context.employee);
+  return { ...onboardingRecord(await readOnboardingRow(context), context.employee), employmentType: context.employee.employment_type };
 }
 
 function dateOrNull(value: string) {
@@ -73,8 +73,8 @@ function dateOrNull(value: string) {
 }
 
 export async function saveOnboarding(context: Context, input: unknown, submit: boolean) {
-  let values;
-  try { values = parseInput(input); } catch { throw new OnboardingError("入力内容を読み取れませんでした。ページを開き直してください。", 400); }
+  let values: ReturnType<typeof parseInput>;
+  try { values = parseInput(context.employee.employment_type === "派遣" && input && typeof input === "object" ? Object.fromEntries(hakenFields.map(key => [key, (input as Record<string, unknown>)[key]])) : input); } catch { throw new OnboardingError("入力内容を読み取れませんでした。ページを開き直してください。", 400); }
   const previousRow = await readOnboardingRow(context);
   const previous = onboardingRecord(previousRow, context.employee);
   // 提出済みは見返すだけ。二重送信も同じ結果を返し、提出時刻を更新しない。
@@ -83,11 +83,18 @@ export async function saveOnboarding(context: Context, input: unknown, submit: b
   const { nda_agreed, ...fields } = values;
   if (isMaskedMyNumber(fields.my_number)) delete (fields as Partial<typeof fields>).my_number;
   fields.dependents = mergeMaskedDependentMyNumbers(values.dependents, previousRow?.dependents);
-  const { data, error } = await context.supabase.from("system_onboarding").upsert({
+  const payload = {
     ...encryptOnboardingNumbers(fields, previousRow ?? {}), employee_id: context.employee.employee_id, status: submit ? "submitted" : "draft",
     birth_date: dateOrNull(values.birth_date), previous_employer_from: dateOrNull(values.previous_employer_from), previous_employer_to: dateOrNull(values.previous_employer_to),
     nda_agreed_at: nda_agreed ? previous.ndaAgreedAt ?? now : null, submitted_at: submit ? now : null,
-  }, { onConflict: "employee_id" }).select("status,nda_agreed_at,submitted_at").single();
+  };
+  if (context.employee.employment_type === "派遣") {
+    for (const key of Object.keys(payload)) {
+      if (![...hakenFields, "employee_id", "status", "submitted_at"].includes(key)) delete (payload as Record<string, unknown>)[key];
+    }
+    values = { ...previous.values, ...Object.fromEntries(hakenFields.map(key => [key, values[key]])) };
+  }
+  const { data, error } = await context.supabase.from("system_onboarding").upsert(payload, { onConflict: "employee_id" }).select("status,nda_agreed_at,submitted_at").single();
   if (error) {
     if (error.code === "PGRST205" || error.code === "42P01") throw databaseError(error);
     throw new OnboardingError("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。", 503);

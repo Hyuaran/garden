@@ -1,4 +1,4 @@
-import { commuteTotals, emptyInput, FIELD_LABELS, formatYen, HOUSEHOLDER_RELATION_OPTIONS, parseNullableAmount, STEP_FIELDS, type OnboardingInput, type TextField } from "./onboarding";
+import { hakenFields, commuteTotals, emptyInput, FIELD_LABELS, formatYen, HOUSEHOLDER_RELATION_OPTIONS, parseNullableAmount, STEP_FIELDS, type OnboardingInput, type TextField } from "./onboarding";
 
 export const ADMIN_SELECT_OPTIONS = {
   insurance: ["加入", "未加入"],
@@ -28,7 +28,7 @@ export type AdminInput = {
   commute_fixed_monthly: string;
   commute_cap_monthly: string;
 };
-export type AdminEmployee = { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null };
+export type AdminEmployee = { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null; employment_type?: string | null };
 export type AdminOnboardingRecord = {
   employee: AdminEmployee;
   values: OnboardingInput;
@@ -179,7 +179,8 @@ function missingTextFields(values: OnboardingInput) {
   return missing;
 }
 
-export function missingOnboardingItems(values: OnboardingInput) {
+export function missingOnboardingItems(values: OnboardingInput, employmentType?: string | null) {
+  if (employmentType === "派遣") return hakenFields.filter(key => !values[key].trim()).map(key => FIELD_LABELS[key]);
   const missing = missingTextFields(values);
   values.dependents.forEach((dependent, index) => {
     for (const [key, label] of Object.entries({ name: "氏名", name_kana: "フリガナ", my_number: "マイナンバー（12桁）", relation: "続柄", birth_date: "生年月日", annual_income: "年間収入（円）", occupation: "職業または学校と学年" })) {
@@ -207,7 +208,7 @@ export function buildAdminList(records: AdminOnboardingRecord[]): AdminListItem[
     hireDate: record.employee.hire_date,
     status: record.status,
     submittedAt: record.submittedAt,
-    missingCount: missingOnboardingItems(record.values).length,
+    missingCount: missingOnboardingItems(record.values, record.employee.employment_type).length,
     adminComplete: adminIsComplete(record.admin),
   })).sort((a, b) => {
     if (a.submittedAt && b.submittedAt) return b.submittedAt.localeCompare(a.submittedAt);

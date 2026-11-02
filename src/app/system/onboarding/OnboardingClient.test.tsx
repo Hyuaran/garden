@@ -28,6 +28,17 @@ function expectStepProgress(container: HTMLElement, stepIndex: number) {
 }
 
 describe("11画面の入社手続き", () => {
+  it("派遣は全3画面で提出でき、確認に非表示の項目を出さない",async()=>{
+    render(<OnboardingClient initial={{...initial(),employmentType:"派遣"}}/>);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuemax","3");
+    await next(1);await next(10);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow","3");
+    expect(screen.queryByRole("heading",{name:"ご家族"})).toBeNull();
+    expect(screen.queryByText("秘密保持の確認")).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"提出する"}));
+    await screen.findByRole("heading",{name:"入社手続きを提出しました"});
+    expect(requests.at(-1)?.action).toBe("submit");
+  });
   beforeEach(() => {
     refresh.mockClear();
     requests = [];
