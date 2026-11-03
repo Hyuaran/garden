@@ -26,6 +26,42 @@ import ShiftManager, { TeamShift } from "./ShiftManager";
 beforeEach(() => {
   vi.useRealTimers();
 });
+it("確定表の失敗した日に理由付きの印を表示する", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        people: [
+          { employee_id: "1", name: "山田 太郎", current_team: "宮永チーム" },
+        ],
+        days: ["2099-12-02"],
+        wish: [],
+        submissions: [],
+        holidays: [],
+        candidates: [],
+        confirmed: [
+          {
+            employee_id: "1",
+            work_date: "2099-12-02",
+            start_time: "14:00",
+            kot_status: "failed",
+            kot_error: "打刻があるため変更できません",
+          },
+        ],
+        confirmation: {
+          confirmed_at: "2026-11-03T10:00:00Z",
+          confirmed_by_name: "責任者",
+        },
+        updated_at: null,
+      }),
+    ),
+  );
+  render(<TeamShift />);
+  expect(await screen.findByRole("img", { name: "送信失敗" })).toHaveAttribute(
+    "title",
+    "打刻があるため変更できません",
+  );
+});
 it("本人が月の日数分を提出し提出済みになる", async () => {
   const f = vi.fn(async (_url: unknown, init?: RequestInit) =>
     Response.json({

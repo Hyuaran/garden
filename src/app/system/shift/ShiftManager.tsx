@@ -23,11 +23,12 @@ import { stamp, hours, weekend, type ShiftDay } from "@/lib/shift/rules";
 import MyShift, { shiftMonths } from "./MyShift";
 import ShiftDays, { shiftDate } from "./ShiftDays";
 import "./shift.css";
+import KotSendPanel, { type KotDisplayRow } from "./KotSendPanel";
 type TeamData = {
   people: ShiftEmployee[];
   days: string[];
   wish: (ShiftDay & { employee_id: string; updated_at?: string })[];
-  confirmed: (ShiftDay & { employee_id: string; updated_at?: string })[];
+  confirmed: (ShiftDay & KotDisplayRow & { updated_at?: string })[];
   submissions: { employee_id: string }[];
   holidays: string[];
   confirmation: { confirmed_at: string; confirmed_by_name: string } | null;
@@ -72,6 +73,8 @@ export default function ShiftManager() {
 }
 export function TeamShift() {
   const pending = useRef(false);
+  const promptAfterRefresh = useRef(false);
+  const [kotPrompt, setKotPrompt] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const [{ current, next }] = useState(shiftMonths),
     [month, setMonth] = useState(next),
@@ -91,7 +94,13 @@ export function TeamShift() {
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
-        if (active) setData(d);
+        if (active) {
+          setData(d);
+          if (promptAfterRefresh.current) {
+            promptAfterRefresh.current = false;
+            setKotPrompt((value) => value + 1);
+          }
+        }
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -142,6 +151,10 @@ export function TeamShift() {
           `送信 ${d.sent}人・失敗 ${d.failed}人・公式LINE未接続 ${d.unlinked}人`,
         );
         if (!d.failed) setTimeout(() => setOverlay(null), 1500);
+        if (kind === "confirm") {
+          setOverlay(null);
+          promptAfterRefresh.current = true;
+        }
       }
     } catch (e) {
       if (kind === "holiday") setData(previous);
@@ -192,6 +205,7 @@ export function TeamShift() {
           setMonth(e.target.value);
           setData(null);
           setShowAll(false);
+          setKotPrompt(0);
         }}
       >
         {[next, current].map((m) => (
@@ -224,6 +238,18 @@ export function TeamShift() {
             提出 {data.people.length - missing.length}/{data.people.length}
             人　未提出 {missing.length}人
           </p>
+          {data.confirmation && (
+            <KotSendPanel
+              key={month}
+              month={month}
+              rows={data.confirmed}
+              people={data.people}
+              prompt={kotPrompt}
+              disabled={busy}
+              onRefresh={() => setRevision((value) => value + 1)}
+              onBusy={setBusy}
+            />
+          )}
           <p className={formStyles.shiftMissing}>
             {missing.map((p) => p.name).join("・") || "未提出の人はいません"}
           </p>
@@ -317,6 +343,28 @@ export function TeamShift() {
                               >
                                 {start?.slice(0, 5) || "休"}
                               </span>
+                              {data.confirmation &&
+                                data.confirmed.find(
+                                  (row) =>
+                                    row.employee_id === employee.employee_id &&
+                                    row.work_date === date,
+                                )?.kot_status === "failed" && (
+                                  <span
+                                    role="img"
+                                    aria-label="送信失敗"
+                                    title={
+                                      data.confirmed.find(
+                                        (row) =>
+                                          row.employee_id ===
+                                            employee.employee_id &&
+                                          row.work_date === date,
+                                      )?.kot_error || "送信できませんでした。"
+                                    }
+                                    style={{ color: "#b91c1c", marginLeft: 3 }}
+                                  >
+                                    ●
+                                  </span>
+                                )}
                             </td>
                           );
                         })}
