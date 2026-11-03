@@ -1,0 +1,52 @@
+.garden-shift-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.garden-shift-table table {
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+.garden-shift-table th,
+.garden-shift-table td {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 6px 3px;
+  border-bottom: 1px solid var(--line, #d5dde5);
+  text-align: center;
+  white-space: nowrap;
+}
+.garden-shift-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--card, #fff);
+  text-align: left;
+}
+.garden-shift-table button {
+  border: 0;
+  padding: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.garden-shift-table tbody tr:not(.garden-shift-group) {
+  cursor: pointer;
+}
+.garden-shift-group th,
+.garden-shift-group td {
+  background: color-mix(in srgb, var(--teal, #0ea5a0) 10%, var(--card, #fff));
+}
+.garden-shift-weekend {
+  background: color-mix(in srgb, var(--teal, #0ea5a0) 8%, var(--card, #fff));
+}
+.garden-shift-closed {
+  background: color-mix(in srgb, var(--sub, #7b8794) 28%, var(--card, #fff));
+  color: var(--ink, #1f2937);
+}
+.garden-shift-rest {
+  color: var(--sub, #7b8794);
+  font-weight: 400;
+}

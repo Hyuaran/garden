@@ -1,5 +1,5 @@
-import styles from "../mypage.module.css";
-
+import MyShift from "@/app/system/shift/MyShift";
 export default function ShiftTab({ embedded = false }: { embedded?: boolean }) {
-  return <section className={styles.comingSoon}>{!embedded && <h2>シフト</h2>}<p>準備中です。シフトの提出・確認はもうしばらくお待ちください。</p></section>;
+  void embedded;
+  return <MyShift />;
 }

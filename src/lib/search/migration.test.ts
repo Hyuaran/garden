@@ -4,7 +4,7 @@ import { SEARCH_SOURCES } from "./catalog";
 
 const sql = readFileSync("supabase/migrations/20261030000497_search_text.sql", "utf8");
 type Spec = { table: string; fields: { path: string[]; phone: boolean }[] }[];
-const spec: Spec = JSON.parse(sql.split("$catalog$")[1]);
+const spec: Spec = [...JSON.parse(sql.split("$catalog$")[1]), ...JSON.parse(readFileSync('supabase/migrations/20261103000511_shift_submit_confirm.sql','utf8').split('$catalog$')[1])];
 
 it("indexes exactly the catalog field/title union, with only the explicit JSON paths", () => {
   const expected = new Map<string, Map<string, boolean>>();

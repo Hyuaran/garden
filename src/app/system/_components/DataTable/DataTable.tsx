@@ -2,7 +2,7 @@
 import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import { normalizeSearch } from "@/lib/search/match";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import { useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePageSearchTarget } from "../PageSearchSlot/PageSearchSlot";
 import styles from "./DataTable.module.css";
@@ -21,7 +21,8 @@ const filterKeys = <T,>(column: DataColumn<T>, row: T): string[] => {
   const value = column.filterValue?.(row) ?? String(column.value(row));
   return Array.isArray(value) ? [...new Set(value.length ? value : [""])] : [value];
 };
-export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText, loading = false }: {
+export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText, loading = false, footer, groupBy }: {
+  groupBy?: (row:T)=>string; footer?: ReactNode;
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
   searchText: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
   defaultSort: Sort; defaultFilters?: Record<string, string[]>; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
@@ -83,11 +84,13 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     const column = columns.find(column => column.id === sort.id);
     if (!column) return filtered;
     return [...filtered].sort((a, b) => {
+      const groupDifference = groupBy ? groupBy(a).localeCompare(groupBy(b), "ja") : 0;
+      if (groupDifference) return groupDifference;
       const av = column.value(a), bv = column.value(b);
       const difference = column.type === "number" ? Number(av) - Number(bv) : column.type === "date" ? Date.parse(String(av)) - Date.parse(String(bv)) : String(av).localeCompare(String(bv), "ja", { numeric: true });
       return difference * (sort.direction === "asc" ? 1 : -1);
     });
-  }, [filtered, columns, sort]);
+  }, [filtered, columns, sort, groupBy]);
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, pages);
   const column = columns.find(column => column.id === menu);
@@ -109,10 +112,10 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
       const rect = event.currentTarget.getBoundingClientRect();
       setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 328)), top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 440)) });
       setDraft(filters[column.id] ?? Array.from(new Set(rows.flatMap(row => filterKeys(column, row))))); setMenuSearch(""); setMenu(column.id);
-    }}>{column.label}<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="m4 6 4 4 4-4" /></svg>{filters[column.id] && <svg aria-label="絞り込み中" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2 3h12L9 9v4l-2 1V9Z" /></svg>}</button><button type="button" className={[styles.sortButton, sort.id === column.id ? styles.sortActive : ""].join(" ")} aria-label={sort.id === column.id ? `${column.label}を${sort.direction === "asc" ? "降順" : "昇順"}に並べ替える（今は${sort.direction === "asc" ? "昇順" : "降順"}）` : `${column.label}で並べ替える`} title={sort.id === column.id ? (sort.direction === "asc" ? "昇順（押すと降順）" : "降順（押すと昇順）") : "並べ替え"} onClick={() => { setSort(sort.id === column.id ? { id: column.id, direction: sort.direction === "asc" ? "desc" : "asc" } : { id: column.id, direction: column.type === "text" ? "asc" : "desc" }); setPage(1); close(); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d={sort.id !== column.id ? "M5 2v12M2.5 4.5 5 2l2.5 2.5M11 14V2m-2.5 9.5L11 14l2.5-2.5" : sort.direction === "asc" ? "M8 14V2m-4 4 4-4 4 4" : "M8 2v12m-4-4 4 4 4-4"} /></svg></button></th>)}</tr></thead><tbody>{sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(row => <tr key={rowKey(row)} className={onRowClick && (rowClickable?.(row) ?? true) ? styles.clickableRow : undefined}
+    }}>{column.label}<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="m4 6 4 4 4-4" /></svg>{filters[column.id] && <svg aria-label="絞り込み中" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2 3h12L9 9v4l-2 1V9Z" /></svg>}</button><button type="button" className={[styles.sortButton, sort.id === column.id ? styles.sortActive : ""].join(" ")} aria-label={sort.id === column.id ? `${column.label}を${sort.direction === "asc" ? "降順" : "昇順"}に並べ替える（今は${sort.direction === "asc" ? "昇順" : "降順"}）` : `${column.label}で並べ替える`} title={sort.id === column.id ? (sort.direction === "asc" ? "昇順（押すと降順）" : "降順（押すと昇順）") : "並べ替え"} onClick={() => { setSort(sort.id === column.id ? { id: column.id, direction: sort.direction === "asc" ? "desc" : "asc" } : { id: column.id, direction: column.type === "text" ? "asc" : "desc" }); setPage(1); close(); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d={sort.id !== column.id ? "M5 2v12M2.5 4.5 5 2l2.5 2.5M11 14V2m-2.5 9.5L11 14l2.5-2.5" : sort.direction === "asc" ? "M8 14V2m-4 4 4-4 4 4" : "M8 2v12m-4-4 4 4 4-4"} /></svg></button></th>)}</tr></thead><tbody>{sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((row,index) => <Fragment key={rowKey(row)}>{groupBy && (index === 0 || groupBy(row) !== groupBy(sorted[(currentPage - 1) * pageSize + index - 1])) && <tr><th colSpan={columns.length} scope="rowgroup">{groupBy(row)}</th></tr>}<tr className={onRowClick && (rowClickable?.(row) ?? true) ? styles.clickableRow : undefined}
  tabIndex={onRowClick && (rowClickable?.(row) ?? true) ? 0 : undefined}
  onClick={event=>{if(onRowClick && (rowClickable?.(row) ?? true) && !(event.target as Element).closest('button, a, input, select, textarea, label, [role="button"], [contenteditable]')) onRowClick(row);}}
- onKeyDown={event=>{if(event.target===event.currentTarget && onRowClick && (rowClickable?.(row) ?? true) && (event.key==="Enter" || event.key===" ")){event.preventDefault();onRowClick(row);}}}>{columns.map(column => <td key={column.id} className={[`garden-cell-${cellAlignment(column)}`, column.wrap ? styles.wrap : ""].join(" ")}>{column.render ? column.render(row) : column.value(row)}</td>)}</tr>)}</tbody></StickyTable>{loading && !sorted.length && <p role="status" className={styles.loading}>読み込み中…</p>}{!loading && !sorted.length && <p>{emptyText ?? "該当する明細はありません。"}</p>}</div>
+ onKeyDown={event=>{if(event.target===event.currentTarget && onRowClick && (rowClickable?.(row) ?? true) && (event.key==="Enter" || event.key===" ")){event.preventDefault();onRowClick(row);}}}>{columns.map(column => <td key={column.id} className={[`garden-cell-${cellAlignment(column)}`, column.wrap ? styles.wrap : ""].join(" ")}>{column.render ? column.render(row) : column.value(row)}</td>)}</tr></Fragment>)}</tbody>{footer && <tfoot>{footer}</tfoot>}</StickyTable>{loading && !sorted.length && <p role="status" className={styles.loading}>読み込み中…</p>}{!loading && !sorted.length && <p>{emptyText ?? "該当する明細はありません。"}</p>}</div>
     <div className={styles.toolbar}><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>前へ</button><span>{currentPage} / {pages}</span><button type="button" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>次へ</button></div>
     {column && <div ref={menuRef} role="dialog" aria-label={`${column.label}の並べ替え・絞り込み`} className={styles.menu} style={{ ...position, maxHeight: `calc(100dvh - ${position.top + 8}px)` }}>
       <div className={styles.sortRow}>{(["asc", "desc"] as const).map(direction => <button type="button" key={direction} aria-pressed={sort.id === column.id && sort.direction === direction} onClick={() => { setSort({ id: column.id, direction }); setPage(1); close(true); }}>{direction === "asc" ? "昇順" : "降順"}</button>)}</div>

@@ -1,10 +1,8 @@
+import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
-import MyPageSectionPage from "../mypage/_components/MyPageSectionPage";
-
+import ShiftManager from "./ShiftManager";
 export const metadata = { title: "シフト | Garden" };
-
 function ShiftPage() {
-  return <MyPageSectionPage section="shift" />;
+  return <ShiftManager />;
 }
-
-export default withSystemView("system-shift", ShiftPage);
+export default withInitialUrlView(withSystemView("system-shift", ShiftPage));

@@ -153,7 +153,7 @@ describe("system mypage", () => {
   });
   it("shows shift and zenkaku routes without the four-digit check", () => {
     const { unmount } = renderMyPage({ ...baseProps, initialTab: "shift" });
-    expect(screen.getByText(/シフトの提出・確認/)).toBeInTheDocument();
+      expect(screen.getByRole('heading', {name:'自分のシフト'})).toBeInTheDocument();
     unmount();
     renderMyPage({ ...baseProps, initialTab: "zenkaku" });
     expect(
