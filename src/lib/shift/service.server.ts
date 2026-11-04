@@ -1,3 +1,4 @@
+import { readSubmitterSettings } from "./submitters.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { isShiftEligible, type ShiftEmployee } from "./eligibility";
 import {
@@ -30,6 +31,7 @@ function check(result: { error: unknown }) {
   }
 }
 export async function employees() {
+  const settings = await readSubmitterSettings();
   const result = await db()
     .from("root_employees_with_team")
     .select(
@@ -37,7 +39,7 @@ export async function employees() {
     );
   check(result);
   return ((result.data as ShiftEmployee[]) || []).filter((e) =>
-    isShiftEligible(e),
+    isShiftEligible(e, settings),
   );
 }
 async function readDays(table: string, start: string, end: string) {

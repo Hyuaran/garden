@@ -13,12 +13,12 @@ export function useSystemView() {
   const state = useContext(Context);
   return { state, allowedTab: (key: string, defaultAllowed = true) => state?.tabs.find(tab => tab.key === key)?.allowed ?? defaultAllowed };
 }
-export function SystemViewButton({ tabKey = "" }: { tabKey?: string }) {
+export function SystemViewButton({ tabKey = "", children }: { tabKey?: string; children?: ReactNode | ((onBusy: (busy: boolean) => void) => ReactNode) }) {
   const state = useContext(Context);
   if (!state) return null;
   const tab = state.tabs.find(tab => tab.key === tabKey);
   if (!state.admin && !(tab?.canAdd ?? state.canAdd)) return null;
-  return <ViewPermissionButton key={`${state.pageKey}:${tabKey}`} pageKey={state.pageKey} tabKey={tabKey} tabLabel={tab?.label ?? ""} admin={state.admin} canAdd={tab?.canAdd ?? state.canAdd} />;
+  return <ViewPermissionButton key={`${state.pageKey}:${tabKey}`} pageKey={state.pageKey} tabKey={tabKey} tabLabel={tab?.label ?? ""} admin={state.admin} canAdd={tab?.canAdd ?? state.canAdd}>{children}</ViewPermissionButton>;
 }
 export function SystemViewHeading({ children }: { children: ReactNode; actions?: ReactNode; showActions?: boolean }) {
   return <div className={styles.headingRow}>{Children.map(children, child => isValidElement(child) && child.type === "h1" ? <>{child}<HelpButton /></> : child)}</div>;

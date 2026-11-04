@@ -1,0 +1,21 @@
+.section {
+  border-top: 1px solid var(--line, #e3eaf3);
+  margin-top: 20px;
+  padding-top: 12px;
+}
+.people {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+  list-style: none;
+  padding: 0;
+}
+.people li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.people small { color: var(--muted, #586473); }
+.people li > :last-child { margin-left: auto; }

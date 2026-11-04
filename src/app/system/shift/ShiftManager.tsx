@@ -20,6 +20,7 @@ import LineSendOverlay, {
 } from "@/app/system/line/LineSendOverlay";
 import type { ShiftEmployee } from "@/lib/shift/eligibility";
 import { stamp, hours, weekend, type ShiftDay } from "@/lib/shift/rules";
+import ShiftSubmitters from "./ShiftSubmitters";
 import MyShift, { shiftMonths } from "./MyShift";
 import ShiftDays, { shiftDate } from "./ShiftDays";
 import "./shift.css";
@@ -43,11 +44,21 @@ export default function ShiftManager() {
     mine ? "mine" : "team",
     (key) => (key === "mine" && mine) || (key === "team" && team),
   );
+  const [submittersRevision, setSubmittersRevision] = useState(0);
   return (
     <main>
       <SystemBreadcrumb items={[{ label: "シフト" }]} />
       <h1>シフト</h1>
-      <SystemTabs actions={<SystemViewButton tabKey={tab} />}>
+      <SystemTabs actions={
+        <SystemViewButton tabKey={tab}>
+          {tab === "team" ? onBusy => (
+            <ShiftSubmitters
+              onBusy={onBusy}
+              onChanged={() => setSubmittersRevision(value => value + 1)}
+            />
+          ) : null}
+        </SystemViewButton>
+      }>
         {mine && (
           <button
             role="tab"
@@ -67,11 +78,11 @@ export default function ShiftManager() {
           </button>
         )}
       </SystemTabs>
-      {tab === "mine" && mine ? <MyShift /> : team ? <TeamShift /> : null}
+      {tab === "mine" && mine ? <MyShift /> : team ? <TeamShift submittersRevision={submittersRevision} /> : null}
     </main>
   );
 }
-export function TeamShift() {
+export function TeamShift({ submittersRevision = 0 }: { submittersRevision?: number }) {
   const pending = useRef(false);
   const promptAfterRefresh = useRef(false);
   const [kotPrompt, setKotPrompt] = useState(0);
@@ -108,7 +119,7 @@ export function TeamShift() {
     return () => {
       active = false;
     };
-  }, [month, revision]);
+  }, [month, revision, submittersRevision]);
   async function action(
     kind: string,
     body: { work_date?: string; employee_id?: string; rows?: ShiftDay[] } = {},

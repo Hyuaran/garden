@@ -1,10 +1,12 @@
 import { beforeEach, it, expect, vi } from "vitest";
-const m = vi.hoisted(() => ({ push: vi.fn(), insert: vi.fn(), select: vi.fn(), from: vi.fn() }));
+const m = vi.hoisted(() => ({ push: vi.fn(), insert: vi.fn(), select: vi.fn(), from: vi.fn(), settings: vi.fn() }));
+vi.mock("./submitters.server", () => ({ readSubmitterSettings: m.settings }));
 vi.mock("@/lib/line/staff-client", () => ({ pushLineStaff: m.push }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => ({ from: m.from }) }));
 import { notifyShift, myShift, teamShift } from "./service.server";
 beforeEach(() => {
   vi.clearAllMocks();
+  m.settings.mockResolvedValue([]);
   m.from.mockImplementation(() => ({ insert: m.insert, select: m.select }));
   m.push.mockResolvedValue(undefined);
   m.insert.mockResolvedValue({ error: null });
@@ -106,4 +108,16 @@ it("service case 2", async () => {
   });
   expect(m.push.mock.calls[0][1]).toContain("11月15日(日) 23:59");
   expect(m.insert).toHaveBeenCalledWith(expect.objectContaining({ status: "failed", shift: "shift_remind" }));
+});
+
+it("外した本人は対象外となり、希望・確定データを書き換えない", async () => {
+  m.settings.mockResolvedValue([{ employee_id: "1", mode: "exclude" }]);
+  m.select.mockResolvedValue({ data: [{
+    employee_id: "1", name: "山田", is_active: true,
+    employment_type: "アルバイト", business: "ブロードバンド事業", current_team: "宮永チーム",
+  }], error: null });
+  expect(await myShift("1", "2026-12")).toEqual({ eligible: false });
+  await expect(myShift("1", "2026-12", [])).rejects.toMatchObject({ status: 403 });
+  expect(m.insert).not.toHaveBeenCalled();
+  expect(m.from.mock.calls.every(([table]) => table === "root_employees_with_team")).toBe(true);
 });

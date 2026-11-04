@@ -18,3 +18,7 @@
 .selected span { display: inline-flex; align-items: center; gap: 6px; }
 .selected button { border: 0; background: transparent; color: inherit; cursor: pointer; }
 @media (max-width: 480px) { .dialog { padding: 18px; } .actions { flex-wrap: wrap; } }
+
+.submittersDialog[data-garden-modal="panel"] {
+  width: min(960px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important;
+}
