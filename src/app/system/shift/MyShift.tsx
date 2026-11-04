@@ -42,6 +42,7 @@ export default function MyShift({
   initial?: MyData;
 }) {
   const pending = useRef(false);
+  const shown = useRef(Boolean(initial));
   const [{ current, next }] = useState(shiftMonths),
     [month, setMonth] = useState(next),
     [data, setData] = useState<MyData | null>(initial || null),
@@ -109,6 +110,14 @@ export default function MyShift({
     }
   }
   if (data?.eligible === false) return <p>シフトの提出はありません。</p>;
+  // 対象の人か分かるまで、カレンダーや月の選択を仮に描かない（描き直しでちらつくため）。
+  if (!data && !shown.current)
+    return (
+      <section style={{ minHeight: 560 }} aria-busy="true">
+        <p role="status">読み込み中です…</p>
+      </section>
+    );
+  shown.current = true;
   const labels = [
     `${Number(next.slice(5))}月のシフト`,
     `${Number(current.slice(5))}月のシフト`,
@@ -128,22 +137,9 @@ export default function MyShift({
       />
       <ResultMessage>{error}</ResultMessage>
       {!data ? (
-        <div aria-busy="true">
-          <p role="status">読み込み中です…</p>
-          <ShiftDays
-            rows={monthDays(month).map((work_date) => ({
-              work_date,
-              start_time: null,
-            }))}
-            onChange={setRows}
-            disabled
-          />
-          {month === next && (
-            <SubmitButton busy={false} disabled>
-              提出する
-            </SubmitButton>
-          )}
-        </div>
+        <p role="status" aria-busy="true">
+          読み込み中です…
+        </p>
       ) : (
         <>
           {!fixed ? (

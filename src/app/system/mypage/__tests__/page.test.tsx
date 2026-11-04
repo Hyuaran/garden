@@ -153,7 +153,8 @@ describe("system mypage", () => {
   });
   it("shows shift and zenkaku routes without the four-digit check", () => {
     const { unmount } = renderMyPage({ ...baseProps, initialTab: "shift" });
-      expect(screen.getByRole('heading', {name:'自分のシフト'})).toBeInTheDocument();
+      // 対象の人か分かるまでは、カレンダーや見出しを仮に描かない。
+      expect(screen.getByRole('status')).toHaveTextContent('読み込み中です…');
     unmount();
     renderMyPage({ ...baseProps, initialTab: "zenkaku" });
     expect(
