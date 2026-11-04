@@ -11,7 +11,7 @@ const request=(body:object)=>new Request('http://localhost/api/system/line/manag
 it('全権管理者以外のすべての入口を403にする',async()=>{
  mocks.admin.mockResolvedValue(null);
  expect((await GET()).status).toBe(403);
- for(const action of ['tag','member','team','contact','applyMenus','greeting','test','preview','send','templateSave','templateDelete'])expect((await POST(request({action}))).status).toBe(403);
+ for(const action of ['tag','member','team','contact','applyMenus','greeting','test','preview','send','templateSave','templateDelete','schedule','scheduleUpdate','scheduleCancel'])expect((await POST(request({action}))).status).toBe(403);
  expect(mocks.db).not.toHaveBeenCalled();expect(mocks.push).not.toHaveBeenCalled();
 });
 it('確認時に人数と残り通数を返し、送信をしない',async()=>{
@@ -20,7 +20,7 @@ it('確認時に人数と残り通数を返し、送信をしない',async()=>{
  mocks.load.mockResolvedValue({employees:[e,{...e,employee_id:'2',line_user_id:null}],tags:[],members:[]});
  mocks.quota.mockResolvedValue({remaining:10});
  const cleanup=vi.fn(async()=>({error:null}));
- mocks.db.mockReturnValue({from:()=>({delete:()=>({is:(col:string,v:null)=>({lt:(c:string,iso:string)=>{expect([col,v,c]).toEqual(['sent_at',null,'created_at']);return cleanup();}})}),insert:()=>({select:()=>({single:async()=>({data:{id:'draft'},error:null})})})})});
+ mocks.db.mockReturnValue({from:()=>({delete:()=>({is:(col:string,v:null)=>({is:(scheduled:string,empty:null)=>({lt:(c:string,iso:string)=>{expect([col,v,scheduled,empty,c]).toEqual(['sent_at',null,'scheduled_at',null,'created_at']);return cleanup();}})})}),insert:()=>({select:()=>({single:async()=>({data:{id:'draft'},error:null})})})})});
  const r=await POST(request({action:'preview',title:'連絡',body:'本文',tagIds:[]}));
  expect(r.status).toBe(200);expect(cleanup).toHaveBeenCalledTimes(1);expect(await r.json()).toMatchObject({people:[e],remaining:10,id:'draft'});expect(mocks.quota).toHaveBeenCalledTimes(1);expect(mocks.push).not.toHaveBeenCalled();
 });
@@ -46,7 +46,7 @@ it('確認した人に500人ずつ送り、同じ確認からは二度送らな�
 
 it('各操作は対応するタブを判定し、他タブの権限だけでは保存できない',async()=>{
  mocks.admin.mockImplementation(async(tab:string)=>tab==='tags'?{employee_id:'editor'}:null);
- for(const action of ['templateSave','templateDelete','preview','send']) {
+ for(const action of ['templateSave','templateDelete','preview','send','schedule','scheduleUpdate','scheduleCancel']) {
   expect((await POST(request({action}))).status).toBe(403);
   expect(mocks.admin).toHaveBeenLastCalledWith('broadcast');
  }

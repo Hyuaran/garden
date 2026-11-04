@@ -1,3 +1,4 @@
+import { loadScheduledBroadcasts, manageSchedule } from '@/lib/line/scheduled.server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { checked, loadLineData, requireLineAdmin } from '@/lib/line/tags.server';
@@ -14,16 +15,44 @@ export async function GET() {
   try {
     const [data,broadcast,greeting,richmenu,contacts]=await Promise.all([loadLineData(),requireLineAdmin('broadcast'),requireLineAdmin('greeting'),requireLineAdmin('richmenu'),requireLineAdmin('contacts')]);
     const menu=richmenu||contacts ? await loadMenuSettings(data.employees) : {contacts:[],menus:[]};
-    return NextResponse.json({...data,...menu,templates:broadcast?data.templates:[],history:broadcast?data.history:[],greetings:greeting?data.greetings:[]});
+    return NextResponse.json({
+      ...data,
+      ...menu,
+      templates: broadcast ? data.templates : [],
+      history: broadcast ? data.history : [],
+      scheduled: broadcast ? await loadScheduledBroadcasts() : [],
+      greetings: greeting ? data.greetings : [],
+    });
   } catch { return NextResponse.json({error:'一覧を取得できませんでした。'}, {status:500}); }
 }
 export async function POST(request:Request) {
   try {
     const b=await request.json();
-    const tabs: Record<string,string> = { templateSave:'broadcast',templateDelete:'broadcast',preview:'broadcast',send:'broadcast',tag:'tags',deleteTag:'tags',member:'tags',team:'tags',greeting:'greeting',test:'greeting',assignment:'richmenu',applyMenus:'richmenu',contact:'richmenu',employeeContact:'contacts' };
+    const tabs: Record<string, string> = {
+      schedule: 'broadcast',
+      scheduleUpdate: 'broadcast',
+      scheduleCancel: 'broadcast',
+      templateSave: 'broadcast',
+      templateDelete: 'broadcast',
+      preview: 'broadcast',
+      send: 'broadcast',
+      tag: 'tags',
+      deleteTag: 'tags',
+      member: 'tags',
+      team: 'tags',
+      greeting: 'greeting',
+      test: 'greeting',
+      assignment: 'richmenu',
+      applyMenus: 'richmenu',
+      contact: 'richmenu',
+      employeeContact: 'contacts',
+    };
     const tab=tabs[b.action];
     if(!tab) return NextResponse.json({}, {status:403});
     const admin=await requireLineAdmin(tab); if(!admin) return NextResponse.json({}, {status:403});
+    if (['schedule', 'scheduleUpdate', 'scheduleCancel'].includes(b.action)) {
+      return NextResponse.json(await manageSchedule(b, admin.employee_id));
+    }
     const db=getSupabaseAdmin();
     if(b.action==='templateSave') {
       if(typeof b.label!=='string'||!b.label.trim()||b.label.length>100||typeof b.title!=='string'||!b.title.trim()||b.title.length>200||typeof b.body!=='string'||!b.body.trim()||b.body.length>5000||!Array.isArray(b.tags)||b.tags.some((t: {kind?:unknown;name?:unknown}|null)=>!t||typeof t.kind!=='string'||typeof t.name!=='string')) throw new Error('ボタンの名前・題名・送信内容・絞り込みを確認してください。');
@@ -105,7 +134,7 @@ export async function POST(request:Request) {
         const quota=await getLineStaffQuota();
         if(!ids.length || (quota.remaining!==null&&quota.remaining<ids.length)) throw new Error('送る人がいないか、今月の残り通数が足りません。');
         // 確認だけで送らなかった記録は履歴に出さない。1 時間たったものはここで片付ける（確認の有効期限は 5 分）
-        checked(await db.from('system_line_broadcast').delete().is('sent_at',null).lt('created_at',new Date(Date.now()-3600_000).toISOString()));
+        checked(await db.from('system_line_broadcast').delete().is('sent_at',null).is('scheduled_at',null).lt('created_at',new Date(Date.now()-3600_000).toISOString()));
         const row=checked(await db.from('system_line_broadcast').insert({title:b.title,body:b.body,tag_ids:b.tagIds,recipient_count:ids.length,created_by:admin.employee_id}).select('id').single()).data;
         if(!row) throw new Error('記録を保存できませんでした。');
         const expires=Date.now()+5*60*1000;
@@ -113,7 +142,7 @@ export async function POST(request:Request) {
       }
       const expected=Buffer.from(sign(content+b.id+b.expires)); const supplied=Buffer.from(String(b.signature||''));
       if(Date.now()>Number(b.expires)||expected.length!==supplied.length||!timingSafeEqual(expected,supplied)) throw new Error('送る人をもう一度確認してください。');
-      const claim=checked(await db.from('system_line_broadcast').update({sent_at:new Date().toISOString()}).eq('id',b.id).eq('created_by',admin.employee_id).is('sent_at',null).select('id'));
+      const claim=checked(await db.from('system_line_broadcast').update({sent_at:new Date().toISOString()}).eq('id',b.id).eq('created_by',admin.employee_id).is('sent_at',null).is('scheduled_at',null).select('id'));
       if(!claim.data?.length) throw new Error('この送信はすでに処理されています。');
       let sent=0,failed=0;
       for(const batch of chunks(ids)) { try { await pushLineStaff(batch,b.body); sent+=batch.length; } catch { failed+=batch.length; } }

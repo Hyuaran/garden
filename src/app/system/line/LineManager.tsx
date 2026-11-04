@@ -1,4 +1,6 @@
 'use client';
+import ScheduledBroadcasts, { ScheduleMode } from './ScheduledBroadcasts';
+import type { ScheduledBroadcast } from '@/lib/line/scheduled';
 import { useStoredView } from "@/lib/ui/useStoredView";
 import LineSendOverlay, { type LineSendState } from "./LineSendOverlay";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
@@ -24,7 +26,7 @@ import type { BroadcastTemplate } from '@/lib/line/broadcast-template';
 import { useSystemView, SystemViewButton } from '../_components/ViewPermissionButton/SystemViewContext';
 type MenuRow={group_key:MenuGroup;richmenu_id:string;created_at:string;applied_at:string|null};
 type History={id:string;title:string;body:string;tag_ids:string[]|null;recipient_count:number;sent_count:number;failed_count:number;created_at:string;sent_at:string|null};
-type Data={templates:BroadcastTemplate[];contacts:Contact[];menus:MenuRow[];tags:Tag[];members:Member[];employees:Employee[];greetings:Greeting[];history:History[];updatedAt:string};
+type Data={scheduled?:ScheduledBroadcast[];templates:BroadcastTemplate[];contacts:Contact[];menus:MenuRow[];tags:Tag[];members:Member[];employees:Employee[];greetings:Greeting[];history:History[];updatedAt:string};
 type Preview={people:Employee[];remaining:number|null;id:string;expires:number;signature:string};
 const emptyGreeting: Greeting={id:'',employment_tag_id:null,business_tag_id:null,body:'',enabled:true};
 const DONE_MESSAGES:Record<string,string>={templateSave:'定型文を保存しました。',templateDelete:'定型文を削除しました。',test:'自分のLINEに送信しました。',applyMenus:'リッチメニューを反映しました。',deleteTag:'タグを削除しました。'};
@@ -33,6 +35,7 @@ const doneMessage=(action?:string)=>DONE_MESSAGES[action??'']??'保存しまし�
 export default function LineManager() {
   const { allowedTab } = useSystemView();
   const allowed = (key:string) => allowedTab(key==='people'?'tags':key);
+  const [scheduleMode, setScheduleMode] = useState(false);
   const [templateEdit,setTemplateEdit]=useState<BroadcastTemplate>();
   const [deleteTemplate,setDeleteTemplate]=useState(false);
   const [viewMode,setViewMode,viewReady]=useStoredView<'list'|'grid'>('garden.line.greeting.viewMode','list', raw=>raw==='grid'?'grid':'list', value=>value);
@@ -67,7 +70,24 @@ if((payload as {action?:string}).action!=='preview'&&!((payload as {action?:stri
       {id:'count',label:'送る人数',type:'number',value:g=>data.employees.filter(e=>statusOf(e)!=='退職'&&chooseGreeting(data.greetings,own(e))?.id===g.id).length},
       {id:'state',label:'状態',type:'text',align:'mark',value:g=>g.enabled?'使用中':'使用しない'},
     ]}/>:data.greetings.map(g=><FormRow key={g.id} label={[data.tags.find(t=>t.id===g.employment_tag_id)?.name||'共通',data.tags.find(t=>t.id===g.business_tag_id)?.name].filter(Boolean).join('・')}><p style={{whiteSpace:'pre-wrap'}}>{g.body}</p><p>この文が送られる人の数：{data.employees.filter(e=>statusOf(e)!=='退職'&&chooseGreeting(data.greetings,own(e))?.id===g.id).length}人</p><ActionRow><StatusBadge muted={!g.enabled}>{g.enabled?'使用中':'使用しない'}</StatusBadge><RowActionButton kind="edit" onClick={()=>setEdit({...g})} /><ActionButton onClick={()=>setTestId(g.id)}>自分に試しに送る</ActionButton></ActionRow></FormRow>)}</>}
-    {data&&activeTab==='broadcast'&&<><FormRow label="定型文"><ActionRow>{(data.templates??[]).map(t=><span key={t.id} style={{display:'inline-flex',alignItems:'center',gap:4}}><ActionButton disabled={busy} onClick={()=>{const {ids,missing}=templateTagIds(t,data.tags);setRecipientTags(ids);const now=new Date();setTitle(fillTemplate(t.title,now));setBody(fillTemplate(t.body,now));setPreview(undefined);setMessage(missing.length?`タグ「${missing.join('・')}」が見つからないため、その絞り込みは入っていません。`:'');setMessageOk(false);}}>{t.label}</ActionButton><RowActionButton kind="edit" label={`${t.label}を変更する`} disabled={busy} onClick={()=>{setTemplateEdit({...t});setDeleteTemplate(false);}}/></span>)}<ActionButton disabled={busy} onClick={()=>{setTemplateEdit({id:'',label:'',title:'',body:'',tags:[],sort:0});setDeleteTemplate(false);}}>＋ 定型文を追加</ActionButton></ActionRow></FormRow>{filters}<FormRow required label="1 題名"><TextField required aria-label="題名" value={title} maxLength={200} onChange={e=>{setTitle(e.target.value);setPreview(undefined);}}/></FormRow><FormRow required label="2 送信内容"><TextArea required aria-label="送信内容" value={body} maxLength={5000} onChange={e=>{setBody(e.target.value);setPreview(undefined);}}/></FormRow><SubmitButton busy={busy} onClick={async()=>{const r=await act({action:'preview',tagIds:recipientTags,title,body},false);if(r)setPreview(r);}}>送る人と残り通数を確認する</SubmitButton><DataTable loading={loading} emptyText="まだ送っていません。" searchPlaceholder="題名" searchText={r=>r.title} defaultSort={{id:"date",direction:"desc"}} rows={data.history} rowKey={r=>r.id} onRowClick={r=>setSentView(r)} columns={[{id:'title',label:'題名',type:'text',value:r=>r.title},{id:'date',label:'日時',type:'text',align:'fixed',value:r=>new Date(r.sent_at??r.created_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})},{id:'count',label:'人数',type:'number',value:r=>r.recipient_count},{id:'sent',label:'送信済',type:'number',value:r=>r.sent_count},{id:'failed',label:'失敗',type:'number',value:r=>r.failed_count},{id:'state',label:'状態',type:'text',value:()=>'送信済み'}]}/></>}
+    {data&&activeTab==='broadcast'&&<><FormRow label="定型文"><ActionRow>{(data.templates??[]).map(t=><span key={t.id} style={{display:'inline-flex',alignItems:'center',gap:4}}><ActionButton disabled={busy} onClick={()=>{const {ids,missing}=templateTagIds(t,data.tags);setRecipientTags(ids);const now=new Date();setTitle(fillTemplate(t.title,now));setBody(fillTemplate(t.body,now));setPreview(undefined);setMessage(missing.length?`タグ「${missing.join('・')}」が見つからないため、その絞り込みは入っていません。`:'');setMessageOk(false);}}>{t.label}</ActionButton><RowActionButton kind="edit" label={`${t.label}を変更する`} disabled={busy} onClick={()=>{setTemplateEdit({...t});setDeleteTemplate(false);}}/></span>)}<ActionButton disabled={busy} onClick={()=>{setTemplateEdit({id:'',label:'',title:'',body:'',tags:[],sort:0});setDeleteTemplate(false);}}>＋ 定型文を追加</ActionButton></ActionRow></FormRow>{filters}<FormRow required label="1 題名"><TextField required aria-label="題名" value={title} maxLength={200} onChange={e=>{setTitle(e.target.value);setPreview(undefined);}}/></FormRow><FormRow required label="2 送信内容"><TextArea required aria-label="送信内容" value={body} maxLength={5000} onChange={e=>{setBody(e.target.value);setPreview(undefined);}}/></FormRow>
+      <ScheduleMode
+        message={messageOk ? undefined : message}
+        draft={{ title, body, tagIds: recipientTags }}
+        data={data}
+        busy={busy}
+        enabled={scheduleMode}
+        onModeChange={setScheduleMode}
+        act={act}
+        onReset={() => {
+          setTitle('');
+          setBody('');
+          setRecipientTags([]);
+        }}
+      />
+      {!scheduleMode&&<SubmitButton busy={busy} onClick={async()=>{const r=await act({action:'preview',tagIds:recipientTags,title,body},false);if(r)setPreview(r);}}>送る人と残り通数を確認する</SubmitButton>}
+      <ScheduledBroadcasts data={data} busy={busy} act={act} message={messageOk ? undefined : message} />
+      <DataTable loading={loading} emptyText="まだ送っていません。" searchPlaceholder="題名" searchText={r=>r.title} defaultSort={{id:"date",direction:"desc"}} rows={data.history} rowKey={r=>r.id} onRowClick={r=>setSentView(r)} columns={[{id:'title',label:'題名',type:'text',value:r=>r.title},{id:'date',label:'日時',type:'text',align:'fixed',value:r=>new Date(r.sent_at??r.created_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})},{id:'count',label:'人数',type:'number',value:r=>r.recipient_count},{id:'sent',label:'送信済',type:'number',value:r=>r.sent_count},{id:'failed',label:'失敗',type:'number',value:r=>r.failed_count},{id:'state',label:'状態',type:'text',value:()=>'送信済み'}]}/></>}
     {data&&activeTab==='richmenu'&&<RichMenuSettings data={data} busy={busy} act={act}/>}
     {data&&activeTab==='contacts'&&<ContactSettings data={data} busy={busy} act={act}/>}
     {templateEdit&&<Modal title={templateEdit.id?'定型文の変更':'定型文の追加'} onClose={()=>setTemplateEdit(undefined)} actions={<>{templateEdit.id&&<RowActionButton kind="delete" label={`${templateEdit.label||'定型文'}を削除する`} disabled={busy} onClick={()=>setDeleteTemplate(true)}/>}<SubmitButton busy={busy} onClick={async()=>{if(await act({...templateEdit,action:'templateSave'}))setTemplateEdit(undefined);}}>保存する</SubmitButton></>}>

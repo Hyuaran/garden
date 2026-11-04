@@ -1,0 +1,7 @@
+.modal :global(.garden-modal-body) {
+  scrollbar-width: none;
+}
+
+.modal :global(.garden-modal-body)::-webkit-scrollbar {
+  display: none;
+}
