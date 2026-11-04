@@ -17,7 +17,7 @@ vi.mock("@/app/system/_components/Modal/Modal", () => ({
     </div>
   ),
 }));
-import MyShift from "./MyShift";
+import MyShift, { shiftMonths } from "./MyShift";
 import ShiftDays from "./ShiftDays";
 import { InitialUrlView } from "@/lib/ui/InitialUrlView";
 import { SystemViewProvider } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -93,6 +93,34 @@ it("本人が月の日数分を提出し提出済みになる", async () => {
     ).length,
   );
   expect(screen.getByText(/状態：提出済み/)).toBeInTheDocument();
+});
+it("次の月が確定したら本人は確定シフトを読むだけで見る", async () => {
+  const month = shiftMonths().next;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        eligible: true,
+        editable: true,
+        wish: [{ work_date: month + "-02", start_time: "14:00:00" }],
+        confirmed: [{ work_date: month + "-02", start_time: "16:00:00" }],
+        holidays: [],
+        submissions: [{ submitted_at: "2026-11-03T10:00:00Z" }],
+        confirmation: {
+          confirmed_at: "2026-11-20T10:00:00Z",
+          confirmed_by_name: "責任者",
+        },
+      }),
+    ),
+  );
+  render(<MyShift />);
+  await screen.findByText(/^確定：/);
+  const select = screen.getByRole<HTMLSelectElement>("combobox", {
+    name: /\/2\(.\)のシフト/,
+  });
+  expect(select.value).toBe("16:00");
+  expect(select).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "提出する" })).toBeNull();
 });
 it("責任者が行を押して月の小窓を開き、確定前に確認する", async () => {
   const d = {

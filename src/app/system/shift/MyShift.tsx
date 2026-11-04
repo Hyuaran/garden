@@ -66,7 +66,7 @@ export default function MyShift({
             monthDays(month).map((work_date) => ({
               work_date,
               start_time:
-                (month === current ? d.confirmed : d.wish)
+                (month === current || d.confirmation ? d.confirmed : d.wish)
                   ?.find((r: ShiftDay) => r.work_date === work_date)
                   ?.start_time?.slice(0, 5) || null,
             })),
@@ -108,9 +108,10 @@ export default function MyShift({
   }
   if (data?.eligible === false) return <p>シフトの提出はありません。</p>;
   const labels = [
-    `${Number(next.slice(5))}月の希望を提出`,
-    `${Number(current.slice(5))}月の確定シフト`,
+    `${Number(next.slice(5))}月のシフト`,
+    `${Number(current.slice(5))}月のシフト`,
   ];
+  const fixed = month === current || Boolean(data?.confirmation);
   return (
     <section style={{ minHeight: 560 }}>
       <h2>自分のシフト</h2>
@@ -143,7 +144,7 @@ export default function MyShift({
         </div>
       ) : (
         <>
-          {month === next ? (
+          {!fixed ? (
             <p>
               提出の締切：{stamp(deadline(month))}　状態：
               {data.submissions?.[0]
@@ -157,16 +158,16 @@ export default function MyShift({
                 : "この月のシフトはまだ確定していません。"}
             </p>
           )}
-          {month === next && !data.editable && <p>{closedMessage}</p>}
-          {(month === next || data.confirmation) && (
+          {!fixed && !data.editable && <p>{closedMessage}</p>}
+          {(!fixed || data.confirmation) && (
             <ShiftDays
               rows={rows}
               onChange={setRows}
-              disabled={busy || month === current || !data.editable}
+              disabled={busy || fixed || !data.editable}
               holidays={data.holidays}
             />
           )}
-          {month === next && (
+          {!fixed && (
             <SubmitButton
               busy={busy}
               disabled={!data.editable}
