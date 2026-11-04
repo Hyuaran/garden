@@ -15,6 +15,7 @@ export type KotDisplayRow = {
   kot_status?: string;
   kot_sent_at?: string | null;
   kot_error?: string | null;
+  kot_manual_at?: string | null;
 };
 
 export default function KotSendPanel({

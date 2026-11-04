@@ -1,5 +1,6 @@
 import { viewPermissionContext, ViewPermissionError } from "@/lib/auth/view-permission.server";
 import { readSubmitters, writeSubmitter } from "./submitters.server";
+import { readDefaultPatterns, writeDefaultPattern } from "./defaults.server";
 
 const headers = { "Cache-Control": "private, no-store" };
 export async function submittersRoute(request: Request) {
@@ -9,7 +10,7 @@ export async function submittersRoute(request: Request) {
       throw new ViewPermissionError("設定を変更する権限がありません。", 403);
     }
     if (request.method === "GET") {
-      return Response.json(await readSubmitters(), { headers });
+      return Response.json({ ...await readSubmitters(), patterns: await readDefaultPatterns() }, { headers });
     }
     if (request.headers.get("sec-fetch-site") === "cross-site" ||
       (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin)) {
@@ -22,8 +23,15 @@ export async function submittersRoute(request: Request) {
       throw new ViewPermissionError("設定内容を確認してください。", 400);
     }
     if (!body || typeof body.employee_id !== "string" || !body.employee_id || body.employee_id.length > 100 ||
-      (request.method === "POST" && !["include", "exclude"].includes(body.mode))) {
+      (request.method === "POST" && !["include", "exclude", "default"].includes(body.mode))) {
       throw new ViewPermissionError("設定内容を確認してください。", 400);
+    }
+    if (request.method === "PUT") {
+      const people = await readSubmitters();
+      if (!people.employees.some(p => p.employee_id === body.employee_id))
+        throw new ViewPermissionError("在籍している人を選んでください。", 400);
+      await writeDefaultPattern(body.employee_id, body.pattern, viewer.employeeId);
+      return Response.json({ ok: true }, { headers });
     }
     const saved = await writeSubmitter(body.employee_id,
       request.method === "DELETE" ? null : body.mode, viewer.employeeId);

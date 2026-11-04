@@ -23,6 +23,7 @@ import { stamp, hours, weekend, type ShiftDay } from "@/lib/shift/rules";
 import ShiftSubmitters from "./ShiftSubmitters";
 import MyShift, { shiftMonths } from "./MyShift";
 import ShiftDays, { shiftDate } from "./ShiftDays";
+import DefaultShiftDays from "./DefaultShiftDays";
 import "./shift.css";
 import KotSendPanel, { type KotDisplayRow } from "./KotSendPanel";
 type TeamData = {
@@ -195,6 +196,7 @@ export function TeamShift({
       (p) => !data.submissions.some((s) => s.employee_id === p.employee_id),
     ) || [];
   const source = data?.confirmation ? data.confirmed : data?.wish || [];
+  const dayWidth = data?.people.some(person => person.shift_mode === "default") ? 112 : 56;
   const updatedAt = [...(data?.wish || []), ...(data?.confirmed || [])]
     .map((row) => row.updated_at)
     .filter((date): date is string => Boolean(date))
@@ -208,7 +210,11 @@ export function TeamShift({
     setPerson(employee);
     setDraft(
       data.days.map((work_date) => ({
+        ...source.find(row => row.employee_id === employee.employee_id && row.work_date === work_date),
         work_date,
+        end_time: employee.shift_mode === "default"
+          ? source.find(row => row.employee_id === employee.employee_id && row.work_date === work_date)?.end_time?.slice(0, 5) ?? null
+          : undefined,
         start_time:
           source
             .find(
@@ -276,6 +282,19 @@ export function TeamShift({
               onBusy={setBusy}
             />
           )}
+          {data.confirmation && <section aria-label="KING OF TIME の画面で有給を入力する日">
+            <h3>KING OF TIME の画面で有給を入力する日</h3>
+            <ul>
+              {data.confirmed.filter(row => row.day_kind === "paid" &&
+                data.people.some(person => person.employee_id === row.employee_id)).map(row => <li key={`${row.employee_id}-${row.work_date}`}>
+                {data.people.find(person => person.employee_id === row.employee_id)?.name}　{shiftDate(row.work_date)}　
+                {row.kot_manual_at ? "入力済み" : <ActionButton disabled={busy}
+                  onClick={() => void action("manual", { employee_id: row.employee_id, work_date: row.work_date })}>
+                  入力済みにする
+                </ActionButton>}
+              </li>)}
+            </ul>
+          </section>}
           <p className={formStyles.shiftMissing}>
             {missing.map((p) => p.name).join("・") || "未提出の人はいません"}
           </p>
@@ -303,12 +322,12 @@ export function TeamShift({
           <div className="garden-shift-table">
             <table
               aria-label="みんなのシフト"
-              style={{ width: 160 + data.days.length * 56 }}
+              style={{ width: 160 + data.days.length * dayWidth }}
             >
               <colgroup>
                 <col style={{ width: 160 }} />
                 {data.days.map((date) => (
-                  <col key={date} style={{ width: 56 }} />
+                  <col key={date} style={{ width: dayWidth }} />
                 ))}
               </colgroup>
               <thead>
@@ -361,7 +380,9 @@ export function TeamShift({
                           </button>
                         </th>
                         {data.days.map((date) => {
-                          const start = data.holidays.includes(date)
+                          const closed = employee.shift_mode !== "default" && data.holidays.includes(date);
+                          const day = source.find(row => row.employee_id === employee.employee_id && row.work_date === date);
+                          const start = closed
                             ? null
                             : source.find(
                                 (row) =>
@@ -372,7 +393,7 @@ export function TeamShift({
                             <td
                               key={date}
                               className={
-                                data.holidays.includes(date)
+                                closed
                                   ? "garden-shift-closed"
                                   : undefined
                               }
@@ -382,7 +403,9 @@ export function TeamShift({
                                   !start ? "garden-shift-rest" : undefined
                                 }
                               >
-                                {start?.slice(0, 5) || "休"}
+                                {day?.day_kind === "paid" ? "有給" : start
+                                  ? employee.shift_mode === "default" ? `${start.slice(0, 5)}〜${day?.end_time?.slice(0, 5)}` : start.slice(0, 5)
+                                  : "休"}
                               </span>
                               {data.confirmation &&
                                 data.confirmed.find(
@@ -432,7 +455,7 @@ export function TeamShift({
                               (row) =>
                                 row.work_date === date &&
                                 data.people.some(
-                                  (p) => p.employee_id === row.employee_id,
+                                  (p) => p.employee_id === row.employee_id && p.shift_mode !== "default",
                                 ),
                             )
                             .reduce(
@@ -511,13 +534,18 @@ export function TeamShift({
               (row) => row.employee_id === person.employee_id,
             )?.note || "—"}
           </p>
-          <ShiftDays
+          {person.shift_mode === "default" ? <DefaultShiftDays
+            manager
+            rows={draft}
+            onChange={setDraft}
+            disabled={busy}
+          /> : <ShiftDays
             manager
             rows={draft}
             onChange={setDraft}
             disabled={busy}
             holidays={data.holidays}
-          />
+          />}
         </Modal>
       )}
       {confirm && (
@@ -539,7 +567,7 @@ export function TeamShift({
           {confirm === "confirm" ? (
             <>
               <p>
-                定休日以外の希望をそのまま確定シフトにします。確定すると本人の公式LINEに知らせます。
+                テレマの定休日以外の希望をそのまま確定シフトにします。既定の勤務で提出する人の未提出日は、既定の勤務で確定します。確定すると本人の公式LINEに知らせます。
               </p>
               {data?.confirmation && (
                 <p>

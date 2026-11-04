@@ -1,6 +1,7 @@
 import { readSubmitterSettings } from "./submitters.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { isShiftEligible, type ShiftEmployee } from "./eligibility";
+import { shiftMode, type ShiftEmployee } from "./eligibility";
+import { readDefaultPatterns } from "./defaults.server";
 import {
   closedMessage,
   deadline,
@@ -8,6 +9,10 @@ import {
   validateDays,
   holidayCandidates,
   stamp,
+  DEFAULT_SHIFT_START_MONTH,
+  defaultDays,
+  patternReady,
+  validateDefaultDays,
 } from "./rules";
 import { pushLineStaff } from "@/lib/line/staff-client";
 export class ShiftError extends Error {
@@ -38,22 +43,26 @@ export async function employees() {
       "employee_id,employee_number,name,employment_type,business,current_team,is_active,termination_date,deleted_at,line_user_id,line_link_source",
     );
   check(result);
-  return ((result.data as ShiftEmployee[]) || []).filter((e) =>
-    isShiftEligible(e, settings),
-  );
+  return ((result.data as ShiftEmployee[]) || []).flatMap(e => {
+    const mode = shiftMode(e, settings);
+    return mode ? [{ ...e, shift_mode: mode }] : [];
+  });
 }
 async function readDays(table: string, start: string, end: string) {
   const rows: {
     employee_id: string;
     work_date: string;
     start_time: string | null;
+    end_time: string | null;
+    day_kind: "work" | "rest" | "paid";
+    kot_manual_at?: string | null;
     updated_at: string;
   }[] = [];
   for (let offset = 0; ; offset += 1000) {
     const columns: string =
       table === "system_shift_confirmed"
-        ? "employee_id,work_date,start_time,updated_at,kot_status,kot_sent_at,kot_error"
-        : "employee_id,work_date,start_time,updated_at";
+        ? "employee_id,work_date,start_time,end_time,day_kind,updated_at,kot_status,kot_sent_at,kot_error,kot_manual_at"
+        : "employee_id,work_date,start_time,end_time,day_kind,updated_at";
     const result = await db()
       .from(table)
       .select(columns)
@@ -118,13 +127,26 @@ export async function myShift(
   body?: unknown,
   note: unknown = "",
 ) {
-  const eligible = (await employees()).some(
+  const person = (await employees()).find(
     (e) => e.employee_id === employee_id,
   );
-  if (!eligible) {
+  if (!person) {
     if (body !== undefined)
       throw new ShiftError("シフトの提出はありません。", 403);
     return { eligible: false };
+  }
+  const isDefault = person.shift_mode === "default";
+  const message = isDefault && month < DEFAULT_SHIFT_START_MONTH
+    ? "2026年12月分から提出します。" : null;
+  if (message) {
+    if (body !== undefined) throw new ShiftError(message, 403);
+    return { eligible: true, mode: "default", message, editable: false };
+  }
+  const pattern = isDefault ? await readDefaultPatterns(employee_id) : [];
+  if (isDefault && !patternReady(pattern)) {
+    const message = "既定の勤務を準備しています。";
+    if (body !== undefined) throw new ShiftError(message, 403);
+    return { eligible: true, mode: "default", message, editable: false };
   }
   if (body !== undefined) {
     const current = new Date()
@@ -139,7 +161,7 @@ export async function myShift(
       throw new ShiftError(closedMessage, 403);
     if (typeof note !== "string" || [...note].length > 500)
       throw new ShiftError("備考は500字までで入力してください。");
-    const rows = validateDays(month, body);
+    const rows = isDefault ? validateDefaultDays(month, body, pattern) : validateDays(month, body);
     const result = await db().rpc("save_shift_person", {
       p_employee: employee_id,
       p_month: month,
@@ -153,9 +175,14 @@ export async function myShift(
   const data = await readMonth(month);
   return {
     ...data,
-    holidays: data.confirmation ? data.holidays : [],
+    holidays: !isDefault && data.confirmation ? data.holidays : [],
     eligible: true,
-    wish: data.wish.filter((r) => r.employee_id === employee_id),
+    mode: person.shift_mode,
+    defaults: isDefault ? defaultDays(month, pattern) : undefined,
+    wish: data.days.map(work_date =>
+      data.wish.find(r => r.employee_id === employee_id && r.work_date === work_date) ||
+      (isDefault ? defaultDays(month, pattern).find(r => r.work_date === work_date)! :
+        { work_date, start_time: null })),
     confirmed: data.confirmed.filter((r) => r.employee_id === employee_id),
     submissions: data.submissions.filter((r) => r.employee_id === employee_id),
     editable: !data.confirmation && Date.now() <= deadline(month).getTime(),
@@ -217,27 +244,41 @@ export async function teamShift(
   body: Record<string, unknown>,
   actor: { employee_id: string; name: string; userId: string },
 ) {
-  const people = await employees(),
+  const people = (await employees()).filter(p => p.shift_mode !== "default" || month >= DEFAULT_SHIFT_START_MONTH),
     data = await readMonth(month);
+  if (action === "read" && people.some(p => p.shift_mode === "default")) {
+    const patterns = await readDefaultPatterns();
+    for (const person of people.filter(p => p.shift_mode === "default")) {
+      const pattern = patterns.filter(r => r.employee_id === person.employee_id);
+      if (!patternReady(pattern)) continue;
+      for (const row of defaultDays(month, pattern)) {
+        if (!data.wish.some(r => r.employee_id === person.employee_id && r.work_date === row.work_date))
+          data.wish.push({ ...row, employee_id: person.employee_id, updated_at: "", end_time: row.end_time ?? null, day_kind: row.day_kind! });
+      }
+    }
+  }
   if (action === "read")
     return {
       ...data,
-      people: people.map(({ employee_id, name, current_team }) => ({
+      people: people.map(({ employee_id, name, current_team, shift_mode }) => ({
         employee_id,
         name,
         current_team,
+        shift_mode,
       })),
       candidates: holidayCandidates(
         data.days,
         data.wish.filter((r) =>
-          people.some((p) => p.employee_id === r.employee_id),
+          people.some((p) => p.employee_id === r.employee_id && p.shift_mode !== "default"),
         ),
       ),
     };
   if (action === "person") {
     if (!people.some((p) => p.employee_id === body.employee_id))
       throw new ShiftError("対象者を確認してください。");
-    const rows = validateDays(month, body.rows, true);
+    const person = people.find(p => p.employee_id === body.employee_id)!;
+    const rows = person.shift_mode === "default"
+      ? validateDefaultDays(month, body.rows, [], true) : validateDays(month, body.rows, true);
     check(
       await db().rpc("save_shift_person", {
         p_employee: body.employee_id,
@@ -247,6 +288,17 @@ export async function teamShift(
         p_submit: false,
       }),
     );
+    return { ok: true };
+  }
+  if (action === "manual") {
+    if (!people.some(p => p.employee_id === body.employee_id) ||
+        typeof body.work_date !== "string" || !data.days.includes(body.work_date))
+      throw new ShiftError("対象の日を確認してください。");
+    check(await db().from("system_shift_confirmed").update({
+      kot_manual_at: new Date().toISOString(),
+      kot_manual_by: actor.employee_id,
+    }).eq("employee_id", body.employee_id).eq("work_date", body.work_date)
+      .eq("day_kind", "paid").is("kot_manual_at", null));
     return { ok: true };
   }
   if (action === "holiday") {

@@ -1,7 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { isShiftEligible, type ShiftEmployee } from "./eligibility";
 
-const mocks = vi.hoisted(() => ({ context: vi.fn(), read: vi.fn(), write: vi.fn() }));
+const mocks = vi.hoisted(() => ({ context: vi.fn(), read: vi.fn(), write: vi.fn(), pattern: vi.fn() }));
+vi.mock("./defaults.server", () => ({ readDefaultPatterns: async () => [], writeDefaultPattern: mocks.pattern }));
 vi.mock("@/lib/auth/view-permission.server", () => ({
   viewPermissionContext: mocks.context,
   ViewPermissionError: class extends Error {
@@ -35,11 +36,20 @@ beforeEach(() => {
   mocks.read.mockResolvedValue({ employees: [], settings: [] });
   mocks.write.mockResolvedValue(true);
 });
-it.each(["GET", "POST", "DELETE"])("%s は全権管理者以外403", async method => {
+it.each(["GET", "POST", "PUT", "DELETE"])("%s は全権管理者以外403", async method => {
   mocks.context.mockResolvedValue({ viewer: { role: "manager" } });
   expect((await submittersRoute(new Request("http://localhost/api/system/shift/submitters", { method }))).status).toBe(403);
   expect(mocks.read).not.toHaveBeenCalled();
   expect(mocks.write).not.toHaveBeenCalled();
+});
+it("既定の勤務は全権管理者だけが保存できる", async () => {
+  mocks.read.mockResolvedValue({ employees: [employee], settings: [] });
+  const pattern = [0, 1, 2, 3, 4, 5, 6, 8].map(weekday => ({ weekday, start_time: null, end_time: null }));
+  const response = await submittersRoute(new Request("http://localhost/api/system/shift/submitters", {
+    method: "PUT", body: JSON.stringify({ employee_id: employee.employee_id, pattern }),
+  }));
+  expect(response.status).toBe(200);
+  expect(mocks.pattern).toHaveBeenCalledWith(employee.employee_id, pattern, "admin");
 });
 it("追加と復元は設定だけを更新する", async () => {
   for (const method of ["POST", "DELETE"]) {

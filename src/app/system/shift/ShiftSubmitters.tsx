@@ -5,10 +5,13 @@ import ViewerPicker from "@/app/bud/_components/ViewerPicker/ViewerPicker";
 import RowActionButton from "../_components/RowActionButton/RowActionButton";
 import { isShiftEligible, type ShiftEmployee, type ShiftSubmitterSetting } from "@/lib/shift/eligibility";
 import styles from "./shift-submitters.module.css";
+import DefaultPatternSettings from "./DefaultPatternSettings";
+import type { DefaultPattern } from "@/lib/shift/rules";
 
 type Data = {
   employees: (ShiftEmployee & { name_kana?: string | null })[];
   settings: ShiftSubmitterSetting[];
+  patterns?: (DefaultPattern & { employee_id: string })[];
 };
 
 export default function ShiftSubmitters({ onChanged, onBusy }: {
@@ -101,6 +104,14 @@ export default function ShiftSubmitters({ onChanged, onBusy }: {
               data.settings.some(row => row.employee_id === employee.employee_id && row.mode === "include") ? null : "exclude")} />
         </li>)}
       </ul>
+      <DefaultPatternSettings
+        employees={data.employees}
+        settings={data.settings}
+        patterns={data.patterns ?? []}
+        onChanged={onChanged}
+        onBusy={onBusy}
+        change={change}
+      />
       {excluded.length > 0 && <>
         <h3>提出しない人に設定した人</h3>
         <ul className={styles.people}>{excluded.map(employee => <li key={employee.employee_id}>

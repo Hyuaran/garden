@@ -15,6 +15,7 @@ export type KotShiftRow = {
   work_date: string;
   start_time: string | null;
   end_time: string | null;
+  day_kind?: "work" | "rest" | "paid";
   updated_at: string;
   kot_status: "unsent" | "sent" | "failed" | "skipped";
   kot_sent_at: string | null;
@@ -82,7 +83,7 @@ export async function kotRows(month: string) {
     const result = await getSupabaseAdmin()
       .from("system_shift_confirmed")
       .select(
-        "employee_id,work_date,start_time,end_time,updated_at,kot_status,kot_sent_at,kot_error",
+        "employee_id,work_date,start_time,end_time,day_kind,updated_at,kot_status,kot_sent_at,kot_error",
       )
       .gte("work_date", days[0])
       .lte("work_date", days.at(-1)!)
@@ -150,7 +151,7 @@ export async function pushKotPerson(
           ? {
               kot_sent_at: new Date().toISOString(),
               kot_sent_start: row.start_time,
-              kot_sent_end: row.start_time ? "21:00" : null,
+              kot_sent_end: row.start_time ? row.end_time?.slice(0, 5) : null,
             }
           : {}),
       })
@@ -207,7 +208,7 @@ export async function pushKotPerson(
     for (const row of rows) await record(row, publicError(error));
     return { sent, failed };
   }
-  const working = rows.filter((row) => row.start_time);
+  const working = rows.filter((row) => row.start_time && (!row.day_kind || row.day_kind === "work"));
   if (working.length) {
     let response: PutResult;
     try {
@@ -299,8 +300,8 @@ function scheduleBody(row: KotShiftRow, divisionCode: string) {
     workingDate: row.work_date,
     workPlaceDivisionCode: divisionCode,
     clockInSchedule: `${row.work_date}T${start}+09:00`,
-    clockOutSchedule: `${row.work_date}T21:00+09:00`,
-    ...(hasLunchBreak(start)
+    clockOutSchedule: `${row.work_date}T${row.end_time!.slice(0, 5)}+09:00`,
+    ...(hasLunchBreak(start, row.end_time!.slice(0, 5))
       ? {
           startEndBreakSchedule: [
             {

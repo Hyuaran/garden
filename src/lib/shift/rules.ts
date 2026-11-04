@@ -1,5 +1,61 @@
 import { isJapaneseHoliday } from "@/app/system/kanri/_lib/jp-holidays";
-export type ShiftDay = { work_date: string; start_time: string | null };
+export const DEFAULT_SHIFT_START_MONTH = "2026-12";
+export type ShiftDay = {
+  work_date: string;
+  start_time: string | null;
+  end_time?: string | null;
+  day_kind?: "work" | "rest" | "paid";
+};
+export type DefaultPattern = {
+  weekday: number;
+  start_time: string | null;
+  end_time: string | null;
+};
+export const halfHourTimes = Array.from({ length: 36 }, (_, i) =>
+  `${String(6 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`,
+);
+export function defaultDays(month: string, pattern: DefaultPattern[]): ShiftDay[] {
+  return monthDays(month).map(work_date => {
+    const weekday = isJapaneseHoliday(work_date)
+      ? 8 : new Date(work_date + "T00:00:00Z").getUTCDay();
+    const row = pattern.find(row => row.weekday === weekday);
+    return {
+      work_date,
+      start_time: row?.start_time?.slice(0, 5) ?? null,
+      end_time: row?.end_time?.slice(0, 5) ?? null,
+      day_kind: row?.start_time ? "work" : "rest",
+    };
+  });
+}
+export function patternReady(pattern: DefaultPattern[]) {
+  return [0, 1, 2, 3, 4, 5, 6, 8].every(day => pattern.some(row => row.weekday === day));
+}
+export function validateDefaultDays(
+  month: string,
+  input: unknown,
+  pattern: DefaultPattern[],
+  manager = false,
+): ShiftDay[] {
+  if (!Array.isArray(input) || input.length !== monthDays(month).length)
+    throw new Error("すべての日のシフトを入力してください。");
+  return defaultDays(month, pattern).map(base => {
+    const matches = input.filter(row => row?.work_date === base.work_date);
+    const row = matches[0];
+    const kind = row?.day_kind;
+    if (matches.length !== 1 || !["work", "rest", "paid"].includes(kind))
+      throw new Error("勤務・休み・有給を選んでください。");
+    if (kind !== "work") {
+      if (row.start_time !== null || row.end_time !== null)
+        throw new Error("休み・有給には時刻を指定できません。");
+      return { work_date: base.work_date, start_time: null, end_time: null, day_kind: kind };
+    }
+    if (!halfHourTimes.includes(row.start_time) ||
+        ![...halfHourTimes, "24:00"].includes(row.end_time) || row.start_time >= row.end_time ||
+        (!manager && (row.start_time !== base.start_time || row.end_time !== base.end_time)))
+      throw new Error(manager ? "開始と終了を30分単位で入力してください。" : "その日の既定の勤務・休み・有給から選んでください。");
+    return { work_date: base.work_date, start_time: row.start_time, end_time: row.end_time, day_kind: "work" };
+  });
+}
 export function monthDays(month: string) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("月を確認してください。");
   const [y, m] = month.split("-").map(Number);
@@ -41,13 +97,14 @@ export function validateDays(month: string, input: unknown, manager = false): Sh
   });
 }
 // 休憩は 13:00〜14:00 の 1 時間。この時間を出勤している日は、打刻しなくても休憩したことにする。
-export function hasLunchBreak(start: string) {
-  return start.slice(0, 5) <= "13:00";
+export function hasLunchBreak(start: string, end = "21:00") {
+  return start.slice(0, 5) <= "13:00" && end.slice(0, 5) >= "14:00";
 }
-export function hours(start: string | null) {
+export function hours(start: string | null, end = "21:00") {
   if (!start) return 0;
   const [h, m] = start.split(":").map(Number);
-  return 21 - h - m / 60 - (hasLunchBreak(start) ? 1 : 0);
+  const [eh, em] = end.split(":").map(Number);
+  return eh + em / 60 - h - m / 60 - (hasLunchBreak(start, end) ? 1 : 0);
 }
 export function confirmDays(rows: ShiftDay[], holidays: string[]) {
   return rows.map((r) => ({

@@ -1,4 +1,5 @@
 export type ShiftEmployee = {
+  shift_mode?: "telema" | "default";
   employee_id: string;
   name: string;
   employee_number?: string;
@@ -13,7 +14,7 @@ export type ShiftEmployee = {
 };
 export type ShiftSubmitterSetting = {
   employee_id: string;
-  mode: "include" | "exclude";
+  mode: "include" | "exclude" | "default";
 };
 
 export function isShiftActive(
@@ -36,4 +37,19 @@ export function isShiftEligible(
     employee.business === "ブロードバンド事業" &&
     Boolean(employee.current_team) &&
     !["バックヤード", "所属なし"].includes(employee.current_team!);
+}
+
+// テレマの既存判定を保ち、既定勤務の対象を別に判定する。
+export function shiftMode(
+  employee: ShiftEmployee,
+  settings: readonly ShiftSubmitterSetting[] = [],
+  today?: string,
+): "telema" | "default" | null {
+  if (!isShiftActive(employee, today)) return null;
+  const setting = settings.find(row => row.employee_id === employee.employee_id);
+  if (setting?.mode === "exclude") return null;
+  if (setting?.mode === "default") return "default";
+  if (isShiftEligible(employee, settings, today)) return "telema";
+  return ["正社員", "契約社員", "パート", "アルバイト"].includes(employee.employment_type ?? "")
+    ? "default" : null;
 }

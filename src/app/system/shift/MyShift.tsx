@@ -14,9 +14,13 @@ import {
   type ShiftDay,
 } from "@/lib/shift/rules";
 import ShiftDays from "./ShiftDays";
+import DefaultShiftDays from "./DefaultShiftDays";
 
 export type MyData = {
   eligible: boolean;
+  mode?: "telema" | "default";
+  message?: string;
+  defaults?: ShiftDay[];
   wish?: ShiftDay[];
   confirmed?: ShiftDay[];
   submissions?: { submitted_at: string; note?: string | null }[];
@@ -67,7 +71,11 @@ export default function MyShift({
           setNote(d.submissions?.[0]?.note || "");
           setRows(
             monthDays(month).map((work_date) => ({
+              ...(month === current || d.confirmation ? d.confirmed : d.wish)
+                ?.find((r: ShiftDay) => r.work_date === work_date),
               work_date,
+              end_time: d.mode === "default" ? (month === current || d.confirmation ? d.confirmed : d.wish)
+                ?.find((r: ShiftDay) => r.work_date === work_date)?.end_time?.slice(0, 5) ?? null : undefined,
               start_time:
                 (month === current || d.confirmation ? d.confirmed : d.wish)
                   ?.find((r: ShiftDay) => r.work_date === work_date)
@@ -140,7 +148,7 @@ export default function MyShift({
         <p role="status" aria-busy="true">
           読み込み中です…
         </p>
-      ) : (
+      ) : data.message ? <p>{data.message}</p> : (
         <>
           {!fixed ? (
             <p>
@@ -158,7 +166,12 @@ export default function MyShift({
           )}
           {!fixed && !data.editable && <p>{closedMessage}</p>}
           {(!fixed || data.confirmation) && (
-            <ShiftDays
+            data.mode === "default" ? <DefaultShiftDays
+              rows={rows}
+              defaults={data.defaults}
+              onChange={setRows}
+              disabled={busy || fixed || !data.editable}
+            /> : <ShiftDays
               rows={rows}
               onChange={setRows}
               disabled={busy || fixed || !data.editable}
@@ -177,8 +190,11 @@ export default function MyShift({
               onChange={(event) => setNote(event.target.value)}
             />
           </label>
-          {!fixed && data.editable && (
+          {!fixed && data.editable && data.mode !== "default" && (
             <p>18:30 以降の開始を希望する場合は、ここに記入してください。</p>
+          )}
+          {!fixed && data.editable && data.mode === "default" && (
+            <p>ほかの時間を希望する場合は、備考に記入してください。</p>
           )}
           {!fixed && (
             <SubmitButton

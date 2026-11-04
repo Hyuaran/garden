@@ -51,7 +51,7 @@ it("提出済み・対象外の人には提出のお願いを送らない", asyn
     if (table === "root_employees_with_team")
       return {
         select: async () => ({
-          data: [...people, { ...people[0], employee_id: "3", employment_type: "正社員" }],
+          data: [...people, { ...people[0], employee_id: "3", employment_type: "役員" }],
           error: null,
         }),
       };

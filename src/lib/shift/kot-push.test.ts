@@ -117,6 +117,18 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
+it("既定勤務の終了を送り、有給は登録せず既存の勤務だけ消す", async () => {
+  rows = [
+    { employee_id: "1", work_date: "2026-12-02", start_time: "09:30:00", end_time: "18:00:00", day_kind: "work", updated_at: "revision", kot_status: "unsent" },
+    { employee_id: "1", work_date: "2026-12-03", start_time: null, end_time: null, day_kind: "paid", updated_at: "revision", kot_status: "unsent" },
+  ];
+  await pushKotPerson("2026-12", "1", "boss");
+  const schedules = mock.enqueue.mock.calls.find(call => call[1].method === "PUT")![1].body.employeeScheduleRequests[0].dailySchedules;
+  expect(schedules).toHaveLength(1);
+  expect(schedules[0]).toMatchObject({ clockOutSchedule: "2026-12-02T18:00+09:00", startEndBreakSchedule: expect.any(Array) });
+  expect(mock.enqueue.mock.calls.find(call => call[1].method === "DELETE")![1].path).toBe("/daily-schedules/abc123/2026-12-03");
+});
+
 it("出勤をまとめて送り、手入力の予定がある休みだけ削除し、今日以前は送らない", async () => {
   expect(await pushKotPerson("2026-12", "1", "boss")).toEqual({
     sent: 6,
