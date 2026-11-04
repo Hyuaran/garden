@@ -1,0 +1,12 @@
+.panel {
+  min-height: 340px;
+  margin-block: 20px;
+}
+.sending {
+  min-height: 130px;
+}
+.closing {
+  min-height: 150px;
+  border-top: 1px solid var(--border-color, currentColor);
+  padding-top: 12px;
+}

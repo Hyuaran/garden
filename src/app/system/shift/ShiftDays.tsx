@@ -17,11 +17,13 @@ export default function ShiftDays({
   onChange,
   disabled = false,
   holidays = [],
+  manager = false,
 }: {
   rows: ShiftDay[];
   onChange: (rows: ShiftDay[]) => void;
   disabled?: boolean;
   holidays?: string[];
+  manager?: boolean;
 }) {
   const [weekdayStart, setWeekdayStart] = useState("14:00"),
     [holidayStart, setHolidayStart] = useState("10:00");
@@ -52,11 +54,18 @@ export default function ShiftDays({
                 onChange={(e) => update(r.work_date, e.target.value || null)}
               >
                 <option value="">休み</option>
-                {startOptions(r.work_date).map((time) => (
-                  <option key={time} value={time}>
-                    {time}〜21:00
-                  </option>
-                ))}
+                {[
+                  ...new Set([
+                    ...startOptions(r.work_date, manager),
+                    ...(r.start_time ? [r.start_time.slice(0, 5)] : []),
+                  ]),
+                ]
+                  .sort()
+                  .map((time) => (
+                    <option key={time} value={time}>
+                      {time}〜21:00
+                    </option>
+                  ))}
               </select>
             )}
           </div>
@@ -85,7 +94,7 @@ export default function ShiftDays({
             value={weekdayStart}
             onChange={(e) => setWeekdayStart(e.target.value)}
           >
-            {startOptions("2026-11-04").map((t) => (
+            {startOptions("2026-11-04", manager).map((t) => (
               <option key={t} value={t}>
                 {t}〜21:00
               </option>
@@ -100,7 +109,7 @@ export default function ShiftDays({
             value={holidayStart}
             onChange={(e) => setHolidayStart(e.target.value)}
           >
-            {startOptions("2026-11-03").map((t) => (
+            {startOptions("2026-11-03", manager).map((t) => (
               <option key={t} value={t}>
                 {t}〜21:00
               </option>

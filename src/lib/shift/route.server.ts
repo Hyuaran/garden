@@ -90,6 +90,7 @@ export async function shiftRoute(
             employee.employee_id,
             month,
             request.method === "PUT" ? body.rows : undefined,
+            body.note,
           )
         : await teamShift(
             month,

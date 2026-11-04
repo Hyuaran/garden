@@ -1,3 +1,4 @@
+import { attendanceDevice } from "@/lib/attendance/device";
 import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -17,7 +18,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  for (const scopeTab of [""]) {
+  for (const scopeTab of ["punch"]) {
     const viewDenied = await systemViewResponse("system-attendance", scopeTab, true);
     if (viewDenied) return viewDenied;
   }
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
   const payload = {
     employee_id: identity.employee.id, punch_type: input.punch_type,
     client_punch_id: input.client_punch_id, source: "web", user_agent: userAgent,
+    device_type: attendanceDevice(request.headers),
   };
   const { data, error } = await admin.from("system_attendance_punches")
     .insert(payload).select("id,employee_id,punch_type,punched_at,kot_sync_status").single();

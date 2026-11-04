@@ -30,7 +30,7 @@ type TeamData = {
   days: string[];
   wish: (ShiftDay & { employee_id: string; updated_at?: string })[];
   confirmed: (ShiftDay & KotDisplayRow & { updated_at?: string })[];
-  submissions: { employee_id: string }[];
+  submissions: { employee_id: string; note?: string | null }[];
   holidays: string[];
   confirmation: { confirmed_at: string; confirmed_by_name: string } | null;
   updated_at: string | null;
@@ -49,16 +49,22 @@ export default function ShiftManager() {
     <main>
       <SystemBreadcrumb items={[{ label: "シフト" }]} />
       <h1>シフト</h1>
-      <SystemTabs actions={
-        <SystemViewButton tabKey={tab}>
-          {tab === "team" ? onBusy => (
-            <ShiftSubmitters
-              onBusy={onBusy}
-              onChanged={() => setSubmittersRevision(value => value + 1)}
-            />
-          ) : null}
-        </SystemViewButton>
-      }>
+      <SystemTabs
+        actions={
+          <SystemViewButton tabKey={tab}>
+            {tab === "team"
+              ? (onBusy) => (
+                  <ShiftSubmitters
+                    onBusy={onBusy}
+                    onChanged={() =>
+                      setSubmittersRevision((value) => value + 1)
+                    }
+                  />
+                )
+              : null}
+          </SystemViewButton>
+        }
+      >
         {mine && (
           <button
             role="tab"
@@ -78,11 +84,19 @@ export default function ShiftManager() {
           </button>
         )}
       </SystemTabs>
-      {tab === "mine" && mine ? <MyShift /> : team ? <TeamShift submittersRevision={submittersRevision} /> : null}
+      {tab === "mine" && mine ? (
+        <MyShift />
+      ) : team ? (
+        <TeamShift submittersRevision={submittersRevision} />
+      ) : null}
     </main>
   );
 }
-export function TeamShift({ submittersRevision = 0 }: { submittersRevision?: number }) {
+export function TeamShift({
+  submittersRevision = 0,
+}: {
+  submittersRevision?: number;
+}) {
   const pending = useRef(false);
   const promptAfterRefresh = useRef(false);
   const [kotPrompt, setKotPrompt] = useState(0);
@@ -271,6 +285,21 @@ export function TeamShift({ submittersRevision = 0 }: { submittersRevision?: num
           >
             未提出の人に公式LINEで知らせる
           </ActionButton>
+          <h3>備考がある人</h3>
+          <ul>
+            {data.submissions
+              .filter((row) => row.note)
+              .map((row) => (
+                <li key={row.employee_id}>
+                  {
+                    data.people.find(
+                      (person) => person.employee_id === row.employee_id,
+                    )?.name
+                  }
+                  ：{row.note}
+                </li>
+              ))}
+          </ul>
           <div className="garden-shift-table">
             <table
               aria-label="みんなのシフト"
@@ -476,7 +505,14 @@ export function TeamShift({ submittersRevision = 0 }: { submittersRevision?: num
             </SubmitButton>
           }
         >
+          <p>
+            備考：
+            {data.submissions.find(
+              (row) => row.employee_id === person.employee_id,
+            )?.note || "—"}
+          </p>
           <ShiftDays
+            manager
             rows={draft}
             onChange={setDraft}
             disabled={busy}

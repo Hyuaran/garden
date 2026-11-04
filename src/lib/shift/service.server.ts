@@ -24,9 +24,9 @@ function check(result: { error: unknown }) {
     if (
       typeof result.error === "object" &&
       "message" in result.error &&
-      String(result.error.message).includes(closedMessage)
+      (String(result.error.message).includes(closedMessage) || String(result.error.message).includes("確定後のシフトは変更できません"))
     )
-      throw new ShiftError(closedMessage, 403);
+      throw new ShiftError(String((result.error as { message: unknown }).message), 403);
     throw new ShiftError("シフトを保存・取得できませんでした。", 500);
   }
 }
@@ -80,7 +80,7 @@ export async function readMonth(month: string) {
   const [submission, setting, confirmation] = await Promise.all([
     db()
       .from("system_shift_submission")
-      .select("employee_id,submitted_at")
+      .select("employee_id,submitted_at,note")
       .eq("year_month", month),
     db()
       .from("system_kanri_month_setting")
@@ -116,6 +116,7 @@ export async function myShift(
   employee_id: string,
   month: string,
   body?: unknown,
+  note: unknown = "",
 ) {
   const eligible = (await employees()).some(
     (e) => e.employee_id === employee_id,
@@ -136,6 +137,8 @@ export async function myShift(
       Date.now() > deadline(month).getTime()
     )
       throw new ShiftError(closedMessage, 403);
+    if (typeof note !== "string" || [...note].length > 500)
+      throw new ShiftError("備考は500字までで入力してください。");
     const rows = validateDays(month, body);
     const result = await db().rpc("save_shift_person", {
       p_employee: employee_id,
@@ -143,6 +146,7 @@ export async function myShift(
       p_rows: rows,
       p_actor: employee_id,
       p_submit: true,
+      p_note: note.trim(),
     });
     check(result);
   }
@@ -154,7 +158,7 @@ export async function myShift(
     wish: data.wish.filter((r) => r.employee_id === employee_id),
     confirmed: data.confirmed.filter((r) => r.employee_id === employee_id),
     submissions: data.submissions.filter((r) => r.employee_id === employee_id),
-    editable: Date.now() <= deadline(month).getTime(),
+    editable: !data.confirmation && Date.now() <= deadline(month).getTime(),
   };
 }
 export function deadlineText(month: string) {
@@ -233,7 +237,7 @@ export async function teamShift(
   if (action === "person") {
     if (!people.some((p) => p.employee_id === body.employee_id))
       throw new ShiftError("対象者を確認してください。");
-    const rows = validateDays(month, body.rows);
+    const rows = validateDays(month, body.rows, true);
     check(
       await db().rpc("save_shift_person", {
         p_employee: body.employee_id,

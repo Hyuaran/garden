@@ -119,3 +119,7 @@
   .history li { grid-template-columns: 82px 1fr auto; }
   .dialog { align-self: end; margin-bottom: 10px; }
 }
+
+.punchTable { width: 100%; border-collapse: collapse; }
+.punchTable th { text-align: center; }
+.punchTable td { text-align: center; padding: 8px 4px; }

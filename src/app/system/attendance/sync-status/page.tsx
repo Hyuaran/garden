@@ -15,7 +15,7 @@ async function SyncStatusPage() {
   const { data: employee } = await supabase.from("root_employees").select("garden_role")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (!employee || !MANAGER_ROLES.has(String(employee.garden_role))) return <main style={{padding:32}}><div className="garden-help-heading"><h1>閲覧権限がありません</h1><HelpButton /></div><SystemTabs /><p>この画面は責任者以上が利用できます。</p></main>;
-  return <SyncStatusClient/>;
+  return <SyncStatusClient canSetStartDate={employee.garden_role === "super_admin"}/>;
 }
 
 

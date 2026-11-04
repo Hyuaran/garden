@@ -1,5 +1,8 @@
 "use client";
 
+import CorrectionsPanel from "./CorrectionsPanel";
+import { deviceLabel } from "@/lib/attendance/device";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
@@ -16,9 +19,18 @@ const formatTime = (value: string) => new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
 }).format(new Date(value));
 
-export default function AttendanceClient({ registered, employeeName, canViewSync, needsExtension = false, embedded = false }: {
-  registered: boolean; employeeName: string | null; canViewSync: boolean; needsExtension?: boolean; embedded?: boolean;
+export default function AttendanceClient({ registered, employeeName, canViewSync, needsExtension = false, embedded = false, mobile = false }: {
+  registered: boolean; employeeName: string | null; canViewSync: boolean; needsExtension?: boolean; embedded?: boolean; mobile?: boolean;
 }) {
+  const [tab, setTab] = useState("punch");
+  const { allowedTab, state } = useSystemView();
+  const [sales, setSales] = useState(false);
+  const [approvalAllowed, setApprovalAllowed] = useState(canViewSync);
+  const visibleTabs = ([ ["punch", "打刻"], ["request", "修正の申請"], ["approve", "修正の承認"] ] as const)
+    .filter(([key]) => key === "approve"
+      ? !mobile && allowedTab(key, approvalAllowed)
+      : allowedTab(key));
+  const activeTab = visibleTabs.some(([key]) => key === tab) ? tab : visibleTabs[0]?.[0];
   const [confirmation, setConfirmation] = useState<{ type: PunchType; openedAt: string } | null>(null);
   const saving = useRef(false);
   const name = employeeName?.trim().split(/[\s\u3000]+/).join(" ") ?? "";
@@ -31,12 +43,14 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
   const dialogRef = useRef<HTMLDivElement>(null);
 
   async function loadPunches() {
-    if (!registered) return;
+    if (!registered || !allowedTab("punch")) return;
     try {
       const response = await fetch("/api/system/attendance/my", { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "打刻一覧を取得できませんでした");
       setPunches(result.punches);
+      setSales(result.attendanceRule === "sales");
+      setApprovalAllowed(Boolean(result.canApprove));
       setListError(null);
     } catch (error) { setListError(error instanceof Error ? error.message : "打刻一覧を取得できませんでした"); }
     finally { setLoading(false); }
@@ -90,7 +104,18 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
       <header className={styles.header}>
         <div>{!embedded && <><SystemBreadcrumb items={[{ label: "勤怠打刻" }]} /><div className="garden-help-heading"><h1>勤怠打刻</h1><HelpButton /></div></>}{employeeName && <p className={styles.employeeName} {...CLARITY_MASK}>{employeeName}さん</p>}</div>
         <div className={styles.headerActions}>{canViewSync && <Link className={styles.adminLink} href="/system/attendance/sync-status">同期状況</Link>}</div>
-      </header>{!embedded && <SystemTabs />}
+      </header>
+      <SystemTabs actions={state?.pageKey === "system-attendance" ? <SystemViewButton tabKey={activeTab || ""} /> : undefined}>
+        {visibleTabs.map(([key, label]) => <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === key}
+          onClick={() => setTab(key)}
+        >{label}</button>)}
+      </SystemTabs>
+      {activeTab && activeTab !== "punch" && <CorrectionsPanel approve={activeTab === "approve"} />}
+      {activeTab === "punch" && <>
       {!registered ? <section className={styles.notice} role="status">
         <h2>打刻できません</h2><p>打刻対象の従業員として登録されていません（管理者にご連絡ください）</p>
       </section> : <>
@@ -98,12 +123,21 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
           {PUNCH_TYPES.map((type) => <button key={type} type="button" disabled={modal?.phase === "saving"}
             className={styles[type]} onClick={() => setConfirmation({ type, openedAt: new Date().toISOString() })}>{PUNCH_LABELS[type]}</button>)}
         </section>
+        {sales && <p>13:00〜14:00 の休憩は打刻しなくても自動で入ります。別の時間に休憩を取るときだけ押してください。</p>}
         <section className={styles.history}><h2>今日の打刻</h2>
           {listError && <p role="alert" className={styles.error}>{listError}</p>}
           {loading ? <p>読み込み中…</p> : punches.length === 0 ? <p className={styles.empty}>まだ打刻はありません。</p> :
-            <ul>{punches.map((item) => <li key={item.id}><strong>{formatTime(item.punched_at)}</strong>
-              <span>{PUNCH_LABELS[item.punch_type]}</span><small>{SYNC_LABELS[item.kot_sync_status] ?? item.kot_sync_status}</small></li>)}</ul>}
+            <table className={styles.punchTable}>
+              <thead><tr><th>時刻</th><th>打刻</th><th>端末</th><th>同期状態</th></tr></thead>
+              <tbody>{punches.map((item) => <tr key={item.id}>
+                <td>{formatTime(item.punched_at)}</td>
+                <td>{PUNCH_LABELS[item.punch_type]}</td>
+                <td>{deviceLabel(item.device_type)}</td>
+                <td>{SYNC_LABELS[item.kot_sync_status] ?? item.kot_sync_status}</td>
+              </tr>)}</tbody>
+            </table>}
         </section>
+      </>}
       </>}
     </main>
     {confirmation && <Modal title="打刻の確認" size="sm" onClose={() => setConfirmation(null)} actions={<><button type="button" data-modal-action="secondary" onClick={() => setConfirmation(null)}>やめる</button><button type="button" data-modal-action="primary" onClick={() => { const type = confirmation.type; setConfirmation(null); punch(type); }}>{actions[confirmation.type][1]}</button></>}><p {...CLARITY_MASK}>{name ? `${name}さん　` : ""}{actions[confirmation.type][0]}</p><p>{new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(confirmation.openedAt))}</p></Modal>}

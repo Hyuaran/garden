@@ -26,7 +26,7 @@ describe("transformDayPunches", () => {
     expect(result.breakIncluded).toBe(false);
   });
 
-  it("uses the weekend window and inserts only the 13:00-14:00 break when fully covered", () => {
+  it("uses the explicit break without adding the automatic break", () => {
     const result = transformDayPunches({ date: "2026-09-12", isOffice: false, punches: [
       punch("clock_in", "2026-09-12T09:30", 1),
       punch("clock_out", "2026-09-12T21:10", 2),
@@ -35,8 +35,8 @@ describe("transformDayPunches", () => {
     ] });
     expect(formatted(result)).toEqual([
       ["clock_in", "202609121000"],
-      ["break_start", "202609121300"],
-      ["break_end", "202609121400"],
+      ["break_start", "202609121600"],
+      ["break_end", "202609121610"],
       ["clock_out", "202609122100"],
     ]);
   });

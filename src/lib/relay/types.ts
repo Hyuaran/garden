@@ -29,7 +29,15 @@ export type KotEmployeeUpdate = Partial<{
   gender: "male" | "female";
 }>;
 
+export type KotTimeRecordRequest = {
+  employeeTimeRecordRequests: {
+    employeeKey: string;
+    timeRecords: { date: string; time: string; code: string; recordId: string }[];
+  }[];
+};
+
 export type RelayRequest =
+  | { method: "POST"; path: "/daily-workings/timerecord"; body: KotTimeRecordRequest }
   | {
       method: "PUT";
       path: "/daily-schedules";

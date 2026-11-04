@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG = {
   errorSleepMs: 5000,
   logDir: "logs",
   logKeepDays: 7,
-  agentVersion: "1.3.1",
+  agentVersion: "1.4.0",
 };
 
 const DEFAULT_INNOVERA_TIMEOUT_MS = 25000;
@@ -431,7 +431,41 @@ function validateScheduleBody(body) {
   if (count > 1000) throw new Error("kot: この操作は許可していません");
 }
 
+function validateTimeRecordBody(body) {
+  const requests = body?.employeeTimeRecordRequests;
+  const denied = () => { throw new Error("kot: この操作は許可していません"); };
+  if (!body || Object.keys(body).join() !== "employeeTimeRecordRequests" ||
+      !Array.isArray(requests) || !requests.length) denied();
+  let count = 0;
+  for (const employee of requests) {
+    if (Object.keys(employee ?? {}).sort().join() !== "employeeKey,timeRecords" ||
+        !/^[A-Za-z0-9]+$/.test(employee.employeeKey ?? "") ||
+        !Array.isArray(employee.timeRecords) || !employee.timeRecords.length) denied();
+    for (const row of employee.timeRecords) {
+      count++;
+      if (Object.keys(row ?? {}).sort().join() !== "code,date,recordId,time" ||
+          !validScheduleDate(row.date) || !/^[1-4]$/.test(row.code) ||
+          typeof row.recordId !== "string" || !/^[A-Za-z0-9-]{1,100}$/.test(row.recordId) ||
+          typeof row.time !== "string" ||
+          !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$/.test(row.time) ||
+          !Number.isFinite(Date.parse(row.time))) denied();
+    }
+  }
+  if (count > 1000) denied();
+}
+
 export function buildKotRequest(request, env = process.env) {
+  const timeRecordPost = request?.method === "POST" && request.path === "/daily-workings/timerecord";
+  const timeRecordGet = request?.method === "GET" && request.path?.split("?")[0] === "/daily-workings/timerecord";
+  if (timeRecordPost) validateTimeRecordBody(request.body);
+  if (timeRecordGet) {
+    const params = new URLSearchParams(request.path.split("?")[1]);
+    if (request.body !== undefined || [...params].some(([key, value]) =>
+      !["employeeKeys", "start", "end"].includes(key) || params.getAll(key).length !== 1 ||
+      (key === "employeeKeys" ? !/^[A-Za-z0-9]+(?:,[A-Za-z0-9]+)*$/.test(value) : !validScheduleDate(value)))) {
+      throw new Error("kot: この操作は許可していません");
+    }
+  }
   const schedulePut =
     request?.method === "PUT" && request.path === "/daily-schedules";
   const scheduleDelete =
@@ -489,7 +523,8 @@ export function buildKotRequest(request, env = process.env) {
     !(request?.method === "POST" && request.path === "/employees") &&
     !employeePut &&
     !schedulePut &&
-    !scheduleDelete
+    !scheduleDelete &&
+    !timeRecordPost
   )
     throw new Error("kot: この操作は許可していません");
   let body;
@@ -501,7 +536,7 @@ export function buildKotRequest(request, env = process.env) {
     )
       throw new Error("kot: JSON 本文が必要です");
     body = JSON.stringify(request.body);
-    if (Buffer.byteLength(body, "utf8") > (schedulePut ? 65536 : 16384))
+    if (Buffer.byteLength(body, "utf8") > ((schedulePut || timeRecordPost) ? 65536 : 16384))
       throw new Error("kot: 本文が大きすぎます");
   }
   const value = request.path;
@@ -518,7 +553,7 @@ export function buildKotRequest(request, env = process.env) {
     /%/.test(decoded)
   )
     throw new Error("kot: path が不正です");
-  if (request.method === "GET" && !scheduleGet) {
+  if (request.method === "GET" && !scheduleGet && !timeRecordGet) {
     const pathname = value.split("?")[0];
     if (
       !/^\/(?:employees(?:\/[a-zA-Z0-9]+)?|divisions|working-types|monthly-workings\/\d{4}-\d{2}|daily-workings\/\d{4}-\d{2}-\d{2})$/.test(
@@ -555,11 +590,12 @@ async function callKot(
 ) {
   const built = buildKotRequest(request, env);
   const schedules = request.path?.startsWith("/daily-schedules");
+  const timeRecords = request.path?.startsWith("/daily-workings/timerecord");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     for (let attempt = 0; attempt <= 3; attempt += 1) {
-      if (schedules) await pause(1000);
+      if (schedules || timeRecords) await pause(1000);
       const response = await fetchImpl(built.url, {
         ...built.init,
         signal: controller.signal,
@@ -567,7 +603,7 @@ async function callKot(
       if (!response.ok) {
         if (
           ((response.status === 429 &&
-            (request.method === "GET" || schedules)) ||
+            (request.method === "GET" || schedules || timeRecords)) ||
             (response.status >= 500 &&
               response.status < 600 &&
               request.method === "GET")) &&

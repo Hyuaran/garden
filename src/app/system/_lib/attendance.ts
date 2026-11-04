@@ -27,6 +27,7 @@ export function parseJstDate(value: string | null, now = new Date()) {
 }
 
 export type AttendancePunch = {
+  device_type?: "pc" | "smartphone" | null;
   id: number; punch_type: PunchType; punched_at: string; kot_sync_status: string;
 };
 

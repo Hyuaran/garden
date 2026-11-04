@@ -161,7 +161,11 @@ export function countedActualHours(row: KotDailyRow) {
   // 休憩は KOT の休憩時間でなく「休憩時間割」で引く：13:00〜14:00 の 1 時間を、その時間帯を丸ごと含むときだけ引く（2026-09-07 決定・10〜21＝10h、14〜21＝7h）
   const lunchStart = 13 * 60;
   const lunchEnd = 14 * 60;
-  const lunch = start <= lunchStart && end >= lunchEnd ? 60 : 0;
+  // 書き出しの休憩時間は時間単位（小数）。明示された休憩を優先し、固定休憩と二重に引かない。
+  // 古いデータに休憩の列が無い場合だけ従来の固定休憩を使う。
+  const lunch = row.payload["休憩時間"]?.trim()
+    ? row.breakHours * 60
+    : start <= lunchStart && end >= lunchEnd ? 60 : 0;
   return Math.max(0, Math.round((end - start - lunch) / 60 * 100) / 100);
 }
 

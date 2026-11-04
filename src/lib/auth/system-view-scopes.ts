@@ -8,6 +8,9 @@ const scope = (page: string, label: string, roles: readonly GardenRole[] = all, 
 
 // 画面の入口の既定。メニューの既定とは異なる画面もあるため、メニューは従来の判定を渡す。
 export const SYSTEM_VIEW_SCOPES: SystemViewScope[] = [
+  scope("attendance", "打刻", all, "punch"),
+  scope("attendance", "修正の申請", all, "request"),
+  scope("attendance", "修正の承認", manager, "approve"),
   scope('shift', '自分のシフト', all, 'mine'), scope('shift', 'みんなのシフト', manager, 'team'),
   scope("line", "公式LINE", ["super_admin"]),
   ...([["tags", "人とタグ"], ["greeting", "あいさつ文"], ["broadcast", "一斉送信"], ["contacts", "連絡先"], ["richmenu", "リッチメニュー"], ["groups", "グループ"]] as const).map(([key, label]) => scope("line", label, ["super_admin"], key)),

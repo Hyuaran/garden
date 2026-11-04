@@ -19,7 +19,7 @@ export type MyData = {
   eligible: boolean;
   wish?: ShiftDay[];
   confirmed?: ShiftDay[];
-  submissions?: { submitted_at: string }[];
+  submissions?: { submitted_at: string; note?: string | null }[];
   holidays?: string[];
   editable?: boolean;
   confirmation?: { confirmed_at: string; confirmed_by_name: string } | null;
@@ -46,6 +46,7 @@ export default function MyShift({
     [month, setMonth] = useState(next),
     [data, setData] = useState<MyData | null>(initial || null),
     [rows, setRows] = useState<ShiftDay[]>([]),
+    [note, setNote] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [done, setDone] = useState(false);
@@ -62,6 +63,7 @@ export default function MyShift({
         if (!r.ok) throw new Error(d.error || "読み込めませんでした。");
         if (active) {
           setData(d);
+          setNote(d.submissions?.[0]?.note || "");
           setRows(
             monthDays(month).map((work_date) => ({
               work_date,
@@ -92,7 +94,7 @@ export default function MyShift({
           "Content-Type": "application/json",
           ...(token ? { Authorization: "Bearer " + token } : {}),
         },
-        body: JSON.stringify({ rows }),
+        body: JSON.stringify({ rows, note }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "提出できませんでした。");
@@ -166,6 +168,21 @@ export default function MyShift({
               disabled={busy || fixed || !data.editable}
               holidays={data.holidays}
             />
+          )}
+          <label style={{ display: "block" }}>
+            備考
+            <textarea
+              aria-label="備考"
+              value={note}
+              maxLength={500}
+              readOnly={fixed || !data.editable}
+              disabled={busy}
+              style={{ display: "block", width: "100%", fontSize: 16 }}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </label>
+          {!fixed && data.editable && (
+            <p>18:30 以降の開始を希望する場合は、ここに記入してください。</p>
           )}
           {!fixed && (
             <SubmitButton

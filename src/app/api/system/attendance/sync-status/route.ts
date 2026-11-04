@@ -11,6 +11,7 @@ const LIST_LIMIT = 200;
 
 type UnsentRow = KotTransformPunch & {
   employee_id: string;
+  device_type?: string | null;
   root_employees: {
     name?: string | null;
     kot_employee_id?: string | null;
@@ -37,13 +38,13 @@ export async function GET() {
   const admin = getSupabaseAdmin();
   const statuses = ["unsent", "sending", "synced", "failed", "resend_wait", "needs_check"];
   const countResults = await Promise.all(statuses.map((status) => admin.from("system_attendance_punches")
-    .select("id", { count: "exact", head: true }).eq("kot_sync_status", status)));
+    .select("id", { count: "exact", head: true }).is("voided_at", null).eq("kot_sync_status", status)));
   if (countResults.some((result) => result.error)) return NextResponse.json({ ok: false, error: "同期状況を取得できませんでした" }, { status: 500 });
   const counts = Object.fromEntries(statuses.map((status, index) => [status, countResults[index].count ?? 0]));
   const unsentRows: UnsentRow[] = [];
   for (let from = 0; ; from += 1000) {
     const result = await admin.from("system_attendance_punches")
-      .select("id,employee_id,punch_type,punched_at,root_employees:root_employees!system_attendance_punches_employee_id_fkey(name,kot_employee_id,attendance_rule)")
+      .select("id,device_type,employee_id,punch_type,punched_at,root_employees:root_employees!system_attendance_punches_employee_id_fkey(name,kot_employee_id,attendance_rule)").is("voided_at", null)
       .eq("kot_sync_status", "unsent").range(from, from + 999);
     if (result.error) return NextResponse.json({ ok: false, error: "同期状況を取得できませんでした" }, { status: 500 });
     const rows = (result.data ?? []) as unknown as UnsentRow[];
@@ -70,6 +71,7 @@ export async function GET() {
     const clockOut = transformed.punches.filter((punch) => punch.punch_type === "clock_out").at(-1);
     return {
       employeeId: first.employee_id,
+      devices: [...new Set(group.map(row => row.device_type || ""))],
       name: first.root_employees?.name?.trim() || "従業員不明",
       kotEmployeeId: first.root_employees?.kot_employee_id?.trim() || "",
       attendanceRule: first.root_employees?.attendance_rule === "office" ? "office" : "sales",
@@ -92,7 +94,7 @@ export async function GET() {
     needsCheck: exportPreview.filter((row) => row.needsCheck).length,
   };
   const { data, error } = await admin.from("system_attendance_punches")
-    .select("id,employee_id,punch_type,punched_at,kot_sync_status,root_employees:root_employees!system_attendance_punches_employee_id_fkey(name,kot_employee_id,attendance_rule)")
+    .select("id,device_type,employee_id,punch_type,punched_at,kot_sync_status,root_employees:root_employees!system_attendance_punches_employee_id_fkey(name,kot_employee_id,attendance_rule)").is("voided_at", null)
     .in("kot_sync_status", ["unsent", "sending", "failed", "resend_wait", "needs_check"])
     .order("punched_at", { ascending: false }).limit(LIST_LIMIT);
   if (error) return NextResponse.json({ ok: false, error: "同期状況を取得できませんでした" }, { status: 500 });

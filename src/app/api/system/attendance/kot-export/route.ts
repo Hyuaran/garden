@@ -20,7 +20,7 @@ type CandidateRow = KotTransformPunch & {
 
 async function hasSending(admin: ReturnType<typeof getSupabaseAdmin>) {
   const result = await admin.from("system_attendance_punches")
-    .select("id", { count: "exact", head: true }).eq("kot_sync_status", "sending");
+    .select("id", { count: "exact", head: true }).is("voided_at", null).eq("kot_sync_status", "sending");
   if (result.error) throw result.error;
   return (result.count ?? 0) > 0;
 }
@@ -38,7 +38,7 @@ export async function POST() {
     if (await hasSending(admin)) return NextResponse.json({ ok: false, error: "生成済みの未確定CSVがあります。先に確定または取消を行ってください。" }, { status: 409 });
     const range = getKotImportRange();
     const { data, error } = await admin.from("system_attendance_punches")
-      .select("id,employee_id,punch_type,punched_at,root_employees:root_employees!system_attendance_punches_employee_id_fkey!inner(name,kot_employee_id,attendance_rule)")
+      .select("id,employee_id,punch_type,punched_at,root_employees:root_employees!system_attendance_punches_employee_id_fkey!inner(name,kot_employee_id,attendance_rule)").is("voided_at", null)
       .eq("kot_sync_status", "unsent")
       .gte("punched_at", range.from).lte("punched_at", range.to)
       .not("root_employees.kot_employee_id", "is", null)
@@ -82,7 +82,7 @@ export async function POST() {
     const ids = claimedSourceIds;
     const batchId = crypto.randomUUID();
     const { data: claimed, error: claimError } = await admin.from("system_attendance_punches")
-      .update({ kot_sync_status: "sending", kot_punched_at: null, kot_batch_id: batchId }).eq("kot_sync_status", "unsent").in("id", ids).select("id");
+      .update({ kot_sync_status: "sending", kot_punched_at: null, kot_batch_id: batchId }).is("voided_at", null).eq("kot_sync_status", "unsent").in("id", ids).select("id");
     if (claimError) throw claimError;
     const claimedIds = new Set((claimed ?? []).map((row) => Number(row.id)));
     const claimedRows = exportRows.filter((row) => row.source_punch_id === undefined || claimedIds.has(row.source_punch_id));
@@ -90,7 +90,7 @@ export async function POST() {
     for (const row of claimedRows) {
       if (row.source_punch_id === undefined) continue;
       const { error: punchUpdateError } = await admin.from("system_attendance_punches")
-        .update({ kot_punched_at: row.punched_at }).eq("id", row.source_punch_id).eq("kot_sync_status", "sending");
+        .update({ kot_punched_at: row.punched_at }).is("voided_at", null).eq("id", row.source_punch_id).eq("kot_sync_status", "sending");
       if (punchUpdateError) throw punchUpdateError;
     }
     const batchRows = claimedRows.map((row) => ({

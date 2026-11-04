@@ -1,6 +1,11 @@
 // Reviewed allowlist derived from input inventory F0001-F0612. No wildcard selects.
 export type SearchSource = { key: string; table: string; page: string; tab: string; client: string; pk: string; title: string; date: string; href: string; label: string; module: string; fields: { column: string; select?: string; label: string; phone: boolean }[] };
 export const SEARCH_SOURCES: SearchSource[] = [
+  {
+    key: "system_attendance_corrections", table: "system_attendance_corrections", page: "system-attendance", tab: "approve",
+    client: "admin", pk: "id", title: "reason", date: "created_at", href: "/system/attendance", label: "打刻の修正", module: "System",
+    fields: [{ column: "reason", label: "理由", phone: false }, { column: "decided_comment", label: "却下の理由", phone: false }],
+  },
   {key:'system_shift_month',table:'system_shift_month',page:'system-shift',tab:'team',client:'admin',pk:'year_month',title:'year_month',date:'confirmed_at',href:'/system/shift',label:'シフト',module:'System',fields:[{column:'year_month',label:'シフトの月',phone:false},{column:'confirmed_by_name',label:'確定した人',phone:false}]},
   {
     "key": "root_employees",

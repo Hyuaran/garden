@@ -122,8 +122,40 @@ export function transformDayPunches(input: {
   const result: KotTransformedPunch[] = [
     { punch_type: "clock_in", punched_at: toIsoFromJstMinute(input.date, start), source_punch_id: clockIn.id },
   ];
-  const breakIncluded = start <= LUNCH_START && end >= LUNCH_END;
-  if (breakIncluded) {
+  const breaks = punches.filter((punch) =>
+    punch.punch_type === "break_start" || punch.punch_type === "break_end",
+  );
+  if (breaks.length) {
+    let previousEnd = start;
+    for (let index = 0; index < breaks.length; index += 2) {
+      const from = breaks[index];
+      const to = breaks[index + 1];
+      const fromParts = jstParts(from.punched_at);
+      const toParts = to ? jstParts(to.punched_at) : null;
+      if (from.punch_type !== "break_start" || to?.punch_type !== "break_end" ||
+        !toParts || fromParts.date !== input.date || toParts.date !== input.date ||
+        fromParts.minute < previousEnd || fromParts.minute >= toParts.minute ||
+        toParts.minute > end) {
+        return {
+          punches: [],
+          issues: [{ level: "needs_check", message: "休憩の打刻がそろっていません。勤務時間と順序を確認してください。" }],
+          breakIncluded: false,
+          roundedClockIn: timeText(start),
+          roundedClockOut: timeText(end),
+        };
+      }
+      previousEnd = toParts.minute;
+      for (const punch of [from, to]) {
+        result.push({
+          punch_type: punch.punch_type,
+          punched_at: toIsoFromJstMinute(input.date, jstParts(punch.punched_at).minute),
+          source_punch_id: punch.id,
+        });
+      }
+    }
+  }
+  const breakIncluded = breaks.length > 0 || (start <= LUNCH_START && end >= LUNCH_END);
+  if (!breaks.length && breakIncluded) {
     result.push(
       { punch_type: "break_start", punched_at: toIsoFromJstMinute(input.date, LUNCH_START) },
       { punch_type: "break_end", punched_at: toIsoFromJstMinute(input.date, LUNCH_END) },

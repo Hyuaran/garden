@@ -29,7 +29,7 @@ async function load(employee: NonNullable<Awaited<ReturnType<typeof identity>>>,
     admin.from('root_employees').select('employee_id,name,filemaker_employee_name,is_active,deleted_at'),
     admin.rpc('system_call_metrics',{p_from:date,p_to:date,p_list_name:null,p_employee_name:null}),
     admin.rpc('system_call_metrics',{p_from:month,p_to:monthEnd,p_list_name:null,p_employee_name:null}),
-    admin.from('system_attendance_punches').select('punch_type,punched_at').eq('employee_id',employee.employee_id).gte('punched_at',parseJstDate(month).from).lt('punched_at',until.toISOString()).order('punched_at'),
+    admin.from('system_attendance_punches').select('punch_type,punched_at').is('voided_at',null).eq('employee_id',employee.employee_id).gte('punched_at',parseJstDate(month).from).lt('punched_at',until.toISOString()).order('punched_at'),
     admin.from('system_ap_daily_report').select('*').eq('employee_id',employee.employee_id).gte('report_date',[month,since,date].sort()[0]).lte('report_date',[monthEnd,today,date].sort().at(-1)!).order('report_date',{ascending:false}),
   ]);
   if ([roots,day,monthly,punches,records].some(r=>r.error) || day.data?.error || monthly.data?.error) throw new Error('日報の情報を読み込めませんでした');

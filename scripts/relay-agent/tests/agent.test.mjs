@@ -110,8 +110,8 @@ describe("relay agent", () => {
 describe("supabase transport", () => {
   const config = { ...DEFAULT_CONFIG };
   const env = { SUPABASE_URL: "https://project.supabase.co/", SUPABASE_ANON_KEY: randomUUID(), RELAY_SECRET: randomUUID(), INNOVERA_API_HOST: "example.test", INNOVERA_API_KEY: randomUUID() };
-  it("defaults to supabase 1.3.1 with 2000ms idle sleep and validates environment", () => {
-    expect(config).toMatchObject({ transport: "supabase", agentVersion: "1.3.1", idleSleepMs: 2000 });
+  it("defaults to supabase 1.4.0 with 2000ms idle sleep and validates environment", () => {
+    expect(config).toMatchObject({ transport: "supabase", agentVersion: "1.4.0", idleSleepMs: 2000 });
     expect(() => validateEnvironment(env, config)).not.toThrow();
     expect(() => validateEnvironment({ ...env, SUPABASE_URL: undefined }, config)).toThrow("SUPABASE_URL");
     expect(() => validateEnvironment({ ...env, SUPABASE_URL: undefined, SUPABASE_ANON_KEY: undefined }, { transport: "garden" })).not.toThrow();
@@ -121,7 +121,7 @@ describe("supabase transport", () => {
     expect(pull.url).toBe("https://project.supabase.co/rest/v1/rpc/system_relay_agent_pull");
     expect(pull.init.method).toBe("POST");
     expect(pull.init.headers).toEqual({ apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY, "content-type": "application/json" });
-    expect(JSON.parse(pull.init.body)).toEqual({ p_secret: env.RELAY_SECRET, p_agent_version: "1.3.1" });
+    expect(JSON.parse(pull.init.body)).toEqual({ p_secret: env.RELAY_SECRET, p_agent_version: "1.4.0" });
     for (const ok of [true, false]) {
       const payload = { id: randomUUID(), ok, result: ok ? { data: 1 } : null, error: ok ? null : "failed" };
       const result = buildResultRequest(config, payload, env);

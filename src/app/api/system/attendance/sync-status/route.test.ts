@@ -9,8 +9,9 @@ function adminClient() {
   let countCalls=0;
   return { from:()=>({
     select(_columns?:string,options?:{count?:string}) {
-      if (options?.count) return { eq:async()=>({count:countCalls++===0?3:0,error:null}) };
+      if (options?.count) return { is(){return this}, eq:async()=>({count:countCalls++===0?3:0,error:null}) };
       return {
+        is(){return this},
         eq:()=>({range:async()=>({data:[],error:null})}),
         in:()=>({order:()=>({limit:async()=>({data:[{id:1,kot_sync_status:"unsent"}],error:null})})}),
       };

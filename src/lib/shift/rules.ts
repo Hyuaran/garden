@@ -11,9 +11,9 @@ export function monthDays(month: string) {
 export function weekend(date: string) {
   return [0, 6].includes(new Date(date + "T00:00:00Z").getUTCDay()) || isJapaneseHoliday(date);
 }
-export function startOptions(date: string) {
+export function startOptions(date: string, manager = false) {
   return Array.from(
-    { length: weekend(date) ? 17 : 9 },
+    { length: (weekend(date) ? 17 : 9) + (manager ? 5 : 0) },
     (_, i) => `${String((weekend(date) ? 10 : 14) + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`,
   );
 }
@@ -23,7 +23,7 @@ export function deadline(month: string) {
   return new Date(Date.UTC(y, m - 2, 15, 15, 0) - 1);
 }
 export const closedMessage = "提出の締切を過ぎました。変更は責任者に連絡してください。";
-export function validateDays(month: string, input: unknown): ShiftDay[] {
+export function validateDays(month: string, input: unknown, manager = false): ShiftDay[] {
   const days = monthDays(month);
   if (!Array.isArray(input) || input.length !== days.length) throw new Error("すべての日のシフトを入力してください。");
   return days.map((work_date) => {
@@ -31,10 +31,12 @@ export function validateDays(month: string, input: unknown): ShiftDay[] {
     const row = matches[0];
     if (
       matches.length !== 1 ||
-      (row.start_time !== null && !startOptions(work_date).includes(row.start_time)) ||
+      (row.start_time !== null && !startOptions(work_date, manager).includes(row.start_time)) ||
       (row.end_time !== undefined && row.end_time !== (row.start_time === null ? null : "21:00"))
     )
-      throw new Error("開始時刻は30分単位で、平日14:00・土日祝10:00から18:00までです。終了は21:00です。");
+      throw new Error(manager
+        ? "開始時刻は30分単位で、平日14:00・土日祝10:00から20:30までです。終了は21:00です。"
+        : "開始時刻は30分単位で、平日14:00・土日祝10:00から18:00までです。終了は21:00です。");
     return { work_date, start_time: row.start_time };
   });
 }

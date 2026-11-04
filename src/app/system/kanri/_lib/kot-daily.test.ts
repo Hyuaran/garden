@@ -74,7 +74,7 @@ function row(partial: Partial<KotDailyRow>): KotDailyRow {
     lateHours: partial.lateHours ?? 0,
     earlyLeaveHours: partial.earlyLeaveHours ?? 0,
     varianceHours: partial.varianceHours ?? 0,
-    payload: {},
+    payload: partial.payload ?? {},
   };
 }
 
@@ -327,4 +327,9 @@ describe("countedActualHours（30 分丸め・平日 14-21／土日祝 10-21 の
     expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "13:30", roundedClockOut: "21:00", breakHours: 0 }))).toBe(7.5);
     expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "", clockIn: "", roundedClockOut: "", clockOut: "" }))).toBe(0);
   });
+});
+
+it("uses exported explicit break totals without also subtracting automatic lunch", () => {
+  expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "10:00", roundedClockOut: "21:00", breakHours: 0.5, payload: { "休憩時間": "0.50" } }))).toBe(10.5);
+  expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "14:00", roundedClockOut: "21:00", breakHours: 0.25, payload: { "休憩時間": "0.25" } }))).toBe(6.75);
 });

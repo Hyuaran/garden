@@ -1,4 +1,5 @@
 "use client";
+import KotPunchPanel from "./KotPunchPanel";
 
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -205,6 +206,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const allowedTab = (key: string) => viewAllowedTab(key, canWrite || key === "payroll");
   const [requestedTab, setActiveTab] = useUrlTab<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "payroll" | "settings">(canWrite ? "kanri" : "payroll", key => ["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"].includes(key) && allowedTab(key));
   const activeTab = allowedTab(requestedTab) ? requestedTab : (["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"] as const).find(allowedTab);
+  const [closingGate, setClosingGate] = useState(false);
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
@@ -293,6 +295,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   }, [latest?.id]);
 
   function changeDate(nextDate: string) {
+    setClosingGate(false);
     setTargetDate(nextDate);
     setMode((current) => nextModeForDate(nextDate, current));
     if (monthRange(nextDate).yearMonth !== range.yearMonth) {
@@ -684,8 +687,10 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         </fieldset>
       </div>
       <p className={styles.hint}>月末日を選ぶと自動で「締めチェック」に切り替わります。</p>
+      <KotPunchPanel date={targetDate} onGate={setClosingGate} />
+      {!closingGate && <p>締めを確かめて、未が0人になってからデータを取り込んでください。</p>}
       <div className={styles.actionRow}>
-        <button className={styles.primary} type="button" disabled={loading} onClick={() => void importData()}>
+        <button className={styles.primary} type="button" disabled={loading || !closingGate} onClick={() => void importData()}>
           {loading ? "取り込んでいます" : "データを取り込む"}
         </button>
         <button className={styles.primary} type="button" disabled={calculating || !latest?.id} onClick={() => void calculateSheet()}>
