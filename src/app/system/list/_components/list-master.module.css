@@ -1833,12 +1833,15 @@
   }
 }
 /* 絞り込みの箱は選択欄と同じ高さで、幅に応じて折り返す。 */
-.filterGrid { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
-.filterGrid > * { flex: 0 1 262px; min-width: min(160px, 100%); max-width: 100%; justify-content: normal; }
+/* 絞り込みの欄は全部同じ幅。日付 2 つが収まる幅を最小にして、列の数は画面の幅で決める */
+.filterGrid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); align-items: stretch; gap: 12px; }
+.filterGrid > * { width: 100%; min-width: 0; max-width: none; justify-content: normal; }
 .filterGrid > .filterDivider { display: none; }
-.filterGrid > .searchCell { flex: 1 1 96px; align-self: flex-end; justify-content: flex-end; }
+.filterGrid > .searchCell { grid-column: -2 / -1; align-self: end; justify-content: flex-end; }
 .filterGrid > .searchCell button { width: auto; }
-.filterGrid [data-garden-filter-box]:has(input[type="date"]) { flex-basis: 330px; }
+.filterGrid [data-garden-filter-box] { width: 100%; max-width: none; }
+.filterGrid > label:has(.range):not(:where([data-garden-box-select] *)) { grid-column: auto; }
+.filterGrid [data-garden-box-select] > div { width: 100%; max-width: none; }
 .filterGrid [data-garden-filter-box] .range { width: 100%; }
 .analysisFilterGrid { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
 .filterNote { margin: 8px 0 0; color: var(--sub); font-size: 12px; }
