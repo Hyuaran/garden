@@ -1,7 +1,7 @@
 import { readSubmitterSettings } from "./submitters.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { shiftMode, type ShiftEmployee } from "./eligibility";
-import { readDefaultPatterns } from "./defaults.server";
+import { readDefaultPatterns, readDefaultOptions } from "./defaults.server";
 import {
   closedMessage,
   deadline,
@@ -148,6 +148,7 @@ export async function myShift(
     if (body !== undefined) throw new ShiftError(message, 403);
     return { eligible: true, mode: "default", message, editable: false };
   }
+  const options = isDefault ? await readDefaultOptions(employee_id) : [];
   if (body !== undefined) {
     const current = new Date()
       .toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" })
@@ -161,7 +162,7 @@ export async function myShift(
       throw new ShiftError(closedMessage, 403);
     if (typeof note !== "string" || [...note].length > 500)
       throw new ShiftError("備考は500字までで入力してください。");
-    const rows = isDefault ? validateDefaultDays(month, body, pattern) : validateDays(month, body);
+    const rows = isDefault ? validateDefaultDays(month, body, pattern, false, options) : validateDays(month, body);
     const result = await db().rpc("save_shift_person", {
       p_employee: employee_id,
       p_month: month,
@@ -178,6 +179,7 @@ export async function myShift(
     holidays: !isDefault && data.confirmation ? data.holidays : [],
     eligible: true,
     mode: person.shift_mode,
+    options: isDefault ? options : undefined,
     defaults: isDefault ? defaultDays(month, pattern) : undefined,
     wish: data.days.map(work_date =>
       data.wish.find(r => r.employee_id === employee_id && r.work_date === work_date) ||

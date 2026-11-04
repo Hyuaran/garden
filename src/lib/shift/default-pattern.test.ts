@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defaultDays, hasLunchBreak, hours, validateDefaultDays, type DefaultPattern } from "./rules";
 import { shiftMode } from "./eligibility";
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), patterns: vi.fn(), updates: vi.fn(), mode: "default" }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), patterns: vi.fn(), options: vi.fn(), updates: vi.fn(), mode: "default" }));
 vi.mock("@/lib/line/staff-client", () => ({ pushLineStaff: vi.fn() }));
 vi.mock("./submitters.server", () => ({ readSubmitterSettings: async () => [] }));
-vi.mock("./defaults.server", () => ({ readDefaultPatterns: mocks.patterns }));
+vi.mock("./defaults.server", () => ({ readDefaultPatterns: mocks.patterns, readDefaultOptions: mocks.options }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => ({
   rpc: mocks.rpc,
   from: (table: string) => {
@@ -33,6 +33,16 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-12-04T12:00:00+09:00"));
   mocks.patterns.mockResolvedValue(pattern.map(row => ({ ...row, employee_id: "E1" })));
   mocks.rpc.mockResolvedValue({ error: null });
+  mocks.options.mockResolvedValue([]);
+});
+it("本人の応答に選べる勤務を含め、候補の時刻で提出する", async () => {
+  const options = [{ label: "出社", start_time: "12:00:00", end_time: "17:00:00" }];
+  mocks.options.mockResolvedValue(options);
+  expect(await myShift("E1", "2027-01")).toMatchObject({ options });
+  const rows = defaultDays("2027-01", pattern).map(row => row.work_date === "2027-01-04"
+    ? { ...row, start_time: "12:00", end_time: "17:00" } : row);
+  await myShift("E1", "2027-01", rows);
+  expect(mocks.rpc).toHaveBeenCalledWith("save_shift_person", expect.objectContaining({ p_rows: rows }));
 });
 afterEach(() => vi.useRealTimers());
 it("対象は在籍する社員等、テレマは既存のまま、役員等は例外設定だけ", () => {

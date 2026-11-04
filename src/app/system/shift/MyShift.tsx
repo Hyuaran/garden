@@ -12,6 +12,7 @@ import {
   monthDays,
   stamp,
   type ShiftDay,
+  type DefaultOption,
 } from "@/lib/shift/rules";
 import ShiftDays from "./ShiftDays";
 import DefaultShiftDays from "./DefaultShiftDays";
@@ -21,6 +22,7 @@ export type MyData = {
   mode?: "telema" | "default";
   message?: string;
   defaults?: ShiftDay[];
+  options?: DefaultOption[];
   wish?: ShiftDay[];
   confirmed?: ShiftDay[];
   submissions?: { submitted_at: string; note?: string | null }[];
@@ -167,6 +169,7 @@ export default function MyShift({
           {!fixed && !data.editable && <p>{closedMessage}</p>}
           {(!fixed || data.confirmation) && (
             data.mode === "default" ? <DefaultShiftDays
+              options={data.options}
               rows={rows}
               defaults={data.defaults}
               onChange={setRows}

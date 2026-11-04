@@ -2,21 +2,26 @@
 import { useRef, useState } from "react";
 import Modal from "@/app/system/_components/Modal/Modal";
 import { SubmitButton } from "@/app/system/forms/_components/form-kit";
-import { halfHourTimes, patternReady, type DefaultPattern } from "@/lib/shift/rules";
+import { halfHourTimes, patternReady, type DefaultOption, type DefaultPattern } from "@/lib/shift/rules";
 import { shiftMode, type ShiftEmployee, type ShiftSubmitterSetting } from "@/lib/shift/eligibility";
+
+import RowActionButton from "../_components/RowActionButton/RowActionButton";
 
 const weekdayLabels = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "", "祝日"];
 
-export default function DefaultPatternSettings({ employees, settings, patterns, onChanged, onBusy, change }: {
+export default function DefaultPatternSettings({ employees, settings, patterns, options = [], onChanged, onBusy, change }: {
   employees: ShiftEmployee[];
   settings: ShiftSubmitterSetting[];
   patterns: (DefaultPattern & { employee_id: string })[];
+  options?: (DefaultOption & { employee_id: string })[];
   onChanged: () => void;
   onBusy: (busy: boolean) => void;
   change: (id: string, mode: ShiftSubmitterSetting["mode"] | null) => Promise<void>;
 }) {
   const [person, setPerson] = useState<ShiftEmployee | null>(null);
   const [draft, setDraft] = useState<DefaultPattern[]>([]);
+  const [optionDraft, setOptionDraft] = useState<DefaultOption[]>([]);
+  const [savedOptions, setSavedOptions] = useState(options);
   const [saved, setSaved] = useState(patterns);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -25,6 +30,9 @@ export default function DefaultPatternSettings({ employees, settings, patterns, 
   const people = employees.filter(p => shiftMode(p, settings) === "default");
   function open(employee: ShiftEmployee) {
     setPerson(employee);
+    setOptionDraft(savedOptions.filter(row => row.employee_id === employee.employee_id).map(row => ({
+      label: row.label, start_time: row.start_time.slice(0, 5), end_time: row.end_time.slice(0, 5),
+    })));
     setDraft([0, 1, 2, 3, 4, 5, 6, 8].map(weekday => {
       const row = saved.find(row => row.employee_id === employee.employee_id && row.weekday === weekday);
       return { weekday, start_time: row?.start_time?.slice(0, 5) ?? null, end_time: row?.end_time?.slice(0, 5) ?? null };
@@ -40,12 +48,14 @@ export default function DefaultPatternSettings({ employees, settings, patterns, 
       const response = await fetch("/api/system/shift/submitters", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employee_id: person.employee_id, pattern: draft }),
+        body: JSON.stringify({ employee_id: person.employee_id, pattern: draft, options: optionDraft }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       setSaved(previous => [...previous.filter(row => row.employee_id !== person.employee_id),
         ...draft.map(row => ({ ...row, employee_id: person.employee_id }))]);
+      setSavedOptions(previous => [...previous.filter(row => row.employee_id !== person.employee_id),
+        ...optionDraft.map(row => ({ ...row, employee_id: person.employee_id }))]);
       setPerson(null);
       onChanged();
     } catch (error) {
@@ -92,6 +102,28 @@ export default function DefaultPatternSettings({ employees, settings, patterns, 
           {[...halfHourTimes, "24:00"].map(time => <option key={time}>{time}</option>)}
         </select>
       </p>)}
+      <h3>選べる勤務（平日に本人が選びます）</h3>
+      {optionDraft.map((option, index) => <p key={index}>
+        <input aria-label={`${index + 1}件目の勤務の名前`} value={option.label} disabled={busy} maxLength={100}
+          onChange={event => setOptionDraft(previous => previous.map((row, i) =>
+            i === index ? { ...row, label: event.target.value } : row))} />
+        <select aria-label={`${index + 1}件目の勤務の開始`} value={option.start_time} disabled={busy}
+          onChange={event => setOptionDraft(previous => previous.map((row, i) =>
+            i === index ? { ...row, start_time: event.target.value } : row))}>
+          {halfHourTimes.map(time => <option key={time}>{time}</option>)}
+        </select>〜
+        <select aria-label={`${index + 1}件目の勤務の終了`} value={option.end_time} disabled={busy}
+          onChange={event => setOptionDraft(previous => previous.map((row, i) =>
+            i === index ? { ...row, end_time: event.target.value } : row))}>
+          {[...halfHourTimes, "24:00"].map(time => <option key={time}>{time}</option>)}
+        </select>
+        <RowActionButton kind="delete" label={`${index + 1}件目の選べる勤務を削除`} disabled={busy}
+          onClick={() => setOptionDraft(previous => previous.filter((_, i) => i !== index))} />
+      </p>)}
+      <button type="button" disabled={busy || optionDraft.length >= 50}
+        onClick={() => setOptionDraft(previous => [...previous, { label: "", start_time: "09:00", end_time: "18:00" }])}>
+        ＋ 選べる勤務を追加
+      </button>
     </Modal>}
   </section>;
 }

@@ -2,7 +2,13 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { isShiftEligible, type ShiftEmployee } from "./eligibility";
 
 const mocks = vi.hoisted(() => ({ context: vi.fn(), read: vi.fn(), write: vi.fn(), pattern: vi.fn() }));
-vi.mock("./defaults.server", () => ({ readDefaultPatterns: async () => [], writeDefaultPattern: mocks.pattern }));
+vi.mock("./defaults.server", async importOriginal => ({
+  ...await importOriginal<typeof import("./defaults.server")>(),
+  readDefaultPatterns: async () => [],
+  readDefaultOptions: async () => [],
+  writeDefaultPattern: mocks.pattern,
+  writeDefaultOptions: vi.fn(),
+}));
 vi.mock("@/lib/auth/view-permission.server", () => ({
   viewPermissionContext: mocks.context,
   ViewPermissionError: class extends Error {

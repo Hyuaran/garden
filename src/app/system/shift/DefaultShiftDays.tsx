@@ -1,17 +1,19 @@
 "use client";
 import { formStyles } from "@/app/system/forms/_components/form-kit";
-import { halfHourTimes, hours, type ShiftDay } from "@/lib/shift/rules";
+import { halfHourTimes, hours, weekend, type DefaultOption, type ShiftDay } from "@/lib/shift/rules";
 import { shiftDate } from "./ShiftDays";
 
 export default function DefaultShiftDays({
   rows,
   defaults = [],
+  options = [],
   onChange,
   disabled,
   manager = false,
 }: {
   rows: ShiftDay[];
   defaults?: ShiftDay[];
+  options?: DefaultOption[];
   onChange: (rows: ShiftDay[]) => void;
   disabled?: boolean;
   manager?: boolean;
@@ -24,6 +26,9 @@ export default function DefaultShiftDays({
     <div className={formStyles.shiftDays}>
       {rows.map(row => {
         const base = defaults.find(day => day.work_date === row.work_date);
+        const choices = !manager && !weekend(row.work_date) ? options : [];
+        const selected = choices.findIndex(option =>
+          option.start_time.slice(0, 5) === row.start_time && option.end_time.slice(0, 5) === row.end_time);
         const kind = row.day_kind ?? (row.start_time ? "work" : "rest");
         return (
           <div key={row.work_date} className={formStyles.shiftDay}>
@@ -31,8 +36,17 @@ export default function DefaultShiftDays({
           <select
             aria-label={shiftDate(row.work_date) + "のシフト"}
             disabled={disabled}
-            value={kind}
+            value={kind === "work" && selected >= 0 ? `option-${selected}` : kind}
             onChange={event => {
+              const option = choices.find((_, index) => event.target.value === `option-${index}`);
+              if (option) {
+                update(row.work_date, {
+                  day_kind: "work",
+                  start_time: option.start_time.slice(0, 5),
+                  end_time: option.end_time.slice(0, 5),
+                });
+                return;
+              }
               const day_kind = event.target.value as "work" | "rest" | "paid";
               update(row.work_date, {
                 day_kind,
@@ -41,13 +55,19 @@ export default function DefaultShiftDays({
               });
             }}
           >
-            {(manager || base?.start_time || (disabled && row.start_time)) && (
+            {(choices.length === 0 || (kind === "work" && selected < 0)) &&
+              (manager || base?.start_time || (disabled && row.start_time)) && (
               <option value="work">
                 {manager ? "勤務" : disabled
                   ? `${row.start_time}〜${row.end_time}`
                   : `${base?.start_time ?? row.start_time}〜${base?.end_time ?? row.end_time}`}
               </option>
             )}
+            {choices.map((option, index) => (
+              <option key={index} value={`option-${index}`}>
+                {option.label} {option.start_time.slice(0, 5)}〜{option.end_time.slice(0, 5)}
+              </option>
+            ))}
             <option value="rest">休み</option>
             <option value="paid">有給</option>
           </select>

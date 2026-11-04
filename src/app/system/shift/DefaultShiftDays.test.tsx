@@ -3,6 +3,21 @@ import { afterEach, expect, it, vi } from "vitest";
 import MyShift from "./MyShift";
 import DefaultShiftDays from "./DefaultShiftDays";
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+it("平日は時刻つきの勤務名を選び、土日祝には候補を出さない", () => {
+  const rows = ["2027-01-04", "2027-01-09", "2027-01-10", "2027-01-11"].map(work_date => ({
+    work_date, start_time: null, end_time: null, day_kind: "rest" as const,
+  }));
+  const changed = vi.fn();
+  render(<DefaultShiftDays rows={rows} defaults={rows} onChange={changed}
+    options={[{ label: "出社", start_time: "12:00:00", end_time: "17:00:00" }]} />);
+  expect(screen.getAllByRole("option", { name: "出社 12:00〜17:00" })).toHaveLength(1);
+  fireEvent.change(screen.getByRole("combobox", { name: "1/4(月)のシフト" }), {
+    target: { value: "option-0" },
+  });
+  expect(changed.mock.calls[0][0][0]).toMatchObject({
+    start_time: "12:00", end_time: "17:00", day_kind: "work",
+  });
+});
 it("既定の勤務だけを表示し、休みの日は勤務を選べない", () => {
   const rows = [
     { work_date: "2027-01-04", start_time: "09:30", end_time: "18:00", day_kind: "work" as const },

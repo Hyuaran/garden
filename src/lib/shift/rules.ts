@@ -11,6 +11,11 @@ export type DefaultPattern = {
   start_time: string | null;
   end_time: string | null;
 };
+export type DefaultOption = {
+  label: string;
+  start_time: string;
+  end_time: string;
+};
 export const halfHourTimes = Array.from({ length: 36 }, (_, i) =>
   `${String(6 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`,
 );
@@ -35,6 +40,7 @@ export function validateDefaultDays(
   input: unknown,
   pattern: DefaultPattern[],
   manager = false,
+  options: DefaultOption[] = [],
 ): ShiftDay[] {
   if (!Array.isArray(input) || input.length !== monthDays(month).length)
     throw new Error("すべての日のシフトを入力してください。");
@@ -49,9 +55,11 @@ export function validateDefaultDays(
         throw new Error("休み・有給には時刻を指定できません。");
       return { work_date: base.work_date, start_time: null, end_time: null, day_kind: kind };
     }
+    const allowedOption = !weekend(base.work_date) && options.some(option =>
+      option.start_time.slice(0, 5) === row.start_time && option.end_time.slice(0, 5) === row.end_time);
     if (!halfHourTimes.includes(row.start_time) ||
         ![...halfHourTimes, "24:00"].includes(row.end_time) || row.start_time >= row.end_time ||
-        (!manager && (row.start_time !== base.start_time || row.end_time !== base.end_time)))
+        (!manager && !allowedOption && (row.start_time !== base.start_time || row.end_time !== base.end_time)))
       throw new Error(manager ? "開始と終了を30分単位で入力してください。" : "その日の既定の勤務・休み・有給から選んでください。");
     return { work_date: base.work_date, start_time: row.start_time, end_time: row.end_time, day_kind: "work" };
   });

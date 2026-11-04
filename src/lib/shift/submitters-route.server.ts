@@ -1,6 +1,6 @@
 import { viewPermissionContext, ViewPermissionError } from "@/lib/auth/view-permission.server";
 import { readSubmitters, writeSubmitter } from "./submitters.server";
-import { readDefaultPatterns, writeDefaultPattern } from "./defaults.server";
+import { readDefaultPatterns, writeDefaultPattern, readDefaultOptions, writeDefaultOptions, validateOptions, validatePattern } from "./defaults.server";
 
 const headers = { "Cache-Control": "private, no-store" };
 export async function submittersRoute(request: Request) {
@@ -10,7 +10,7 @@ export async function submittersRoute(request: Request) {
       throw new ViewPermissionError("設定を変更する権限がありません。", 403);
     }
     if (request.method === "GET") {
-      return Response.json({ ...await readSubmitters(), patterns: await readDefaultPatterns() }, { headers });
+      return Response.json({ ...await readSubmitters(), patterns: await readDefaultPatterns(), options: await readDefaultOptions() }, { headers });
     }
     if (request.headers.get("sec-fetch-site") === "cross-site" ||
       (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin)) {
@@ -30,7 +30,11 @@ export async function submittersRoute(request: Request) {
       const people = await readSubmitters();
       if (!people.employees.some(p => p.employee_id === body.employee_id))
         throw new ViewPermissionError("在籍している人を選んでください。", 400);
+      validatePattern(body.pattern);
+      if (body.options !== undefined) validateOptions(body.options);
       await writeDefaultPattern(body.employee_id, body.pattern, viewer.employeeId);
+      if (body.options !== undefined)
+        await writeDefaultOptions(body.employee_id, body.options, viewer.employeeId);
       return Response.json({ ok: true }, { headers });
     }
     const saved = await writeSubmitter(body.employee_id,

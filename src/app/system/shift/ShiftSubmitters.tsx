@@ -6,11 +6,12 @@ import RowActionButton from "../_components/RowActionButton/RowActionButton";
 import { isShiftEligible, type ShiftEmployee, type ShiftSubmitterSetting } from "@/lib/shift/eligibility";
 import styles from "./shift-submitters.module.css";
 import DefaultPatternSettings from "./DefaultPatternSettings";
-import type { DefaultPattern } from "@/lib/shift/rules";
+import type { DefaultOption, DefaultPattern } from "@/lib/shift/rules";
 
 type Data = {
   employees: (ShiftEmployee & { name_kana?: string | null })[];
   settings: ShiftSubmitterSetting[];
+  options?: (DefaultOption & { employee_id: string })[];
   patterns?: (DefaultPattern & { employee_id: string })[];
 };
 
@@ -108,6 +109,7 @@ export default function ShiftSubmitters({ onChanged, onBusy }: {
         employees={data.employees}
         settings={data.settings}
         patterns={data.patterns ?? []}
+        options={data.options ?? []}
         onChanged={onChanged}
         onBusy={onBusy}
         change={change}

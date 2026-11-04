@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { halfHourTimes, patternReady, type DefaultPattern } from "./rules";
+import { halfHourTimes, patternReady, type DefaultOption, type DefaultPattern } from "./rules";
 
 export async function readDefaultPatterns(employeeId?: string) {
   const rows: (DefaultPattern & { employee_id: string })[] = [];
@@ -37,4 +37,40 @@ export async function writeDefaultPattern(employeeId: string, input: unknown, ac
     })),
   );
   if (error) throw new Error("既定の勤務を保存できませんでした。");
+}
+
+export async function readDefaultOptions(employeeId?: string) {
+  const rows: (DefaultOption & { employee_id: string })[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    let query = getSupabaseAdmin().from("system_shift_default_option")
+      .select("employee_id,label,start_time,end_time");
+    if (employeeId) query = query.eq("employee_id", employeeId);
+    const { data, error } = await query.order("employee_id").order("sort").order("id")
+      .range(offset, offset + 999);
+    if (error) throw new Error("選べる勤務を取得できませんでした。");
+    rows.push(...(data ?? []));
+    if ((data ?? []).length < 1000) return rows;
+  }
+}
+
+export function validateOptions(input: unknown): DefaultOption[] {
+  if (!Array.isArray(input) || input.length > 50)
+    throw new Error("選べる勤務は50件までで入力してください。");
+  return input.map(row => {
+    if (!row || typeof row.label !== "string" || !row.label.trim() || row.label.trim().length > 100 ||
+        !halfHourTimes.includes(row.start_time) ||
+        ![...halfHourTimes, "24:00"].includes(row.end_time) || row.start_time >= row.end_time)
+      throw new Error("選べる勤務の名前と、30分単位の開始・終了を入力してください。");
+    return { label: row.label.trim(), start_time: row.start_time, end_time: row.end_time };
+  });
+}
+
+export async function writeDefaultOptions(employeeId: string, input: unknown, actor: string) {
+  const rows = validateOptions(input);
+  const { error } = await getSupabaseAdmin().rpc("replace_shift_default_options", {
+    p_employee: employeeId,
+    p_options: rows,
+    p_actor: actor,
+  });
+  if (error) throw new Error("選べる勤務を保存できませんでした。");
 }
