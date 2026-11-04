@@ -197,6 +197,22 @@ it("出勤をまとめて送り、手入力の予定がある休みだけ削除�
   ]);
 });
 
+it("予定が1件も無い月（空の応答）でも送れる", async () => {
+  const normal = mock.wait.getMockImplementation()!;
+  mock.wait.mockImplementation(async (id) => {
+    if (id === "GET") throw new Error("kot: JSON を解釈できません");
+    return normal(id);
+  });
+  expect(await pushKotPerson("2026-12", "1", "boss")).toEqual({
+    sent: 6,
+    failed: 0,
+  });
+  expect(mock.enqueue.mock.calls.map((call) => call[1].method)).toEqual([
+    "GET",
+    "PUT",
+  ]);
+});
+
 it("従業員コードがない場合は失敗を記録し、外部へ要求しない", async () => {
   code = null;
   expect(await pushKotPerson("2026-12", "1", "boss")).toEqual({

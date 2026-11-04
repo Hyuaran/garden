@@ -24,6 +24,7 @@ export type KotShiftRow = {
 // KOT の休暇区分コード。定休日は全員「公休」。「欠勤」は Garden からは消さない。
 const KOT_PUBLIC_HOLIDAY_CODE = "9";
 const KOT_ABSENCE_CODE = "3";
+const KOT_EMPTY_RESPONSE = "kot: JSON を解釈できません";
 
 export function kotToday(now = new Date()) {
   return now.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
@@ -205,7 +206,12 @@ export async function pushKotPerson(
           }),
       },
       actor,
-    )) as Existing[];
+    ).catch((error: unknown) => {
+      // KOT は範囲に予定が1件も無いと空の応答を返し、中継の係は JSON でないと報告する。
+      if (error instanceof Error && error.message === KOT_EMPTY_RESPONSE)
+        return [];
+      throw error;
+    })) as Existing[];
     if (!Array.isArray(existing))
       throw new Error("KING OF TIME の予定を確認できませんでした。");
   } catch (error) {
