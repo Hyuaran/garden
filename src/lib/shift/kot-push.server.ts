@@ -8,7 +8,7 @@ import {
   waitRelayJob,
 } from "@/lib/relay/queue.server";
 import type { RelayRequest } from "@/lib/relay/types";
-import { monthDays } from "./rules";
+import { hasLunchBreak, monthDays } from "./rules";
 
 export type KotShiftRow = {
   employee_id: string;
@@ -20,6 +20,10 @@ export type KotShiftRow = {
   kot_sent_at: string | null;
   kot_error: string | null;
 };
+
+// KOT の休暇区分コード。定休日は全員「公休」。「欠勤」は Garden からは消さない。
+const KOT_PUBLIC_HOLIDAY_CODE = "9";
+const KOT_ABSENCE_CODE = "3";
 
 export function kotToday(now = new Date()) {
   return now.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
@@ -43,8 +47,12 @@ export function assertKotTime(now = new Date()) {
 
 export function currentAgent(version: string | null | undefined) {
   if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return false;
-  const [major, minor] = version.split(".").map(Number);
-  return major > 1 || (major === 1 && minor >= 3);
+  // 1.3.1 から休憩と全日休暇を送れる。
+  const [major, minor, patch] = version.split(".").map(Number);
+  return (
+    major > 1 ||
+    (major === 1 && (minor > 3 || (minor === 3 && patch >= 1)))
+  );
 }
 
 async function ready() {
@@ -97,6 +105,7 @@ type Existing = {
     employeeKey: string;
     clockInSchedule?: string | null;
     clockOutSchedule?: string | null;
+    holidaysObtained?: { fulltimeHoliday?: { code?: string } };
   }[];
 };
 // 登録の成功側の日付は "Mon Apr 01 00:00:00 JST 2024" の形で返るため、日付の照合には使わない。
@@ -126,6 +135,13 @@ export async function pushKotPerson(
   check(confirmation);
   if (!confirmation.data?.confirmed_at)
     throw new Error("先にシフトを確定してください。");
+  const setting = await db
+    .from("system_kanri_month_setting")
+    .select("holidays")
+    .eq("year_month", month)
+    .maybeSingle();
+  check(setting);
+  const closedDays: string[] = setting.data?.holidays ?? [];
   const rows = (await kotRows(month)).filter(
     (row) =>
       row.employee_id === employeeId &&
@@ -196,7 +212,9 @@ export async function pushKotPerson(
     for (const row of rows) await record(row, publicError(error));
     return { sent, failed };
   }
-  const working = rows.filter((row) => row.start_time);
+  const working = rows.filter(
+    (row) => row.start_time || closedDays.includes(row.work_date),
+  );
   if (working.length) {
     let response: PutResult;
     try {
@@ -208,12 +226,9 @@ export async function pushKotPerson(
             employeeScheduleRequests: [
               {
                 employeeKey: employee.key,
-                dailySchedules: working.map((row) => ({
-                  workingDate: row.work_date,
-                  workPlaceDivisionCode: employee.divisionCode!,
-                  clockInSchedule: `${row.work_date}T${row.start_time!.slice(0, 5)}+09:00`,
-                  clockOutSchedule: `${row.work_date}T21:00+09:00`,
-                })),
+                dailySchedules: working.map((row) =>
+                  scheduleBody(row, employee.divisionCode!),
+                ),
               },
             ],
           },
@@ -255,12 +270,15 @@ export async function pushKotPerson(
       );
     }
   }
-  for (const row of rows.filter((row) => !row.start_time)) {
+  for (const row of rows.filter((row) => !working.includes(row))) {
     try {
       const schedule = existing
         .find((day) => String(day.date).slice(0, 10) === row.work_date)
         ?.dailySchedules?.find((item) => item.employeeKey === employee.key);
-      if (schedule)
+      if (
+        schedule &&
+        schedule.holidaysObtained?.fulltimeHoliday?.code !== KOT_ABSENCE_CODE
+      )
         await relay(
           {
             method: "DELETE",
@@ -274,6 +292,31 @@ export async function pushKotPerson(
     }
   }
   return { sent, failed };
+}
+
+function scheduleBody(row: KotShiftRow, divisionCode: string) {
+  const base = {
+    workingDate: row.work_date,
+    workPlaceDivisionCode: divisionCode,
+  };
+  if (!row.start_time)
+    return { ...base, fulltimeHoliday: { code: KOT_PUBLIC_HOLIDAY_CODE } };
+  const start = row.start_time.slice(0, 5);
+  return {
+    ...base,
+    clockInSchedule: `${row.work_date}T${start}+09:00`,
+    clockOutSchedule: `${row.work_date}T21:00+09:00`,
+    ...(hasLunchBreak(start)
+      ? {
+          startEndBreakSchedule: [
+            {
+              start: `${row.work_date}T13:00+09:00`,
+              end: `${row.work_date}T14:00+09:00`,
+            },
+          ],
+        }
+      : {}),
+  };
 }
 
 function publicError(error: unknown) {

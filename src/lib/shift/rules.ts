@@ -38,10 +38,14 @@ export function validateDays(month: string, input: unknown): ShiftDay[] {
     return { work_date, start_time: row.start_time };
   });
 }
+// 12:00 までに始まる日は 13:00〜14:00 が休憩（KING OF TIME の今の予定と同じ）。
+export function hasLunchBreak(start: string) {
+  return start.slice(0, 5) <= "12:00";
+}
 export function hours(start: string | null) {
   if (!start) return 0;
   const [h, m] = start.split(":").map(Number);
-  return 21 - h - m / 60;
+  return 21 - h - m / 60 - (hasLunchBreak(start) ? 1 : 0);
 }
 export function confirmDays(rows: ShiftDay[], holidays: string[]) {
   return rows.map((r) => ({

@@ -36,12 +36,17 @@ export type RelayRequest =
       body: {
         employeeScheduleRequests: {
           employeeKey: string;
-          dailySchedules: {
+          dailySchedules: ({
             workingDate: string;
             workPlaceDivisionCode: string;
-            clockInSchedule: string;
-            clockOutSchedule: string;
-          }[];
+          } & (
+            | {
+                clockInSchedule: string;
+                clockOutSchedule: string;
+                startEndBreakSchedule?: { start: string; end: string }[];
+              }
+            | { fulltimeHoliday: { code: string } }
+          ))[];
         }[];
       };
     }

@@ -112,3 +112,50 @@ it.each([429, 403])(
     expect(sleep).toHaveBeenCalledWith(1000);
   },
 );
+
+it("allows a lunch break and a full-day holiday, and rejects other shapes", () => {
+  const send = (day) =>
+    buildKotRequest(
+      {
+        method: "PUT",
+        path: "/daily-schedules",
+        body: {
+          employeeScheduleRequests: [
+            {
+              employeeKey: "abc123",
+              dailySchedules: [
+                {
+                  workingDate: "2026-12-05",
+                  workPlaceDivisionCode: "104",
+                  ...day,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      env,
+    );
+  const work = {
+    clockInSchedule: "2026-12-05T10:00+09:00",
+    clockOutSchedule: "2026-12-05T21:00+09:00",
+  };
+  const lunch = {
+    start: "2026-12-05T13:00+09:00",
+    end: "2026-12-05T14:00+09:00",
+  };
+  expect(() => send({ ...work, startEndBreakSchedule: [lunch] })).not.toThrow();
+  expect(() => send({ fulltimeHoliday: { code: "9" } })).not.toThrow();
+  expect(() => send({ ...work, note: "x" })).toThrow();
+  expect(() => send({ ...work, startEndBreakSchedule: [] })).toThrow();
+  expect(() =>
+    send({ ...work, fulltimeHoliday: { code: "9" } }),
+  ).toThrow();
+  expect(() => send({ fulltimeHoliday: { code: "x" } })).toThrow();
+  expect(() =>
+    send({
+      ...work,
+      startEndBreakSchedule: [{ ...lunch, start: "2026-12-06T13:00+09:00" }],
+    }),
+  ).toThrow();
+});

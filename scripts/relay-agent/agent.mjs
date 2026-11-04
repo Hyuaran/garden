@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG = {
   errorSleepMs: 5000,
   logDir: "logs",
   logKeepDays: 7,
-  agentVersion: "1.3.0",
+  agentVersion: "1.3.1",
 };
 
 const DEFAULT_INNOVERA_TIMEOUT_MS = 25000;
@@ -350,6 +350,55 @@ function validScheduleDate(value) {
   );
 }
 
+function validScheduleTime(value, workingDate) {
+  return (
+    typeof value === "string" &&
+    value.startsWith(workingDate + "T") &&
+    /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d\+09:00$/.test(value)
+  );
+}
+
+// 1日分の形は「出勤（休憩は任意）」か「全日休暇」の2つだけ許可する。
+function validScheduleDay(day) {
+  if (
+    !day ||
+    !validScheduleDate(day.workingDate) ||
+    typeof day.workPlaceDivisionCode !== "string" ||
+    !/^[a-zA-Z0-9-]+$/.test(day.workPlaceDivisionCode)
+  ) {
+    return false;
+  }
+  const keys = Object.keys(day).sort().join();
+  if (keys === "fulltimeHoliday,workPlaceDivisionCode,workingDate") {
+    return (
+      Object.keys(day.fulltimeHoliday ?? {}).join() === "code" &&
+      typeof day.fulltimeHoliday.code === "string" &&
+      /^[0-9]+$/.test(day.fulltimeHoliday.code)
+    );
+  }
+  const base = "clockInSchedule,clockOutSchedule";
+  const tail = "workPlaceDivisionCode,workingDate";
+  if (keys !== `${base},${tail}` && keys !== `${base},startEndBreakSchedule,${tail}`) {
+    return false;
+  }
+  if (
+    !validScheduleTime(day.clockInSchedule, day.workingDate) ||
+    !validScheduleTime(day.clockOutSchedule, day.workingDate) ||
+    day.clockInSchedule >= day.clockOutSchedule
+  ) {
+    return false;
+  }
+  if (day.startEndBreakSchedule === undefined) return true;
+  return (
+    Array.isArray(day.startEndBreakSchedule) &&
+    day.startEndBreakSchedule.length === 1 &&
+    Object.keys(day.startEndBreakSchedule[0] ?? {}).sort().join() === "end,start" &&
+    validScheduleTime(day.startEndBreakSchedule[0].start, day.workingDate) &&
+    validScheduleTime(day.startEndBreakSchedule[0].end, day.workingDate) &&
+    day.startEndBreakSchedule[0].start < day.startEndBreakSchedule[0].end
+  );
+}
+
 function validateScheduleBody(body) {
   const requests = body?.employeeScheduleRequests;
   if (
@@ -374,21 +423,7 @@ function validateScheduleBody(body) {
     }
     for (const day of employee.dailySchedules) {
       count++;
-      if (
-        !day ||
-        Object.keys(day).sort().join() !==
-          "clockInSchedule,clockOutSchedule,workPlaceDivisionCode,workingDate" ||
-        !validScheduleDate(day.workingDate) ||
-        typeof day.workPlaceDivisionCode !== "string" ||
-        !/^[a-zA-Z0-9-]+$/.test(day.workPlaceDivisionCode) ||
-        ![day.clockInSchedule, day.clockOutSchedule].every(
-          (value) =>
-            typeof value === "string" &&
-            value.startsWith(day.workingDate + "T") &&
-            /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d\+09:00$/.test(value),
-        ) ||
-        day.clockInSchedule >= day.clockOutSchedule
-      ) {
+      if (!validScheduleDay(day)) {
         throw new Error("kot: この操作は許可していません");
       }
     }

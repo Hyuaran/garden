@@ -38,6 +38,9 @@ beforeEach(() => {
     { work_date: "2026-12-02", start_time: "14:00:00" },
     { work_date: "2026-12-03", start_time: null },
     { work_date: "2026-12-04", start_time: null },
+    { work_date: "2026-12-05", start_time: "10:00:00" },
+    { work_date: "2026-12-10", start_time: null },
+    { work_date: "2026-12-11", start_time: null },
   ].map((row) => ({
     ...row,
     employee_id: "1",
@@ -45,7 +48,7 @@ beforeEach(() => {
     updated_at: "revision",
     kot_status: "unsent",
   }));
-  mock.heartbeat.mockResolvedValue({ agent_version: "1.3.0" });
+  mock.heartbeat.mockResolvedValue({ agent_version: "1.3.1" });
   mock.employee.mockResolvedValue({ key: "abc123", divisionCode: "1000" });
   mock.enqueue.mockImplementation(async (_kind, request) => ({
     id: request.method,
@@ -68,6 +71,17 @@ beforeEach(() => {
             date: "2026-12-04",
             dailySchedules: [{ date: "2026-12-04", employeeKey: "other" }],
           },
+          // 欠勤は Garden の休みで消さない
+          {
+            date: "2026-12-11",
+            dailySchedules: [
+              {
+                date: "2026-12-11",
+                employeeKey: "abc123",
+                holidaysObtained: { fulltimeHoliday: { code: "3" } },
+              },
+            ],
+          },
         ]
       : id === "PUT"
         ? { successRequest: [{ employeeKey: "abc123" }], errorRequest: [] }
@@ -86,7 +100,10 @@ beforeEach(() => {
         return query;
       },
       range: async () => ({ data: rows, error: null }),
-      maybeSingle: async () => ({ data: { confirmed_at: "now" }, error: null }),
+      maybeSingle: async () => ({
+        data: { confirmed_at: "now", holidays: ["2026-12-10"] },
+        error: null,
+      }),
       single: async () => ({ data: { kot_employee_id: code }, error: null }),
       then: (resolve: (value: unknown) => void) => {
         if (patch) mock.patches.push(patch);
@@ -95,6 +112,7 @@ beforeEach(() => {
     };
     expect([
       "system_shift_month",
+      "system_kanri_month_setting",
       "system_shift_confirmed",
       "root_employees",
     ]).toContain(table);
@@ -105,7 +123,7 @@ afterEach(() => vi.useRealTimers());
 
 it("出勤をまとめて送り、手入力の予定がある休みだけ削除し、今日以前は送らない", async () => {
   expect(await pushKotPerson("2026-12", "1", "boss")).toEqual({
-    sent: 3,
+    sent: 6,
     failed: 0,
   });
   expect(mock.enqueue.mock.calls.map((call) => call[1].method)).toEqual([
@@ -124,6 +142,20 @@ it("出勤をまとめて送り、手入力の予定がある休みだけ削除�
             clockInSchedule: "2026-12-02T14:00+09:00",
             clockOutSchedule: "2026-12-02T21:00+09:00",
           },
+          {
+            workingDate: "2026-12-05",
+            workPlaceDivisionCode: "1000",
+            clockInSchedule: "2026-12-05T10:00+09:00",
+            clockOutSchedule: "2026-12-05T21:00+09:00",
+            startEndBreakSchedule: [
+              { start: "2026-12-05T13:00+09:00", end: "2026-12-05T14:00+09:00" },
+            ],
+          },
+          {
+            workingDate: "2026-12-10",
+            workPlaceDivisionCode: "1000",
+            fulltimeHoliday: { code: "9" },
+          },
         ],
       },
     ],
@@ -136,6 +168,21 @@ it("出勤をまとめて送り、手入力の予定がある休みだけ削除�
       kot_status: "sent",
       kot_sent_start: "14:00:00",
       kot_sent_end: "21:00",
+    }),
+    expect.objectContaining({
+      kot_status: "sent",
+      kot_sent_start: "10:00:00",
+      kot_sent_end: "21:00",
+    }),
+    expect.objectContaining({
+      kot_status: "sent",
+      kot_sent_start: null,
+      kot_sent_end: null,
+    }),
+    expect.objectContaining({
+      kot_status: "sent",
+      kot_sent_start: null,
+      kot_sent_end: null,
     }),
     expect.objectContaining({
       kot_status: "sent",
@@ -154,7 +201,7 @@ it("従業員コードがない場合は失敗を記録し、外部へ要求し�
   code = null;
   expect(await pushKotPerson("2026-12", "1", "boss")).toEqual({
     sent: 0,
-    failed: 3,
+    failed: 6,
   });
   expect(mock.patches[0].kot_error).toBe(
     "KING OF TIME の従業員コードが登録されていません",
@@ -180,8 +227,8 @@ it("200 の errorRequest を行の失敗にする", async () => {
       : normal(id),
   );
   expect(await pushKotPerson("2026-12", "1", "boss")).toEqual({
-    sent: 2,
-    failed: 1,
+    sent: 3,
+    failed: 3,
   });
   expect(mock.patches[0]).toMatchObject({
     kot_status: "failed",
@@ -212,6 +259,7 @@ it("古い中継では送らない", async () => {
     "係の入れ替えが必要です",
   );
   expect(mock.enqueue).not.toHaveBeenCalled();
+  expect(currentAgent("1.3.0")).toBe(false);
   expect(currentAgent("1.10.0")).toBe(true);
   expect(currentAgent(null)).toBe(false);
 });
