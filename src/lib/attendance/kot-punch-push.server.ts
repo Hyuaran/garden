@@ -253,11 +253,16 @@ export async function pushPunchDay(
           }),
       },
       actor,
-    );
-    // 1 日だけ指定すると配列でなく 1 日分の形で返ることがある。
-    const days = Array.isArray(existing) ? existing : existing ? [existing] : [];
-    if (!days.length)
+    ).catch((error: unknown) => {
+      // KING OF TIME は範囲に打刻が 1 件も無いと空の応答を返し、中継の係は JSON でないと報告する。
+      if (error instanceof Error && error.message === "kot: JSON を解釈できません")
+        return [];
+      throw error;
+    });
+    // 1 日だけ指定すると配列でなく 1 日分の形で返ることがある。空の配列は打刻 0 件。
+    if (!existing)
       throw new Error("KING OF TIME の打刻を確認できませんでした。");
+    const days = Array.isArray(existing) ? existing : [existing];
     const records = days
       .flatMap((day) => day.dailyWorkings || [])
       .filter((person) => person.employeeKey === employee.key)
