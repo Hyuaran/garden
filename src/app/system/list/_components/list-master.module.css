@@ -1835,7 +1835,8 @@
 /* 絞り込みの箱は選択欄と同じ高さで、幅に応じて折り返す。 */
 /* 絞り込みの欄は全部同じ幅。日付 2 つが収まる幅を最小にして、列の数は画面の幅で決める */
 .filterGrid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); align-items: stretch; gap: 12px; }
-.filterGrid > * { width: 100%; min-width: 0; max-width: none; justify-content: normal; }
+/* 部品側の「最大 262px」と同じ強さだと読み込み順で負けるので、クラスを重ねて必ず勝たせる */
+.filterGrid.filterGrid > * { width: 100%; min-width: 0; max-width: none; justify-content: normal; }
 .filterGrid > .filterDivider { display: none; }
 .filterGrid > .searchCell { grid-column: -2 / -1; align-self: end; justify-content: flex-end; }
 .filterGrid > .searchCell button { width: auto; }
