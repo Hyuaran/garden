@@ -27,6 +27,19 @@ export function emptyInput(): OnboardingInput {
   return { ...Object.fromEntries(TEXT_FIELDS.map(key => [key, ""])) as Record<TextField, string>, dependents: [], commute_routes: [], nda_agreed: false };
 }
 
+// 全角の数字や、番号の間の空白・ハイフンはそのまま受け付ける（カードの表記どおりに打っても止めない）。
+export function normalizeMyNumber(value: string) {
+  return value.normalize("NFKC").replace(/[\s\-‐‑–—−ー]/g, "");
+}
+
+export const MY_NUMBER_FORMAT_MESSAGE = "マイナンバーは12桁の数字で入力してください。";
+
+/** 暗号化して保存できない番号がないかを確かめる。空欄と下4桁表示は、そのままでよい。 */
+export function hasInvalidMyNumber(values: Pick<OnboardingInput, "my_number" | "dependents">) {
+  return [values.my_number, ...values.dependents.map(person => person.my_number)]
+    .some(value => Boolean(value) && !isMaskedMyNumber(value) && !/^[0-9]{12}$/.test(value));
+}
+
 // 保存対象を明示する。社員ID・状態・日時や任意の追加項目は入力から受け取らない。
 export function parseInput(value: unknown): OnboardingInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid input");
@@ -36,13 +49,15 @@ export function parseInput(value: unknown): OnboardingInput {
     if (source[key] != null && (typeof source[key] !== "string" || source[key].length > 2000)) throw new Error("invalid text");
     result[key] = typeof source[key] === "string" ? source[key].trim() : "";
   }
+  result.my_number = normalizeMyNumber(result.my_number);
   if (source.dependents != null && (!Array.isArray(source.dependents) || source.dependents.length > 30)) throw new Error("invalid dependents");
   result.dependents = (source.dependents as unknown[] | undefined ?? []).map(item => {
     if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("invalid dependent");
     const row = item as Record<string, unknown>;
     return Object.fromEntries(DEPENDENT_FIELDS.map(key => {
       if (row[key] != null && (typeof row[key] !== "string" || row[key].length > 2000)) throw new Error("invalid dependent text");
-      return [key, typeof row[key] === "string" ? row[key].trim() : ""];
+      const text = typeof row[key] === "string" ? row[key].trim() : "";
+      return [key, key === "my_number" ? normalizeMyNumber(text) : text];
     })) as Dependent;
   });
   if (source.commute_routes != null && (!Array.isArray(source.commute_routes) || source.commute_routes.length > 10)) throw new Error("invalid commute routes");
@@ -66,7 +81,10 @@ export function formatWarnings(values: OnboardingInput) {
   const warnings: Partial<Record<TextField, string>> = {};
   for (const [key, length, label] of [["postal_code", 7, "郵便番号"], ["pension_number", 10, "基礎年金番号"], ["employment_insurance_number", 11, "雇用保険被保険者番号"], ["bank_code", 4, "金融機関コード"], ["branch_code", 3, "支店コード"], ["my_number", 12, "マイナンバー"]] as const) {
     if (key === "employment_insurance_number" && values.employment_insurance_status !== "yes") continue;
-    if (key === "my_number" && isMaskedMyNumber(values[key])) continue;
+    if (key === "my_number") {
+      if (!isMaskedMyNumber(values[key]) && values[key] && !/^[0-9]{12}$/.test(normalizeMyNumber(values[key]))) warnings[key] = MY_NUMBER_FORMAT_MESSAGE;
+      continue;
+    }
     if (values[key] && !new RegExp(`^[0-9]{${length}}$`).test(values[key])) warnings[key] = `${label}は${length}桁の数字です。分かる範囲で確認してください。このまま進めます。`;
   }
   if (values.account_number && !/^[0-9]{1,8}$/.test(values.account_number)) warnings.account_number = "口座番号は1〜8桁の数字です。分かる範囲で確認してください。このまま進めます。";
@@ -77,8 +95,8 @@ export function formatWarnings(values: OnboardingInput) {
 }
 
 export function dependentMyNumberWarning(value: string) {
-  if (!value || isMaskedMyNumber(value) || /^[0-9]{12}$/.test(value)) return "";
-  return "マイナンバーは12桁の数字です。分かる範囲で確認してください。このまま進めます。";
+  if (!value || isMaskedMyNumber(value) || /^[0-9]{12}$/.test(normalizeMyNumber(value))) return "";
+  return MY_NUMBER_FORMAT_MESSAGE;
 }
 
 export const FIELD_LABELS: Record<TextField, string> = {

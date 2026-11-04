@@ -2,7 +2,7 @@ import "server-only";
 import { encryptOnboardingNumbers } from '@/lib/my-number/crypto.server';
 import { isOnboardingLoginTarget } from "./onboarding-login";
 import { createServerClient } from "@/app/_lib/supabase/server";
-import { hakenFields, initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type Dependent, type OnboardingRecord } from "./onboarding";
+import { hasInvalidMyNumber, MY_NUMBER_FORMAT_MESSAGE, hakenFields, initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type Dependent, type OnboardingRecord } from "./onboarding";
 
 type OnboardingEmployee = { employee_id: string; name: string | null; name_kana: string | null; birthday: string | null; employment_type?: string | null };
 
@@ -75,6 +75,7 @@ function dateOrNull(value: string) {
 export async function saveOnboarding(context: Context, input: unknown, submit: boolean) {
   let values: ReturnType<typeof parseInput>;
   try { values = parseInput(context.employee.employment_type === "派遣" && input && typeof input === "object" ? Object.fromEntries(hakenFields.map(key => [key, (input as Record<string, unknown>)[key]])) : input); } catch { throw new OnboardingError("入力内容を読み取れませんでした。ページを開き直してください。", 400); }
+  if (hasInvalidMyNumber(values)) throw new OnboardingError(MY_NUMBER_FORMAT_MESSAGE, 400);
   const previousRow = await readOnboardingRow(context);
   const previous = onboardingRecord(previousRow, context.employee);
   // 提出済みは見返すだけ。二重送信も同じ結果を返し、提出時刻を更新しない。

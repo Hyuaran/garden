@@ -2,7 +2,7 @@ import "server-only";
 import { encryptOnboardingNumbers } from '@/lib/my-number/crypto.server';
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { initialInput, parseInput, STEPS, type OnboardingRecord } from "./onboarding";
+import { hasInvalidMyNumber, initialInput, MY_NUMBER_FORMAT_MESSAGE, parseInput, STEPS, type OnboardingRecord } from "./onboarding";
 import { databaseError, OnboardingError, readOnboarding } from "./onboarding.server";
 import { hasProxyPrivateInput, proxyPayload } from "./onboarding-proxy";
 
@@ -43,6 +43,7 @@ export async function saveProxyOnboarding(context: Context, input: unknown, subm
   if (!context.sensitive && [6, 7].includes(Number(step))) throw new OnboardingError("この画面は全権管理者だけが代わりに入力できます", 403);
   let values;
   try { values = parseInput(input); } catch { throw new OnboardingError("入力内容を確認してください。", 400); }
+  if (context.sensitive && hasInvalidMyNumber(values)) throw new OnboardingError(MY_NUMBER_FORMAT_MESSAGE, 400);
   const payload = proxyPayload(values, context.sensitive);
   // 本人用と同様、空の日付はnullにする。
   for (const key of ["birth_date", "previous_employer_from", "previous_employer_to"] as const) {

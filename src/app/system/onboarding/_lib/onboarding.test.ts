@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commuteTotals, dependentMyNumberWarning, displayDependentValue, emptyInput, formatWarnings, initialInput, maskMyNumber, parseInput, parseNullableAmount, STEPS } from "./onboarding";
+import { hasInvalidMyNumber, MY_NUMBER_FORMAT_MESSAGE, commuteTotals, dependentMyNumberWarning, displayDependentValue, emptyInput, formatWarnings, initialInput, maskMyNumber, parseInput, parseNullableAmount, STEPS } from "./onboarding";
 
 describe("入社手続きの入力", () => {
   it("実DBのbirthdayから初期値をつくる", () => {
@@ -73,5 +73,22 @@ describe("入社手続きの入力", () => {
     expect(dependentMyNumberWarning("12")).toContain("12桁");
     expect(dependentMyNumberWarning("")).toBe("");
     expect(dependentMyNumberWarning("••••••••3333")).toBe("");
+  });
+});
+
+describe("マイナンバーの入力の形", () => {
+  it("全角・空白・ハイフンは12桁の半角に直し、形の違う番号は保存前に分かる", () => {
+    const values = parseInput({
+      my_number: "１２３４ ５６７８-９０１２",
+      dependents: [{ name: "家族", my_number: "1234 5678 9012" }, { name: "番号なし", my_number: "" }],
+    });
+    expect(values.my_number).toBe("123456789012");
+    expect(values.dependents[0].my_number).toBe("123456789012");
+    expect(hasInvalidMyNumber(values)).toBe(false);
+    expect(hasInvalidMyNumber(parseInput({ my_number: "••••••••9012" }))).toBe(false);
+    expect(hasInvalidMyNumber(parseInput({ my_number: "12345" }))).toBe(true);
+    expect(hasInvalidMyNumber(parseInput({ dependents: [{ my_number: "12" }] }))).toBe(true);
+    expect(dependentMyNumberWarning("１２３４５６７８９０１２")).toBe("");
+    expect(dependentMyNumberWarning("12")).toBe(MY_NUMBER_FORMAT_MESSAGE);
   });
 });
