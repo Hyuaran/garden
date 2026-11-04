@@ -5,10 +5,12 @@ import {
   RadioGroup,
   SubmitButton,
   ResultMessage,
+  TextArea,
 } from "@/app/system/forms/_components/form-kit";
 import {
   closedMessage,
   deadline,
+  DEFAULT_SHIFT_START_MONTH,
   monthDays,
   stamp,
   type ShiftDay,
@@ -42,10 +44,13 @@ export default function MyShift({
   endpoint = "/api/system/shift/my",
   token,
   initial,
+  title,
 }: {
   endpoint?: string;
   token?: string;
   initial?: MyData;
+  /** タブや画面の見出しが無い入口だけ渡す */
+  title?: string;
 }) {
   const pending = useRef(false);
   const shown = useRef(Boolean(initial));
@@ -133,18 +138,22 @@ export default function MyShift({
     `${Number(current.slice(5))}月のシフト`,
   ];
   const fixed = month === current || Boolean(data?.confirmation);
+  // 既定の勤務の人は、提出を始める前の月にシフトが無いので、月を選ぶ欄を出さない。
+  const onlyNextMonth = data?.mode === "default" && current < DEFAULT_SHIFT_START_MONTH;
   return (
     <section style={{ minHeight: 560 }}>
-      <h2>自分のシフト</h2>
-      <RadioGroup
-        name="shift-month"
-        label="表示する月"
-        options={labels}
-        value={labels[month === next ? 0 : 1]}
-        onChange={(v) => {
-          if (!pending.current) setMonth(v === labels[0] ? next : current);
-        }}
-      />
+      {title && <h2>{title}</h2>}
+      {!onlyNextMonth && (
+        <RadioGroup
+          name="shift-month"
+          label="表示する月"
+          options={labels}
+          value={labels[month === next ? 0 : 1]}
+          onChange={(v) => {
+            if (!pending.current) setMonth(v === labels[0] ? next : current);
+          }}
+        />
+      )}
       <ResultMessage>{error}</ResultMessage>
       {!data ? (
         <p role="status" aria-busy="true">
@@ -183,13 +192,13 @@ export default function MyShift({
           )}
           <label style={{ display: "block" }}>
             備考
-            <textarea
+            <TextArea
               aria-label="備考"
               value={note}
               maxLength={500}
               readOnly={fixed || !data.editable}
               disabled={busy}
-              style={{ display: "block", width: "100%", fontSize: 16 }}
+              rows={3}
               onChange={(event) => setNote(event.target.value)}
             />
           </label>

@@ -5,6 +5,7 @@ import {
 } from "@/app/system/forms/_components/form-kit";
 import { useState } from "react";
 import { hours, startOptions, weekend, type ShiftDay } from "@/lib/shift/rules";
+import ShiftCalendar, { ShiftDayLabel } from "./ShiftCalendar";
 export function shiftDate(date: string) {
   const weekday = ["日", "月", "火", "水", "木", "金", "土"][
     new Date(date + "T00:00:00Z").getUTCDay()
@@ -33,7 +34,7 @@ export default function ShiftDays({
     );
   return (
     <div>
-      <div className={formStyles.shiftDays}>
+      <ShiftCalendar firstDate={rows[0]?.work_date}>
         {rows.map((r) => (
           <div
             className={[
@@ -43,7 +44,7 @@ export default function ShiftDays({
             ].join(" ")}
             key={r.work_date}
           >
-            <span>{shiftDate(r.work_date)}</span>
+            <ShiftDayLabel date={r.work_date} longLabel={shiftDate(r.work_date)} />
             {holidays.includes(r.work_date) ? (
               <span>定休日</span>
             ) : (
@@ -70,7 +71,7 @@ export default function ShiftDays({
             )}
           </div>
         ))}
-      </div>
+      </ShiftCalendar>
       <p>
         出勤{" "}
         {

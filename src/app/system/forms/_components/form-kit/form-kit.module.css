@@ -550,13 +550,66 @@
     padding: 4px;
   }
 }
-.shiftDays.shiftDaysWide {
+/* 月曜始まりのカレンダー。幅が足りないときは、曜日の見出しを隠して一覧の形にする */
+.shiftCalendar {
+  container-type: inline-size;
+  width: 100%;
+}
+.shiftMonthTitle {
+  margin: 8px 0 4px;
+  font-weight: 700;
+}
+.shiftWeekHead,
+.shiftBlank,
+.shiftDayShort {
+  display: none;
+}
+.shiftCalendarWide .shiftDays {
   grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
 }
 @media (max-width: 480px) {
-  .shiftDays.shiftDaysWide {
+  .shiftCalendarWide .shiftDays {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+@container (min-width: 1010px) {
+  .shiftCalendar:not(.shiftCalendarWide) .shiftDays {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .shiftCalendar:not(.shiftCalendarWide) .shiftWeekHead,
+  .shiftCalendar:not(.shiftCalendarWide) .shiftBlank {
+    display: block;
+  }
+  .shiftCalendar:not(.shiftCalendarWide) .shiftDayShort {
+    display: inline;
+  }
+  .shiftCalendar:not(.shiftCalendarWide) .shiftDayLong {
+    display: none;
+  }
+}
+@container (min-width: 1200px) {
+  .shiftCalendarWide .shiftDays {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .shiftCalendarWide .shiftWeekHead,
+  .shiftCalendarWide .shiftBlank {
+    display: block;
+  }
+  .shiftCalendarWide .shiftDayShort {
+    display: inline;
+  }
+  .shiftCalendarWide .shiftDayLong {
+    display: none;
+  }
+  .shiftCalendarWide .shiftDay select {
+    font-size: 14px;
+  }
+}
+.shiftWeekHead {
+  padding: 2px 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
 }
 .shiftDay select,
 .shiftBulk select {

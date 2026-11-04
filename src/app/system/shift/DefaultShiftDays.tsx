@@ -2,6 +2,7 @@
 import { formStyles } from "@/app/system/forms/_components/form-kit";
 import { halfHourTimes, hours, weekend, type DefaultOption, type ShiftDay } from "@/lib/shift/rules";
 import { shiftDate } from "./ShiftDays";
+import ShiftCalendar, { ShiftDayLabel } from "./ShiftCalendar";
 
 export default function DefaultShiftDays({
   rows,
@@ -21,9 +22,10 @@ export default function DefaultShiftDays({
   function update(date: string, changes: Partial<ShiftDay>) {
     onChange(rows.map(row => row.work_date === date ? { ...row, ...changes } : row));
   }
+  const paidDays = rows.filter(row => row.day_kind === "paid").length;
   return (
     <div>
-    <div className={`${formStyles.shiftDays} ${!manager && options.length > 0 ? formStyles.shiftDaysWide : ""}`}>
+    <ShiftCalendar firstDate={rows[0]?.work_date} wide={!manager && options.length > 0}>
       {rows.map(row => {
         const base = defaults.find(day => day.work_date === row.work_date);
         const choices = !manager && !weekend(row.work_date) ? options : [];
@@ -31,8 +33,11 @@ export default function DefaultShiftDays({
           option.start_time.slice(0, 5) === row.start_time && option.end_time.slice(0, 5) === row.end_time);
         const kind = row.day_kind ?? (row.start_time ? "work" : "rest");
         return (
-          <div key={row.work_date} className={formStyles.shiftDay}>
-          <span>{shiftDate(row.work_date)}</span>
+          <div
+            key={row.work_date}
+            className={`${formStyles.shiftDay} ${weekend(row.work_date) ? formStyles.shiftWeekend : ""}`}
+          >
+          <ShiftDayLabel date={row.work_date} longLabel={shiftDate(row.work_date)} />
           <select
             aria-label={shiftDate(row.work_date) + "のシフト"}
             disabled={disabled}
@@ -94,11 +99,12 @@ export default function DefaultShiftDays({
           </div>
         );
       })}
-    </div>
+    </ShiftCalendar>
     <p>
       出勤 {rows.filter(row => row.start_time).length}日・合計 {rows.reduce(
         (total, row) => total + hours(row.start_time, row.end_time ?? "21:00"), 0,
-      )} 時間・有給 {rows.filter(row => row.day_kind === "paid").length}日
+      )} 時間
+      {paidDays > 0 && `・有給 ${paidDays}日`}
     </p>
     </div>
   );
