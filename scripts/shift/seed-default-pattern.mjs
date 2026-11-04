@@ -37,7 +37,7 @@ async function relay(db, path) {
   throw new Error("中継の完了を確認できませんでした。");
 }
 
-export function mostFrequentPattern(employeeKey, days, dates, isHoliday) {
+export function mostFrequentPattern(employeeKey, days, dates, isHoliday, odd = []) {
   return [0, 1, 2, 3, 4, 5, 6, 8].map(weekday => {
     const counts = new Map();
     if (weekday !== 8) {
@@ -49,8 +49,10 @@ export function mostFrequentPattern(employeeKey, days, dates, isHoliday) {
         const end = schedule?.clockOutSchedule?.slice(11, 16);
         const valid = start && end && start >= "06:00" && start < end &&
           /^(\d{2}):(00|30)$/.test(start) && /^(\d{2}):(00|30)$/.test(end);
+        // 30分単位でない予定は数えずに報告する（1 件で全員が止まらないように）。
         if (start && !valid) {
-          throw new Error("30分単位でない勤務予定があります。既定の勤務を手動で確認してください。");
+          odd.push(`${date} ${start}-${end ?? "終了なし"}`);
+          continue;
         }
         const key = valid ? `${start}|${end}` : "rest";
         counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -118,9 +120,17 @@ export async function main(args = process.argv.slice(2)) {
       skipped.push({ employee_id: person.employee_id, reason: "従業員コードを照合できません" });
       continue;
     }
-    rows.push(...mostFrequentPattern(person.remote.key, days, dates, isJapaneseHoliday)
+    const odd = [];
+    const pattern = mostFrequentPattern(person.remote.key, days, dates, isJapaneseHoliday, odd);
+    // 全部休みは「予定を入れていない人」なので入れない（提出の画面が全部休みになるのを防ぐ）。
+    if (pattern.every(row => !row.start_time)) {
+      skipped.push({ employee_id: person.employee_id, reason: "勤務予定が無いので手で入力する", odd });
+      continue;
+    }
+    rows.push(...pattern
       .filter(row => !existing.some(old => old.employee_id === person.employee_id && old.weekday === row.weekday))
       .map(row => ({ ...row, employee_id: person.employee_id })));
+    if (odd.length) skipped.push({ employee_id: person.employee_id, reason: "30分単位でない予定を数えなかった", odd });
   }
   console.log(JSON.stringify({ mode: args.includes("--apply") ? "apply" : "dry-run", start, end, rows, skipped }, null, 2));
   if (args.includes("--apply") && rows.length) {
