@@ -22,7 +22,7 @@ export async function deliverHakenNotices(
     if (!(await store.claim(notice.key))) continue;
     // 送信後の応答消失でも二重送信しない。失敗した予約は残し、人が確認する。
     try {
-      await send(`派遣管理\n${notice.kind}\n${notice.content}\n/system/haken`);
+      await send(`派遣管理：${notice.kind}\n${notice.content}\nhttps://garden-os.net/system/haken?tab=deadlines`);
       await store.sent(notice.key);
       results.push({ key: notice.key, status: "送信済み" });
     } catch {

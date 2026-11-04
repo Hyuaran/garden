@@ -372,8 +372,13 @@ export default function HakenDetail({
                   .filter((p) => p.id === contract.party_id)
                   .map((p) => (
                     <p key={p.id}>
-                      {p.address} ／ 許可番号 {p.permit_no} ／ 責任者{" "}
-                      {p.manager_name}
+                      {[
+                        p.address,
+                        p.permit_no && `許可番号 ${p.permit_no}`,
+                        p.manager_name && `責任者 ${p.manager_name}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" ／ ")}
                     </p>
                   ))}
               </fieldset>

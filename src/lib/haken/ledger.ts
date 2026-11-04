@@ -6,6 +6,7 @@ import {
   individualConflictDate,
   renewalDue,
   retentionDue,
+  todayJst,
 } from "./rules";
 import type { HakenData, HakenWorker } from "./types";
 
@@ -64,7 +65,10 @@ export type HakenNotice = {
   content: string;
   workerId: string;
 };
-export function ledgerNotices(data: HakenData): HakenNotice[] {
+export function ledgerNotices(
+  data: HakenData,
+  today = todayJst(),
+): HakenNotice[] {
   const notices: HakenNotice[] = [];
   for (const worker of data.workers.filter((w) => !w.deleted_at)) {
     const c = data.contracts.find(
@@ -72,7 +76,8 @@ export function ledgerNotices(data: HakenData): HakenNotice[] {
     );
     if (!c) continue;
     const dates = workerDates(data, worker);
-    if (dates.renewal)
+    // 終わった契約は、更新の確認が要らない。
+    if (dates.renewal && c.period_end && c.period_end >= today)
       notices.push({
         key: `renewal:${c.id}:${c.period_end}`,
         due: dates.renewal,
