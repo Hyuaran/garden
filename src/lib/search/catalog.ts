@@ -1,6 +1,13 @@
 // Reviewed allowlist derived from input inventory F0001-F0612. No wildcard selects.
 export type SearchSource = { key: string; table: string; page: string; tab: string; client: string; pk: string; title: string; date: string; href: string; label: string; module: string; fields: { column: string; select?: string; label: string; phone: boolean }[] };
 export const SEARCH_SOURCES: SearchSource[] = [
+  { key: "system_haken_party", table: "system_haken_party", page: "system-haken", tab: "", client: "admin", pk: "id", title: "name", date: "updated_at", href: "/system/haken?tab=parties", label: "派遣会社", module: "System", fields: [
+    { column: "name", label: "会社名", phone: false }, { column: "office_name", label: "事業所", phone: false },
+    { column: "address", label: "所在地", phone: false }, { column: "note", label: "備考", phone: false },
+  ] },
+  { key: "system_haken_worker", table: "system_haken_worker", page: "system-haken", tab: "", client: "admin", pk: "id", title: "name", date: "updated_at", href: "/system/haken", label: "受け入れた人", module: "System", fields: [
+    { column: "name", label: "氏名", phone: false }, { column: "end_reason", label: "終了の理由", phone: false },
+  ] },
   {
     key: "system_attendance_corrections", table: "system_attendance_corrections", page: "system-attendance", tab: "approve",
     client: "admin", pk: "id", title: "reason", date: "created_at", href: "/system/attendance", label: "打刻の修正", module: "System",

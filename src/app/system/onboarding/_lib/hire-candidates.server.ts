@@ -116,7 +116,11 @@ export async function saveCandidate(context: Context, raw: unknown, id?: string)
   return row;
  }
  const input = parseHireInput(raw);
- const values = {...input,birthday:input.birthday || null,gender:input.gender || null};
+ const values = {...input,birthday:input.birthday || null,gender:input.gender || null,haken_party_id:input.employment_type === "派遣" ? input.haken_party_id : null,haken_period_end:input.employment_type === "派遣" ? input.haken_period_end : null};
+ if (input.employment_type === "派遣") {
+  const party = checked(await db.from("system_haken_party").select("id").eq("id", input.haken_party_id).single());
+  if (!party) throw new HireError("派遣会社を確認してください");
+ }
  const company = checked(await db.from("root_companies").select("company_id").eq("company_id",input.company_id).maybeSingle());
  if (!company) throw new HireError("所属法人を確認してください");
  if (!id) return checked(await db.from("system_hire_candidates").insert({...values,created_by:userId}).select().single());
@@ -158,6 +162,14 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
  };
  const done = async () => { await persist({steps:{...c.steps,[stage]:{done:true,at:new Date().toISOString()}}}); };
  try {
+  if (c.employment_type === "派遣") {
+   if (!c.haken_party_id || !c.haken_period_end || c.haken_period_end < c.hire_date) throw new HireError("派遣会社と終了日を入力してください");
+   const party = checked(await db.from("system_haken_party").select("issue_defaults").eq("id", c.haken_party_id).single());
+   const officeId = party?.issue_defaults?.office_id;
+   if (!officeId) throw new HireError("派遣会社の発行書類の初期値に受入事業所を設定してください");
+   const office = checked(await db.from("system_haken_office").select("company_id").eq("id", officeId).single());
+   if (office?.company_id !== c.company_id) throw new HireError("受入事業所と所属法人を確認してください");
+  }
   // Sprout handoffs are planned before company and attendance assignments are chosen.
   if (!c.company_id || !c.kot_division_code || !c.kot_type_code) throw new HireError("会社・勤怠の所属・雇用区分を設定してから入社手続きを進めてください");
   // A reserved number survives failures and confirmation cancellation.
@@ -193,6 +205,9 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
   if (summary.errors.some(error => !(c.employment_type === "派遣" && !c.birthday && error === `${c.employee_number!.padStart(4,"0")} ${c.last_name}: 生年月日が空のためアカウント作成をスキップ`))) throw new HireError(`社員番号 ${c.employee_number} の Kintone 名簿から Garden への反映に失敗しました。管理者が名簿の登録内容と同期処理のエラーを確認・修正してから［続きから］を押してください。`);
   const employee = checked(await db.from("root_employees").select("employee_id,user_id").eq("employee_number",c.employee_number!.padStart(4,"0")).single());
   if (!employee || (!employee.user_id && !(c.employment_type === "派遣" && !c.birthday))) throw new HireError(`社員番号 ${c.employee_number} の Garden アカウントを準備できませんでした。管理者がアカウント作成処理を確認・修正してから［続きから］を押してください。`);
+  if (c.employment_type === "派遣") {
+    checked(await db.rpc("create_haken_from_hire", { p_candidate: id, p_employee: employee.employee_id, p_actor: userId }));
+  }
   // The existing sync defaults new employees to COMP-001; apply the selected company.
   checked(await db.from("root_employees").update({company_id:c.company_id,name:[c.last_name,c.first_name].filter(Boolean).join(" "),birthday:c.birthday || null}).eq("employee_id",employee!.employee_id));
   await done();

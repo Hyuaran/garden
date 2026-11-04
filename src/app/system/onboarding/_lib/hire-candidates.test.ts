@@ -67,7 +67,7 @@ function dbFor(row:HireCandidate) {
   const q:Record<string,unknown> = {};
   for(const name of ["select","eq","is","in","or"]) q[name]=vi.fn(()=>q);
   q.update=vi.fn((values)=>{patch=values;return q;});
-  const result=()=>{if(table==="system_hire_candidates"){if(patch)Object.assign(row,patch);return {data:{...row},error:null};}return {data:{company_name:"法人",employee_id:"EMP-1571",user_id:"auth"},error:null};};
+  const result=()=>{if(table==="system_hire_candidates"){if(patch)Object.assign(row,patch);return {data:{...row},error:null};}if(table==="system_haken_party")return {data:{issue_defaults:{office_id:"office"}},error:null};if(table==="system_haken_office")return {data:{company_id:row.company_id},error:null};return {data:{company_name:"法人",employee_id:"EMP-1571",user_id:"auth"},error:null};};
   q.single=vi.fn(async()=>result());q.maybeSingle=vi.fn(async()=>result());
   q.then=(resolve:(r:unknown)=>void)=>Promise.resolve(result()).then(resolve);
   return q;
@@ -217,7 +217,7 @@ it("名簿の会社の選択肢に合わせて「株式会社」を外す",()=>{
 
 describe("派遣の未入力と締結不要",()=>{
  it("苗字だけは派遣に限って保存する",()=>{
-  const input={...candidate(),employment_type:"派遣",first_name:"",first_name_kana:"",birthday:"",gender:""};
+  const input={...candidate(),employment_type:"派遣",haken_party_id:"11111111-1111-4111-8111-111111111111",haken_period_end:"2026-12-31",first_name:"",first_name_kana:"",birthday:"",gender:""};
   expect(parseHireInput(input).first_name).toBe("");expect(hireInformationPending(input)).toBe(true);
   expect(()=>parseHireInput({...input,employment_type:"正社員"})).toThrow();
  });
@@ -227,10 +227,12 @@ describe("派遣の未入力と締結不要",()=>{
   expect(signatureCount({checklist:{...checklist,contract_not_required:{checked_at:"now",checked_by:""}}})).toBe(2);
  });
  it("名が不明なら KING OF TIME には未定、名簿には空で送る",async()=>{
-  const row={...candidate(),employment_type:"派遣",first_name:"",first_name_kana:"",birthday:""};
+  const row={...candidate(),employment_type:"派遣",haken_party_id:"11111111-1111-4111-8111-111111111111",haken_period_end:"2026-12-31",first_name:"",first_name_kana:"",birthday:""};
   mocks.employees.mockResolvedValue([]);mocks.create.mockResolvedValue({});mocks.records.mockResolvedValue([]);mocks.record.mockResolvedValue({id:"56"});mocks.sync.mockResolvedValue({errors:[]});
   vi.stubEnv("KOT_EMPLOYEE_CREATE_ENABLED","true");
-  try {await hireCandidate({db:dbFor(row) as never,userId:"staff"},row.id);expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({firstName:"未定",firstNamePhonetics:"ミテイ"}));expect(mocks.create.mock.calls.at(-1)?.[0]).not.toHaveProperty("birthDate");expect(mocks.record.mock.calls.at(-1)?.[2]).toMatchObject({従業員名_名:{value:""},生年月日:{value:""}});expect(row.checklist?.contract_not_required?.checked_by).toBe("staff");} finally {vi.unstubAllEnvs();}
+  const db = dbFor(row);
+  db.rpc.mockResolvedValue({data:"contract",error:null});
+  try {await hireCandidate({db:db as never,userId:"staff"},row.id);expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({firstName:"未定",firstNamePhonetics:"ミテイ"}));expect(mocks.create.mock.calls.at(-1)?.[0]).not.toHaveProperty("birthDate");expect(mocks.record.mock.calls.at(-1)?.[2]).toMatchObject({従業員名_名:{value:""},生年月日:{value:""}});expect(row.checklist?.contract_not_required?.checked_by).toBe("staff");} finally {vi.unstubAllEnvs();}
  });
 });
 

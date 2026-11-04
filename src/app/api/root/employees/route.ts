@@ -34,6 +34,12 @@ export async function POST(request: Request) {
   }
 
   const admin = getSupabaseAdmin();
+  if (input.haken_party_id) {
+    if (typeof input.haken_party_id !== "string") return NextResponse.json({ error: "派遣会社を確認してください。" }, { status: 400 });
+    const party = await admin.from("system_haken_party").select("id").eq("id", input.haken_party_id).maybeSingle();
+    if (party.error || !party.data) return NextResponse.json({ error: "派遣会社を確認してください。" }, { status: 400 });
+  }
+  if (typeof input.employment_type === "string" && input.employment_type !== "派遣") input.haken_party_id = null;
   const { data: existing } = await admin
     .from("root_employees")
     .select("user_id,kot_employee_id,termination_date,is_active")

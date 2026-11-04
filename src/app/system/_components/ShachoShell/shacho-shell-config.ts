@@ -44,6 +44,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "INNOVERA履歴・録音", description: "INNOVERA の通話履歴を見て、終話後の録音をその場で聞けます。自分の発信番号の切り替えもここから。", icon: "message", href: "/system/innovera-calls", minRole: "cs" },
   { label: "業務管理ツール", description: "日々の連絡や申請の入力、自動で動いている仕組み、Kintone に入れたしかけをまとめた入口です。", icon: "document", href: "/system/forms", activePrefixes: ["/system/innovera"], minRole: "staff" },
   { label: "契約書管理", description: "上位店との契約書を登録して保存漏れを防ぎます。パートナー配布用のひな形もここで作れます。", icon: "document", href: "/system/contracts", minRole: "manager" },
+  { label: "派遣管理", description: "受け入れた人の台帳・派遣会社・書類と期限を管理します。", icon: "document", href: "/system/haken", minRole: "manager" },
   { label: "コーポレートサイト", description: "グループ各社の会社HPと商品ページを一覧し、サイトへ飛べます。", icon: "folder", href: "/system/sites", minRole: "staff" },
   { label: "関電トスポータル", description: "関西電力のトスアップを受け付けます。入力内容はそのままKintoneへ連携されます。", icon: "folder", href: "/p/toss" },
   { label: "自動配信", description: "決まった時刻に Chatwork へ自動で送っている連絡をまとめて見られます。", icon: "message", href: "/system/deliveries", minRole: "staff" },

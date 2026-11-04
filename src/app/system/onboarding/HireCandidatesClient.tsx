@@ -1,4 +1,5 @@
 "use client";
+import HakenHireFields from "@/app/system/haken/HakenHireFields";
 import { useStoredView } from "@/lib/ui/useStoredView";
 import { useState, useEffect, useRef } from "react";
 import { usePolling } from "@/lib/hooks/usePolling";
@@ -91,7 +92,7 @@ export default function HireCandidatesClient({userId,tab,initialRows,canWrite = 
  const optionsRequest=useRef<Promise<Options>|null>(null);
  const loadOptions=()=>optionsRequest.current ??= api("/kot-options").then((o:Options)=>{setOptions(o);return o;}).catch((e:unknown)=>{optionsRequest.current=null;throw e;});
  useEffect(()=>{if(canWrite)loadOptions().catch(()=>{});},[canWrite]);
- const openForm = (row?:HireCandidate)=>{setMessage("");setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});if(!options)loadOptions().catch(e=>setMessage(e instanceof Error?e.message:"選択肢を読み込めませんでした"));};
+ const openForm = (row?:HireCandidate)=>{setMessage("");setEditing(row?.id ?? null);setForm(row ? {...row,haken_issue_batch_id:row.haken_issue_batch_id ?? crypto.randomUUID()} : {haken_issue_batch_id:crypto.randomUUID(),last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});if(!options)loadOptions().catch(e=>setMessage(e instanceof Error?e.message:"選択肢を読み込めませんでした"));};
  const set=(key:keyof HireInput,value:string)=>setForm(old=>old?{...old,[key]:value}:null);
  const required=(key:keyof HireInput)=>isHireFieldRequired(key,form?.employment_type??"");
  const mark=(key:keyof HireInput)=>required(key)&&<span className="garden-required" aria-hidden="true">＊</span>;
@@ -152,7 +153,7 @@ export default function HireCandidatesClient({userId,tab,initialRows,canWrite = 
  {message&&<p role="alert">{message}</p>}
  <DataTable loading={loading || !visibilityReady} key="candidates" onRowClick={r=>{if(busy||saving)return;if(r.status==="hiring"&&stopped(r))setFailure(r);else if(canWrite&&r.status==="planned")openForm(r);}} rowClickable={r=>(canWrite&&r.status==="planned")||(r.status==="hiring"&&!!stopped(r))} rows={candidateRows} columns={columns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"date",direction:"asc"}} toolbar={canWrite && <button disabled={!canWrite||busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
  <label className={styles.hireCheck}><input type="checkbox" checked={!showNoShow} onChange={e=>saveVisibility(!e.target.checked,showComplete)}/>辞退者を表示しない</label>
- {form&&options&&<dialog ref={formDialog} aria-labelledby="hire-form-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setForm(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setForm(null);}}} data-garden-modal="panel">
+ {form&&options&&<dialog ref={formDialog} aria-labelledby="hire-form-title" className={styles.panel+" "+styles.hireDialog+(form.employment_type === "派遣" ? " "+styles.hakenHireDialog : "")} onCancel={()=>setForm(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setForm(null);}}} data-garden-modal="panel">
  <h2 id="hire-form-title">{editing?"入社予定者を修正":"入社予定者を登録"}</h2>
  {message&&<p role="alert">{message}</p>}
  {/* 並び＝東海林さん 2026-10-26：セイ・メイ・性別／姓・名・生年月日／入社日・所属法人・雇用形態／KOT の所属・KOT の雇用区分。選ぶ欄は普通のプルダウン（左ぞろえ） */}
@@ -161,7 +162,9 @@ export default function HireCandidatesClient({userId,tab,initialRows,canWrite = 
  {field("last_name","姓")}{field("first_name","名")}{field("birthday","生年月日","date")}
  {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
  {choice("kot_division_code","KING OF TIME の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KING OF TIME の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
-  </div></div><div className={styles.hireRowActions} data-modal-actions>{editing && rows.find(r=>r.id===editing)?.status==="planned" && <>
+  </div></div>
+ {form.employment_type === "派遣" && <HakenHireFields partyId={form.haken_party_id ?? ""} end={form.haken_period_end ?? ""} start={form.hire_date} candidateId={editing ?? undefined} issueBatchId={form.haken_issue_batch_id} onPartyChange={value => set("haken_party_id", value)} onEndChange={value => set("haken_period_end", value)} onError={setMessage} />}
+ <div className={styles.hireRowActions} data-modal-actions>{editing && rows.find(r=>r.id===editing)?.status==="planned" && <>
 <ConfirmedDangerAction label="辞退" disabled={!canWrite||busy||!!saving} onConfirm={()=>run(async()=>{await api("/"+editing,"PATCH",{status:"no_show"});setForm(null);})}/>
 <button disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const updated=await api("/"+editing+"/hire","POST",{prepare:true});if(stopped(updated)){await load();setForm(null);setFailure(updated);return;}if(!updated.employee_number)throw new Error("社員番号を決められませんでした");setForm(null);setConfirmation(updated);})} data-modal-action="primary">入社</button></>}<button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)} data-modal-action="secondary">閉じる</button>
 <button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})} data-modal-action="primary">保存する</button></div></dialog>}

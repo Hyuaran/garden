@@ -316,6 +316,16 @@ function formatSyncPeople(people: ChatworkTokenSyncPerson[]) {
 export default function EmployeesPage() {
   const initialSearch=useInitialSearch();
   const { canWrite, rootUser } = useRootState();
+  const [hakenParties, setHakenParties] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/root/view-data?page=root-employees&dataset=haken-parties", { cache: "no-store" }).then(async response => {
+      if (!response.ok) throw new Error("派遣会社を読み込めませんでした。");
+      const data = await response.json();
+      if (active) setHakenParties(data.data);
+    }).catch(error => { if (active) setError(error.message); });
+    return () => { active = false; };
+  }, []);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [addresses, setAddresses] = useState<CurrentAddressMap>({});
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -744,6 +754,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
     { id: "team", value: (e) => e.current_team || "所属なし", type: "text", label: "チーム", align: "text", render: (e) => e.current_team || "所属なし" },
     { id: "business", value: (e) => e.business || "未設定", type: "text", label: "事業", align: "text", render: (e) => e.business || "—" },
     { id: "emp_type", value: (e) => e.employment_type, type: "text", label: "雇用形態", align: "text", render: (e) => e.employment_type },
+    { id: "haken_party", label: "派遣会社", type: "text", value: e => e.employment_type === "派遣" ? hakenParties.find(p => p.id === e.haken_party_id)?.name ?? "未設定" : "" },
     { id: "garden_role", value: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], type: "text", label: "Garden権限", align: "text", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"] },
     { id: "salary", value: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, type: "text", label: "給与体系", align: "text", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id },
     { id: "hire", value: (e) => e.hire_date, type: "date", label: "入社日", align: "fixed", render: (e) => e.hire_date },
@@ -897,11 +908,16 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
               <SelectField label="雇用形態" required value={editTarget.employment_type} onChange={(e) => setEditTarget({
                 ...editTarget,
                 employment_type: e.target.value,
+                haken_party_id: e.target.value === "派遣" ? editTarget.haken_party_id : null,
                 // 外注以外を選ぶと契約終了日をクリア
                 contract_end_on: e.target.value === "outsource" ? (editTarget.contract_end_on ?? null) : null,
               })} error={errors.employment_type}>
                 {EMP_TYPE_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </SelectField>
+              {editTarget.employment_type === "派遣" && <SelectField label="派遣会社" value={editTarget.haken_party_id ?? ""} onChange={e => setEditTarget({ ...editTarget, haken_party_id: e.target.value || null })}>
+                <option value="">未設定</option>
+                {hakenParties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </SelectField>}
               <SelectField label="給与体系" required value={editTarget.salary_system_id} onChange={(e) => setEditTarget({ ...editTarget, salary_system_id: e.target.value })} error={errors.salary_system_id}>
                 {salarySystems.map((s) => <option key={s.salary_system_id} value={s.salary_system_id}>{s.system_name}</option>)}
               </SelectField>

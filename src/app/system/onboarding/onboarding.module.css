@@ -116,3 +116,10 @@
 @keyframes hireSpin { to { transform:rotate(360deg); } }
 
 @media(min-width:801px) { .header { min-height:max(86px, calc(var(--page-search-bottom, 0px) - 30px)); } }
+
+/* 派遣の書類欄を含めても、横幅を使って小窓に収める。 */
+.hakenHireDialog { max-width:1100px; scrollbar-width:none; }
+.hakenHireDialog::-webkit-scrollbar { display:none; }
+.hakenHireDialog .hireGrid { gap:8px 16px; margin:12px 0; }
+.hakenHireDialog .hireGrid input:not([type="radio"]) { height:36px; }
+@container (min-width:800px) { .hakenHireDialog .hireGrid { grid-template-columns:repeat(4,minmax(0,1fr)); } }

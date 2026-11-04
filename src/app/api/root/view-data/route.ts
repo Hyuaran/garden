@@ -15,7 +15,7 @@ export const GET = async (request: Request) => {
     "root-vendors": { vendors: ["root_vendors", "*"], companies: ["root_companies", "company_id,company_name"] },
     "root-salary-systems": { "salary-systems": ["root_salary_systems", "*"] },
     "root-insurance": { insurance: ["root_insurance", "*"] },
-    "root-employees": { employees: ["root_employees_with_team", ROOT_EMPLOYEE_SELECT_FIELDS], companies: ["root_companies", "company_id,company_name"], "salary-systems": ["root_salary_systems", "salary_system_id,system_name"] },
+    "root-employees": { "haken-parties": ["system_haken_party", "id,name"], employees: ["root_employees_with_team", ROOT_EMPLOYEE_SELECT_FIELDS], companies: ["root_companies", "company_id,company_name"], "salary-systems": ["root_salary_systems", "salary_system_id,system_name"] },
     "root-attendance": { attendance: ["root_attendance", "*"], employees: ["root_employees", "employee_id,employee_number,name"] },
     "root-permissions": { employees: ["root_employees", "employee_id,employee_number,name,employment_type,garden_role,is_active"] },
     "root-kot-sync-history": { "sync-logs": ["root_kot_sync_log", "*"] },
@@ -54,5 +54,12 @@ export const GET = async (request: Request) => {
   }
   const { data, error } = await query;
   if (error) return Response.json({ error: "読み込めませんでした。" }, { status: 500, headers });
+  if (page === "root-employees" && dataset === "employees" && data?.length) {
+    const employees = data as unknown as Record<string, unknown>[];
+    const parties = await getSupabaseAdmin().from("root_employees").select("employee_id,haken_party_id").in("employee_id", employees.map(row => String(row.employee_id)));
+    if (parties.error) return Response.json({ error: "派遣会社を読み込めませんでした。" }, { status: 500, headers });
+    const ids = new Map((parties.data ?? []).map(row => [row.employee_id, row.haken_party_id]));
+    return Response.json({ data: employees.map(row => ({ ...row, haken_party_id: ids.get(String(row.employee_id)) ?? null })) }, { headers });
+  }
   return Response.json({ data: data ?? [] }, { headers });
 };

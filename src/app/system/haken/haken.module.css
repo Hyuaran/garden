@@ -1,0 +1,96 @@
+.page {
+  padding: 24px 32px 48px;
+}
+.heading,
+.tools,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.heading {
+  justify-content: space-between;
+}
+.heading h1 {
+  font-size: 26px;
+  font-weight: 500;
+}
+.tools {
+  margin: 20px 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+.grid label,
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.page input,
+.page select,
+.page textarea,
+.issue input,
+.issue select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #c8ceca);
+  border-radius: 4px;
+  min-width: 0;
+}
+.page textarea {
+  min-height: 84px;
+}
+.section {
+  border: 0;
+  border-top: 1px solid var(--border, #c8ceca);
+  margin: 24px 0;
+  padding: 20px 0 0;
+}
+.section legend {
+  padding-right: 16px;
+  font-size: 18px;
+}
+.actions {
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+.error {
+  color: #a43232;
+  white-space: pre-wrap;
+}
+.issue {
+  margin-top: 12px;
+  border-top: 1px solid var(--border, #c8ceca);
+  padding-top: 12px;
+}
+.issue p {
+  margin: 8px 0;
+}
+.issueButtons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.page button {
+  cursor: pointer;
+  font: inherit;
+}
+.page button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .page {
+    padding: 16px;
+  }
+}

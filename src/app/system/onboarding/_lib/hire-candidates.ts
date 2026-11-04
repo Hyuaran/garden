@@ -1,6 +1,6 @@
 
 export const HIRE_FIELDS = ["last_name", "first_name", "last_name_kana", "first_name_kana", "birthday", "gender", "hire_date", "employment_type", "company_id", "kot_division_code", "kot_type_code"] as const;
-export type HireInput = Record<typeof HIRE_FIELDS[number], string>;
+export type HireInput = Record<typeof HIRE_FIELDS[number], string> & { haken_party_id?: string; haken_period_end?: string; haken_issue_batch_id?: string };
 export type HireCandidate = HireInput & HireChecklistState & { id: string; status: "planned" | "no_show" | "hiring" | "hired"; employee_number: string | null; employee_id: string | null; kintone_roster_record_id: string | null; steps: Record<string, { done?: boolean; at?: string; error?: string }> };
 export const EMPLOYMENT_TYPES = ["正社員", "アルバイト", "役員", "派遣", "パートナー"];
 export const CHECKLIST_KEYS = ["contract_sent", "contract_signed", "nda_sent", "nda_signed", "emergency_sent", "emergency_signed", "filemaker_added"] as const;
@@ -27,6 +27,18 @@ export function parseHireInput(raw: unknown): HireInput {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input[k]) || new Date(input[k]).toISOString().slice(0,10) !== input[k]) throw new Error("入力内容を確認してください");
   }
   if (!["male", "female", ...(input.employment_type === "派遣" ? [""] : [])].includes(input.gender) || !EMPLOYMENT_TYPES.includes(input.employment_type)) throw new Error("入力内容を確認してください");
+  if (input.employment_type === "派遣") {
+    const source = raw as Record<string, unknown>;
+    if (source.haken_issue_batch_id) {
+      input.haken_issue_batch_id = String(source.haken_issue_batch_id);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.haken_issue_batch_id)) throw new Error("書類の発行情報を確認してください");
+    }
+    input.haken_party_id = String(source.haken_party_id ?? "").trim();
+    input.haken_period_end = String(source.haken_period_end ?? "").trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.haken_party_id) || !/^\d{4}-\d{2}-\d{2}$/.test(input.haken_period_end)) throw new Error("派遣会社と終了日を入力してください");
+    const end = new Date(input.haken_period_end);
+    if (!Number.isFinite(end.getTime()) || end.toISOString().slice(0, 10) !== input.haken_period_end || input.haken_period_end < input.hire_date) throw new Error("派遣期間の終了日を確認してください");
+  }
   return input;
 }
 export function nextEmployeeNumber(numbers: (string | null)[], kotCodes: string[], reserved: (string | null)[] = []) {
@@ -56,6 +68,7 @@ export function signatureCount(row: HireChecklistState) {
 }
 export function signaturesComplete(row: HireChecklistState) { return signatureCount(row) === 3; }
 export function isHireFieldRequired(key: keyof HireInput, employmentType: string) {
+ if (key === "haken_party_id" || key === "haken_period_end") return employmentType === "派遣";
  return employmentType !== "派遣" || !["first_name","first_name_kana","birthday","gender"].includes(key);
 }
 export function hireInformationPending(row: HireInput) {
