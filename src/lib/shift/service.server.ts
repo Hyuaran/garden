@@ -4,6 +4,8 @@ import { shiftMode, type ShiftEmployee } from "./eligibility";
 import { readDefaultPatterns, readDefaultOptions } from "./defaults.server";
 import {
   closedMessage,
+  myShiftMonths,
+  canSubmitMonth,
   deadline,
   monthDays,
   validateDays,
@@ -126,6 +128,7 @@ export async function myShift(
   month: string,
   body?: unknown,
   note: unknown = "",
+  view: "mine" | "confirmed" = "mine",
 ) {
   const person = (await employees()).find(
     (e) => e.employee_id === employee_id,
@@ -135,31 +138,56 @@ export async function myShift(
       throw new ShiftError("シフトの提出はありません。", 403);
     return { eligible: false };
   }
+  monthDays(month);
+  if (body !== undefined && !canSubmitMonth(month, new Date()))
+    throw new ShiftError(closedMessage, 403);
+  const [submitted, confirmedMonths, personal] = await Promise.all([
+    db()
+      .from("system_shift_submission")
+      .select("year_month")
+      .eq("employee_id", employee_id),
+    db()
+      .from("system_shift_month")
+      .select("year_month,confirmed_at"),
+    // 1か月は最大31日なので、最新62行で最新2か月を必ず含められる。
+    db()
+      .from("system_shift_confirmed")
+      .select("work_date")
+      .eq("employee_id", employee_id)
+      .order("work_date", { ascending: false })
+      .range(0, 61),
+  ]);
+  [submitted, confirmedMonths, personal].forEach(check);
+  const months = myShiftMonths({
+    now: new Date(),
+    mode: person.shift_mode || "telema",
+    submittedMonths: (submitted.data || []).map(row => row.year_month),
+    confirmedMonths: (confirmedMonths.data || [])
+      .filter(row => row.confirmed_at)
+      .map(row => row.year_month),
+    personalConfirmedMonths: (personal.data || [])
+      .map(row => row.work_date.slice(0, 7)),
+  });
+  const targetConfirmed = (confirmedMonths.data || []).some(
+    row => row.year_month === month && Boolean(row.confirmed_at),
+  );
+  if (body !== undefined && targetConfirmed)
+    throw new ShiftError("確定後のシフトは変更できません。責任者に連絡してください。", 403);
   const isDefault = person.shift_mode === "default";
   const message = isDefault && month < DEFAULT_SHIFT_START_MONTH
     ? "2026年12月分から提出します。" : null;
-  if (message) {
+  if (message && view !== "confirmed") {
     if (body !== undefined) throw new ShiftError(message, 403);
-    return { eligible: true, mode: "default", message, editable: false };
+    return { ...months, eligible: true, mode: "default", message, editable: false };
   }
   const pattern = isDefault ? await readDefaultPatterns(employee_id) : [];
-  if (isDefault && !patternReady(pattern)) {
+  if (isDefault && !patternReady(pattern) && view !== "confirmed") {
     const message = "既定の勤務を準備しています。";
     if (body !== undefined) throw new ShiftError(message, 403);
-    return { eligible: true, mode: "default", message, editable: false };
+    return { ...months, eligible: true, mode: "default", message, editable: false };
   }
   const options = isDefault ? await readDefaultOptions(employee_id) : [];
   if (body !== undefined) {
-    const current = new Date()
-      .toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" })
-      .slice(0, 7);
-    const next = new Date(current + "-01T00:00:00Z");
-    next.setUTCMonth(next.getUTCMonth() + 1);
-    if (
-      month !== next.toISOString().slice(0, 7) ||
-      Date.now() > deadline(month).getTime()
-    )
-      throw new ShiftError(closedMessage, 403);
     if (typeof note !== "string" || [...note].length > 500)
       throw new ShiftError("備考は500字までで入力してください。");
     const rows = isDefault ? validateDefaultDays(month, body, pattern, false, options) : validateDays(month, body);
@@ -176,6 +204,7 @@ export async function myShift(
   const data = await readMonth(month);
   return {
     ...data,
+    ...months,
     holidays: !isDefault && data.confirmation ? data.holidays : [],
     eligible: true,
     mode: person.shift_mode,
@@ -187,7 +216,7 @@ export async function myShift(
         { work_date, start_time: null })),
     confirmed: data.confirmed.filter((r) => r.employee_id === employee_id),
     submissions: data.submissions.filter((r) => r.employee_id === employee_id),
-    editable: !data.confirmation && Date.now() <= deadline(month).getTime(),
+    editable: canSubmitMonth(month, new Date(), Boolean(data.confirmation?.confirmed_at)),
   };
 }
 export function deadlineText(month: string) {

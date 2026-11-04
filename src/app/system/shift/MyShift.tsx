@@ -10,7 +10,6 @@ import {
 import {
   closedMessage,
   deadline,
-  DEFAULT_SHIFT_START_MONTH,
   monthDays,
   stamp,
   type ShiftDay,
@@ -21,6 +20,8 @@ import DefaultShiftDays from "./DefaultShiftDays";
 
 export type MyData = {
   eligible: boolean;
+  submit_months?: { month: string; editable: boolean }[];
+  confirmed_months?: { month: string }[];
   mode?: "telema" | "default";
   message?: string;
   defaults?: ShiftDay[];
@@ -40,12 +41,14 @@ export function shiftMonths() {
   d.setUTCMonth(d.getUTCMonth() + 1);
   return { current, next: d.toISOString().slice(0, 7) };
 }
-export default function MyShift({
+function MyShiftPanel({
   endpoint = "/api/system/shift/my",
   token,
   initial,
   title,
+  view,
 }: {
+  view: "mine" | "confirmed";
   endpoint?: string;
   token?: string;
   initial?: MyData;
@@ -54,8 +57,7 @@ export default function MyShift({
 }) {
   const pending = useRef(false);
   const shown = useRef(Boolean(initial));
-  const [{ current, next }] = useState(shiftMonths),
-    [month, setMonth] = useState(next),
+  const [month, setMonth] = useState(""),
     [data, setData] = useState<MyData | null>(initial || null),
     [rows, setRows] = useState<ShiftDay[]>([]),
     [note, setNote] = useState(""),
@@ -66,7 +68,11 @@ export default function MyShift({
     let active = true;
     setData(null);
     setError("");
-    void fetch(endpoint + "?month=" + month, {
+    const requestedMonth = month || new Date()
+      .toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" })
+      .slice(0, 7);
+    const query = new URLSearchParams({ view, month: requestedMonth });
+    void fetch(endpoint + "?" + query, {
       headers: token ? { Authorization: "Bearer " + token } : {},
       cache: "no-store",
     })
@@ -74,21 +80,29 @@ export default function MyShift({
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "読み込めませんでした。");
         if (active) {
+          const available = view === "confirmed" ? d.confirmed_months : d.submit_months;
+          const selected = available?.some((row: { month: string }) => row.month === month);
+          if (available?.length && !selected) {
+            setMonth(available[0].month);
+            return;
+          }
           setData(d);
           setNote(d.submissions?.[0]?.note || "");
-          setRows(
-            monthDays(month).map((work_date) => ({
-              ...(month === current || d.confirmation ? d.confirmed : d.wish)
-                ?.find((r: ShiftDay) => r.work_date === work_date),
+          if (!month || !selected) {
+            setRows([]);
+            return;
+          }
+          const source: ShiftDay[] = (view === "confirmed" ? d.confirmed : d.wish) || [];
+          setRows(monthDays(month).map(work_date => {
+            const row = source.find(day => day.work_date === work_date);
+            return {
+              ...row,
               work_date,
-              end_time: d.mode === "default" ? (month === current || d.confirmation ? d.confirmed : d.wish)
-                ?.find((r: ShiftDay) => r.work_date === work_date)?.end_time?.slice(0, 5) ?? null : undefined,
-              start_time:
-                (month === current || d.confirmation ? d.confirmed : d.wish)
-                  ?.find((r: ShiftDay) => r.work_date === work_date)
-                  ?.start_time?.slice(0, 5) || null,
-            })),
-          );
+              start_time: row?.start_time?.slice(0, 5) || null,
+              end_time: d.mode === "default"
+                ? row?.end_time?.slice(0, 5) ?? null : undefined,
+            };
+          }));
         }
       })
       .catch((e) => {
@@ -97,14 +111,14 @@ export default function MyShift({
     return () => {
       active = false;
     };
-  }, [endpoint, token, month, current]);
+  }, [endpoint, token, month, view]);
   async function submit() {
     if (pending.current) return;
     pending.current = true;
     setBusy(true);
     setError("");
     try {
-      const r = await fetch(endpoint + "?month=" + month, {
+      const r = await fetch(endpoint + "?view=" + view + "&month=" + month, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -129,28 +143,28 @@ export default function MyShift({
   if (!data && !shown.current)
     return (
       <section style={{ minHeight: 560 }} aria-busy="true">
-        <p role="status">読み込み中です…</p>
+        {error ? <ResultMessage>{error}</ResultMessage> : <p role="status">読み込み中です…</p>}
       </section>
     );
   shown.current = true;
-  const labels = [
-    `${Number(next.slice(5))}月のシフト`,
-    `${Number(current.slice(5))}月のシフト`,
-  ];
-  const fixed = month === current || Boolean(data?.confirmation);
-  // 既定の勤務の人は、提出を始める前の月にシフトが無いので、月を選ぶ欄を出さない。
-  const onlyNextMonth = data?.mode === "default" && current < DEFAULT_SHIFT_START_MONTH;
+  const months = (view === "confirmed"
+    ? data?.confirmed_months : data?.submit_months) || [];
+  const labels = months.map(row => `${Number(row.month.slice(5))}月のシフト`);
+  const fixed = view === "confirmed";
   return (
     <section style={{ minHeight: 560 }}>
       {title && <h2>{title}</h2>}
-      {!onlyNextMonth && (
+      {months.length > 1 && (
         <RadioGroup
           name="shift-month"
           label="表示する月"
           options={labels}
-          value={labels[month === next ? 0 : 1]}
+          value={labels[months.findIndex(row => row.month === month)]}
           onChange={(v) => {
-            if (!pending.current) setMonth(v === labels[0] ? next : current);
+            if (!pending.current) {
+              setData(null);
+              setMonth(months[labels.indexOf(v)].month);
+            }
           }}
         />
       )}
@@ -159,7 +173,9 @@ export default function MyShift({
         <p role="status" aria-busy="true">
           読み込み中です…
         </p>
-      ) : data.message ? <p>{data.message}</p> : (
+      ) : months.length === 0 ? (
+        <p>{fixed ? "確定したシフトはまだありません。" : "提出するシフトはありません。"}</p>
+      ) : data.message && !fixed ? <p>{data.message}</p> : (
         <>
           {!fixed ? (
             <p>
@@ -168,40 +184,40 @@ export default function MyShift({
                 ? "提出済み（" + stamp(data.submissions[0].submitted_at) + "）"
                 : "未提出"}
             </p>
-          ) : (
-            <p>
-              {data.confirmation
-                ? "確定：" + stamp(data.confirmation.confirmed_at)
-                : "この月のシフトはまだ確定していません。"}
-            </p>
-          )}
+          ) : data.confirmation?.confirmed_at ? (
+            <p>{"確定：" + stamp(data.confirmation.confirmed_at)}</p>
+          ) : null}
           {!fixed && !data.editable && <p>{closedMessage}</p>}
-          {(!fixed || data.confirmation) && (
-            data.mode === "default" ? <DefaultShiftDays
+          {data.mode === "default" ? (
+            <DefaultShiftDays
               options={data.options}
               rows={rows}
               defaults={data.defaults}
               onChange={setRows}
               disabled={busy || fixed || !data.editable}
-            /> : <ShiftDays
+            />
+          ) : (
+            <ShiftDays
               rows={rows}
               onChange={setRows}
               disabled={busy || fixed || !data.editable}
               holidays={data.holidays}
             />
           )}
-          <label style={{ display: "block" }}>
-            備考
-            <TextArea
-              aria-label="備考"
-              value={note}
-              maxLength={500}
-              readOnly={fixed || !data.editable}
-              disabled={busy}
-              rows={3}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </label>
+          {!fixed && (
+            <label style={{ display: "block" }}>
+              備考
+              <TextArea
+                aria-label="備考"
+                value={note}
+                maxLength={500}
+                readOnly={fixed || !data.editable}
+                disabled={busy}
+                rows={3}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </label>
+          )}
           {!fixed && data.editable && data.mode !== "default" && (
             <p>18:30 以降の開始を希望する場合は、ここに記入してください。</p>
           )}
@@ -221,5 +237,30 @@ export default function MyShift({
       )}
       {done && <DoneOverlay title="提出しました" />}
     </section>
+  );
+}
+
+export default function MyShift(props: {
+  endpoint?: string;
+  token?: string;
+  initial?: MyData;
+  title?: string;
+  view?: "mine" | "confirmed";
+}) {
+  const [selection, setSelection] = useState("提出");
+  const view = props.view || (selection === "提出" ? "mine" : "confirmed");
+  return (
+    <>
+      {!props.view && (
+        <RadioGroup
+          name="shift-view"
+          label="表示するシフト"
+          options={["提出", "確定"]}
+          value={selection}
+          onChange={setSelection}
+        />
+      )}
+      <MyShiftPanel key={view} {...props} view={view} />
+    </>
   );
 }

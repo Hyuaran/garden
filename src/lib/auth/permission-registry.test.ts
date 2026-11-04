@@ -6,6 +6,18 @@ import {
 } from "@/app/root/_constants/types";
 import { SYSTEM_MENU_ITEMS } from "@/app/system/_components/ShachoShell/shacho-shell-config";
 import { PERMISSION_ENTRIES, buildRoleSummary } from "./permission-registry";
+import { SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
+
+it("シフトは提出・本人の確定・みんなの3タブで、本人側は全員が既定", () => {
+  const tabs = SYSTEM_VIEW_SCOPES.filter(scope => scope.pageKey === "system-shift" && scope.tabKey);
+  expect(tabs.map(scope => [scope.tabKey, scope.label])).toEqual([
+    ["mine", "自分のシフトを提出"],
+    ["confirmed", "確定した自分のシフト"],
+    ["team", "みんなのシフト"],
+  ]);
+  for (const scope of tabs.filter(scope => scope.tabKey !== "team"))
+    expect(scope.defaultRoles).toEqual(GARDEN_ROLE_ORDER);
+});
 
 function allows(label: string, role: GardenRole) {
   const entry = PERMISSION_ENTRIES.find((item) => item.label === label);

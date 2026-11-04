@@ -14,13 +14,16 @@ export async function shiftRoute(
   liff = false,
 ) {
   try {
+    const myView = request.method === "GET" &&
+      new URL(request.url).searchParams.get("view") === "confirmed"
+      ? "confirmed" : "mine";
     const employee = liff
       ? await verifyLiffEmployee(
           request.headers.get("authorization")?.replace(/^Bearer /i, ""),
         )
       : await requireViewEmployee(
           "system-shift",
-          action === "my" ? "mine" : "team",
+          action === "my" ? myView : "team",
           action === "my" ? "employee" : "manager",
         );
     if (employee instanceof Response) return employee;
@@ -48,7 +51,7 @@ export async function shiftRoute(
         !resolveCanView(
           permissions.data as ViewPermission[],
           "system-shift",
-          "mine",
+          myView,
           {
             employeeId: employee.employee_id,
             role: role.data.garden_role as GardenRole,
@@ -91,6 +94,7 @@ export async function shiftRoute(
             month,
             request.method === "PUT" ? body.rows : undefined,
             body.note,
+            myView,
           )
         : await teamShift(
             month,

@@ -35,14 +35,18 @@ it("既定の勤務だけを表示し、休みの日は勤務を選べない", (
 it("本人が既定のまま提出すると開始・終了・種別を一緒に送る", async () => {
   // 実時間を使い、通信はローカルのモックだけ。
   const row = { work_date: "2027-01-04", start_time: "09:30", end_time: "18:00", day_kind: "work" };
-  const fetcher = vi.fn(async () => Response.json({ eligible: true, mode: "default", editable: true, wish: [row], defaults: [row], submissions: [] }));
+  const fetcher = vi.fn(async () => Response.json({
+    eligible: true, mode: "default", editable: true,
+    submit_months: [{ month: "2027-01", editable: true }], confirmed_months: [],
+    wish: [row], defaults: [row], submissions: [],
+  }));
   vi.stubGlobal("fetch", fetcher);
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-12-04T12:00:00+09:00"));
   render(<MyShift />);
   fireEvent.click(await screen.findByRole("button", { name: "提出する" }));
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
-  const init = (fetcher.mock.calls[1] as unknown as [string, RequestInit])[1];
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+  const init = (fetcher.mock.calls[2] as unknown as [string, RequestInit])[1];
   const sent = JSON.parse(String(init.body));
   expect(sent.rows.find((day: { work_date: string }) => day.work_date === row.work_date)).toMatchObject(row);
 });

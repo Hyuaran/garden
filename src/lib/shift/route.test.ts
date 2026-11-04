@@ -15,6 +15,14 @@ vi.mock("@/lib/shift/service.server", () => ({
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: vi.fn() }));
 import { shiftRoute } from "./route.server";
 import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
+it("本人の確定GETはconfirmed、PUTはmineの権限を確認する", async () => {
+  for (const method of ["GET", "PUT"]) {
+    await shiftRoute(new Request("http://localhost/api?month=2026-11&view=confirmed", { method }), "my");
+    expect(requireViewEmployee).toHaveBeenLastCalledWith(
+      "system-shift", method === "GET" ? "confirmed" : "mine", "employee",
+    );
+  }
+});
 it("route case 1", async () => {
   for (const action of [
     "my",

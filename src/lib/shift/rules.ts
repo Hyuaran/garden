@@ -144,3 +144,41 @@ export function stamp(value: string | Date) {
     })
     .replace(/\//g, "/");
 }
+
+export function offsetMonth(month: string, offset: number) {
+  monthDays(month);
+  const date = new Date(month + "-01T00:00:00Z");
+  date.setUTCMonth(date.getUTCMonth() + offset);
+  return date.toISOString().slice(0, 7);
+}
+
+export function myShiftMonths({
+  now, mode, submittedMonths, confirmedMonths, personalConfirmedMonths,
+}: {
+  now: Date;
+  mode: "telema" | "default";
+  submittedMonths: string[];
+  confirmedMonths: string[];
+  personalConfirmedMonths: string[];
+}) {
+  const current = now.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }).slice(0, 7);
+  const submit_months = [current, offsetMonth(current, 1), offsetMonth(current, 2)]
+    .filter(month => !confirmedMonths.includes(month))
+    .filter(month => month !== current
+      || (submittedMonths.includes(month) && !personalConfirmedMonths.includes(month)))
+    .filter(month => mode !== "default" || month >= DEFAULT_SHIFT_START_MONTH)
+    .slice(0, 2)
+    .map(month => ({
+      month,
+      editable: month !== current && now.getTime() <= deadline(month).getTime(),
+    }));
+  const confirmed_months = [...new Set([...confirmedMonths, ...personalConfirmedMonths])]
+    .sort().reverse().slice(0, 2).map(month => ({ month }));
+  return { submit_months, confirmed_months };
+}
+
+export function canSubmitMonth(month: string, now: Date, confirmed = false) {
+  const current = now.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }).slice(0, 7);
+  return !confirmed && [offsetMonth(current, 1), offsetMonth(current, 2)].includes(month)
+    && now.getTime() <= deadline(month).getTime();
+}

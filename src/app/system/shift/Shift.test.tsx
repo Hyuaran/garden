@@ -66,6 +66,8 @@ it("本人が月の日数分を提出し提出済みになる", async () => {
   const f = vi.fn(async (_url: unknown, init?: RequestInit) =>
     Response.json({
       eligible: true,
+      submit_months: [{ month: shiftMonths().next, editable: true }],
+      confirmed_months: [],
       editable: true,
       wish: [],
       confirmed: [],
@@ -101,6 +103,8 @@ it("次の月が確定したら本人は確定シフトを読むだけで見る"
     vi.fn(async () =>
       Response.json({
         eligible: true,
+        submit_months: [],
+        confirmed_months: [{ month }],
         editable: true,
         wish: [{ work_date: month + "-02", start_time: "14:00:00" }],
         confirmed: [{ work_date: month + "-02", start_time: "16:00:00" }],
@@ -113,7 +117,7 @@ it("次の月が確定したら本人は確定シフトを読むだけで見る"
       }),
     ),
   );
-  render(<MyShift />);
+  render(<MyShift view="confirmed" />);
   await screen.findByText(/^確定：/);
   const select = screen.getByRole<HTMLSelectElement>("combobox", {
     name: /\/2\(.\)のシフト/,

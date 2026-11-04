@@ -40,10 +40,11 @@ type TeamData = {
 export default function ShiftManager() {
   const { allowedTab } = useSystemView(),
     mine = allowedTab("mine"),
+    confirmed = allowedTab("confirmed"),
     team = allowedTab("team", false);
-  const [tab, setTab] = useUrlTab<"mine" | "team">(
-    mine ? "mine" : "team",
-    (key) => (key === "mine" && mine) || (key === "team" && team),
+  const [tab, setTab] = useUrlTab<"mine" | "confirmed" | "team">(
+    mine ? "mine" : confirmed ? "confirmed" : "team",
+    (key) => (key === "mine" && mine) || (key === "confirmed" && confirmed) || (key === "team" && team),
   );
   const [submittersRevision, setSubmittersRevision] = useState(0);
   return (
@@ -72,7 +73,16 @@ export default function ShiftManager() {
             aria-selected={tab === "mine"}
             onClick={() => setTab("mine")}
           >
-            自分のシフト
+            自分のシフトを提出
+          </button>
+        )}
+        {confirmed && (
+          <button
+            role="tab"
+            aria-selected={tab === "confirmed"}
+            onClick={() => setTab("confirmed")}
+          >
+            確定した自分のシフト
           </button>
         )}
         {team && (
@@ -86,7 +96,9 @@ export default function ShiftManager() {
         )}
       </SystemTabs>
       {tab === "mine" && mine ? (
-        <MyShift />
+        <MyShift view="mine" />
+      ) : tab === "confirmed" && confirmed ? (
+        <MyShift view="confirmed" />
       ) : team ? (
         <TeamShift submittersRevision={submittersRevision} />
       ) : null}
