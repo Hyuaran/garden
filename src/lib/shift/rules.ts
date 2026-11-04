@@ -172,7 +172,8 @@ export function myShiftMonths({
       month,
       editable: month !== current && now.getTime() <= deadline(month).getTime(),
     }));
-  const confirmed_months = [...new Set([...confirmedMonths, ...personalConfirmedMonths])]
+  // 全体で確定した月でも、本人の行が無ければ空のカレンダーになるので出さない。
+  const confirmed_months = [...new Set(personalConfirmedMonths)]
     .sort().reverse().slice(0, 2).map(month => ({ month }));
   return { submit_months, confirmed_months };
 }
