@@ -1,6 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { monthDays, startOptions, validateDays, deadline, holidayCandidates, confirmDays } from "./rules";
+import { monthDays, startOptions, validateDays, deadline, holidayCandidates, confirmDays, hasLunchBreak, hours } from "./rules";
 import { isShiftEligible } from "./eligibility";
+describe("休憩は 13:00〜14:00 を出勤している日だけ", () => {
+  it("13:00 までの開始は自動で休憩になる", () => {
+    expect(hasLunchBreak("12:00")).toBe(true);
+    expect(hasLunchBreak("12:30")).toBe(true);
+    expect(hasLunchBreak("13:00")).toBe(true);
+    expect(hasLunchBreak("13:30")).toBe(false);
+    expect(hasLunchBreak("14:00")).toBe(false);
+  });
+  it("時間数から休憩を引く", () => {
+    expect(hours("10:00")).toBe(10);
+    expect(hours("12:30")).toBe(7.5);
+    expect(hours("13:00")).toBe(7);
+    expect(hours("13:30")).toBe(7.5);
+    expect(hours("14:00")).toBe(7);
+  });
+});
 describe("rules case 1", () => {
   it("rules case 2", () => {
     expect(startOptions("2026-11-04")).toEqual([

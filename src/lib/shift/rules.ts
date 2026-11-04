@@ -38,9 +38,9 @@ export function validateDays(month: string, input: unknown): ShiftDay[] {
     return { work_date, start_time: row.start_time };
   });
 }
-// 12:00 までに始まる日は 13:00〜14:00 が休憩（KING OF TIME の今の予定と同じ）。
+// 休憩は 13:00〜14:00 の 1 時間。この時間を出勤している日は、打刻しなくても休憩したことにする。
 export function hasLunchBreak(start: string) {
-  return start.slice(0, 5) <= "12:00";
+  return start.slice(0, 5) <= "13:00";
 }
 export function hours(start: string | null) {
   if (!start) return 0;
