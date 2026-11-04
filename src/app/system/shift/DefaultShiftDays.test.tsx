@@ -44,7 +44,7 @@ it("本人が既定のまま提出すると開始・終了・種別を一緒に�
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-12-04T12:00:00+09:00"));
   render(<MyShift />);
-  fireEvent.click(await screen.findByRole("button", { name: "提出する" }));
+  fireEvent.click(await screen.findByRole("button", { name: /提出する$/ }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
   const init = (fetcher.mock.calls[2] as unknown as [string, RequestInit])[1];
   const sent = JSON.parse(String(init.body));

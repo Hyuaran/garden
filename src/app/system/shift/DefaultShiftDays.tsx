@@ -1,6 +1,6 @@
 "use client";
 import { formStyles } from "@/app/system/forms/_components/form-kit";
-import { halfHourTimes, hours, weekend, type DefaultOption, type ShiftDay } from "@/lib/shift/rules";
+import { halfHourTimes, shiftSummary, weekend, type DefaultOption, type ShiftDay } from "@/lib/shift/rules";
 import { shiftDate } from "./ShiftDays";
 import ShiftCalendar, { ShiftDayLabel } from "./ShiftCalendar";
 
@@ -11,6 +11,7 @@ export default function DefaultShiftDays({
   onChange,
   disabled,
   manager = false,
+  showSummary = true,
 }: {
   rows: ShiftDay[];
   defaults?: ShiftDay[];
@@ -18,11 +19,12 @@ export default function DefaultShiftDays({
   onChange: (rows: ShiftDay[]) => void;
   disabled?: boolean;
   manager?: boolean;
+  /** 提出ボタンに同じ文を出すときは false */
+  showSummary?: boolean;
 }) {
   function update(date: string, changes: Partial<ShiftDay>) {
     onChange(rows.map(row => row.work_date === date ? { ...row, ...changes } : row));
   }
-  const paidDays = rows.filter(row => row.day_kind === "paid").length;
   return (
     <div>
     <ShiftCalendar firstDate={rows[0]?.work_date} wide={!manager && options.length > 0}>
@@ -100,12 +102,7 @@ export default function DefaultShiftDays({
         );
       })}
     </ShiftCalendar>
-    <p>
-      出勤 {rows.filter(row => row.start_time).length}日・合計 {rows.reduce(
-        (total, row) => total + hours(row.start_time, row.end_time ?? "21:00"), 0,
-      )} 時間
-      {paidDays > 0 && `・有給 ${paidDays}日`}
-    </p>
+    {showSummary && <p>{shiftSummary(rows)}</p>}
     </div>
   );
 }

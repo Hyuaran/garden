@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import DoneOverlay from "@/app/system/_components/DoneOverlay/DoneOverlay";
 import {
+  formStyles,
   RadioGroup,
   SubmitButton,
   ResultMessage,
@@ -11,6 +12,7 @@ import {
   closedMessage,
   deadline,
   monthDays,
+  shiftSummary,
   stamp,
   type ShiftDay,
   type DefaultOption,
@@ -151,23 +153,38 @@ function MyShiftPanel({
     ? data?.confirmed_months : data?.submit_months) || [];
   const labels = months.map(row => `${Number(row.month.slice(5))}月のシフト`);
   const fixed = view === "confirmed";
+  const ready = Boolean(data) && months.length > 0 && !(data?.message && !fixed);
+  const holidays = data?.mode === "default" ? [] : data?.holidays;
+  const canSubmit = !fixed && Boolean(data?.editable);
   return (
-    <section style={{ minHeight: 560 }}>
+    <section className={formStyles.shiftPanel} style={{ minHeight: 560 }}>
       {title && <h2>{title}</h2>}
-      {months.length > 1 && (
-        <RadioGroup
-          name="shift-month"
-          label="表示する月"
-          options={labels}
-          value={labels[months.findIndex(row => row.month === month)]}
-          onChange={(v) => {
-            if (!pending.current) {
-              setData(null);
-              setMonth(months[labels.indexOf(v)].month);
-            }
-          }}
-        />
-      )}
+      <div className={formStyles.shiftTopRow}>
+        {months.length > 1 && (
+          <RadioGroup
+            name="shift-month"
+            label="表示する月"
+            options={labels}
+            value={labels[months.findIndex(row => row.month === month)]}
+            onChange={(v) => {
+              if (!pending.current) {
+                setData(null);
+                setMonth(months[labels.indexOf(v)].month);
+              }
+            }}
+          />
+        )}
+        {ready && !fixed ? (
+          <p>
+            提出の締切：{stamp(deadline(month))}　状態：
+            {data?.submissions?.[0]
+              ? "提出済み（" + stamp(data.submissions[0].submitted_at) + "）"
+              : "未提出"}
+          </p>
+        ) : ready && data?.confirmation?.confirmed_at ? (
+          <p>{"確定：" + stamp(data.confirmation.confirmed_at)}</p>
+        ) : null}
+      </div>
       <ResultMessage>{error}</ResultMessage>
       {!data ? (
         <p role="status" aria-busy="true">
@@ -177,16 +194,6 @@ function MyShiftPanel({
         <p>{fixed ? "確定したシフトはまだありません。" : "提出するシフトはありません。"}</p>
       ) : data.message && !fixed ? <p>{data.message}</p> : (
         <>
-          {!fixed ? (
-            <p>
-              提出の締切：{stamp(deadline(month))}　状態：
-              {data.submissions?.[0]
-                ? "提出済み（" + stamp(data.submissions[0].submitted_at) + "）"
-                : "未提出"}
-            </p>
-          ) : data.confirmation?.confirmed_at ? (
-            <p>{"確定：" + stamp(data.confirmation.confirmed_at)}</p>
-          ) : null}
           {!fixed && !data.editable && <p>{closedMessage}</p>}
           {data.mode === "default" ? (
             <DefaultShiftDays
@@ -195,6 +202,7 @@ function MyShiftPanel({
               defaults={data.defaults}
               onChange={setRows}
               disabled={busy || fixed || !data.editable}
+              showSummary={!canSubmit}
             />
           ) : (
             <ShiftDays
@@ -202,27 +210,31 @@ function MyShiftPanel({
               onChange={setRows}
               disabled={busy || fixed || !data.editable}
               holidays={data.holidays}
+              showSummary={!canSubmit}
             />
           )}
           {!fixed && (
-            <label style={{ display: "block" }}>
-              備考
-              <TextArea
-                aria-label="備考"
-                value={note}
-                maxLength={500}
-                readOnly={fixed || !data.editable}
-                disabled={busy}
-                rows={3}
-                onChange={(event) => setNote(event.target.value)}
-              />
-            </label>
-          )}
-          {!fixed && data.editable && data.mode !== "default" && (
-            <p>18:30 以降の開始を希望する場合は、ここに記入してください。</p>
-          )}
-          {!fixed && data.editable && data.mode === "default" && (
-            <p>ほかの時間を希望する場合は、備考に記入してください。</p>
+            <div className={formStyles.shiftNote}>
+              <label>
+                備考
+                <TextArea
+                  aria-label="備考"
+                  value={note}
+                  maxLength={500}
+                  readOnly={fixed || !data.editable}
+                  disabled={busy}
+                  rows={3}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </label>
+              {canSubmit && (
+                <p>
+                  {data.mode === "default"
+                    ? "ほかの時間を希望する場合は、備考に記入してください。"
+                    : "18:30 以降の開始を希望する場合は、備考に記入してください。"}
+                </p>
+              )}
+            </div>
           )}
           {!fixed && (
             <SubmitButton
@@ -230,7 +242,7 @@ function MyShiftPanel({
               disabled={!data.editable}
               onClick={() => void submit()}
             >
-              提出する
+              {canSubmit ? `${shiftSummary(rows, holidays)} にて提出する` : "提出する"}
             </SubmitButton>
           )}
         </>

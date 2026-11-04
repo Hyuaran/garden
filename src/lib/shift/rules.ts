@@ -114,6 +114,13 @@ export function hours(start: string | null, end = "21:00") {
   const [eh, em] = end.split(":").map(Number);
   return eh + em / 60 - h - m / 60 - (hasLunchBreak(start, end) ? 1 : 0);
 }
+/** 「出勤 23日・合計 69 時間」の文。定休日は数えない。 */
+export function shiftSummary(rows: ShiftDay[], holidays: string[] = []) {
+  const worked = rows.filter(row => row.start_time && !holidays.includes(row.work_date));
+  const total = worked.reduce((sum, row) => sum + hours(row.start_time, row.end_time ?? "21:00"), 0);
+  const paid = rows.filter(row => row.day_kind === "paid").length;
+  return `出勤 ${worked.length}日・合計 ${total} 時間${paid > 0 ? `・有給 ${paid}日` : ""}`;
+}
 export function confirmDays(rows: ShiftDay[], holidays: string[]) {
   return rows.map((r) => ({
     ...r,

@@ -4,7 +4,7 @@ import {
   formStyles,
 } from "@/app/system/forms/_components/form-kit";
 import { useState } from "react";
-import { hours, startOptions, weekend, type ShiftDay } from "@/lib/shift/rules";
+import { shiftSummary, startOptions, weekend, type ShiftDay } from "@/lib/shift/rules";
 import ShiftCalendar, { ShiftDayLabel } from "./ShiftCalendar";
 export function shiftDate(date: string) {
   const weekday = ["日", "月", "火", "水", "木", "金", "土"][
@@ -19,12 +19,15 @@ export default function ShiftDays({
   disabled = false,
   holidays = [],
   manager = false,
+  showSummary = true,
 }: {
   rows: ShiftDay[];
   onChange: (rows: ShiftDay[]) => void;
   disabled?: boolean;
   holidays?: string[];
   manager?: boolean;
+  /** 提出ボタンに同じ文を出すときは false */
+  showSummary?: boolean;
 }) {
   const [weekdayStart, setWeekdayStart] = useState("14:00"),
     [holidayStart, setHolidayStart] = useState("10:00");
@@ -72,20 +75,9 @@ export default function ShiftDays({
           </div>
         ))}
       </ShiftCalendar>
-      <p>
-        出勤{" "}
-        {
-          rows.filter((r) => r.start_time && !holidays.includes(r.work_date))
-            .length
-        }
-        日・合計{" "}
-        {rows.reduce(
-          (n, r) =>
-            n + (holidays.includes(r.work_date) ? 0 : hours(r.start_time)),
-          0,
-        )}{" "}
-        時間
-      </p>
+      {showSummary && (
+        <p>{shiftSummary(rows.map((r) => ({ ...r, end_time: null })), holidays)}</p>
+      )}
       <div className={formStyles.shiftBulk}>
         <label>
           平日{" "}

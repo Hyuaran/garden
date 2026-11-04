@@ -528,7 +528,7 @@
 .shiftDays {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-  gap: 6px;
+  gap: 8px;
   width: 100%;
 }
 .shiftDay {
@@ -556,8 +556,50 @@
   width: 100%;
 }
 .shiftMonthTitle {
-  margin: 8px 0 4px;
+  margin: 0 0 12px;
+  font-size: 22px;
   font-weight: 700;
+  text-align: center;
+}
+/* 自分のシフトの提出・確定の画面。段ごとの間をあける */
+.shiftPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.shiftPanel > p {
+  margin: 0;
+}
+.shiftPanel .primary {
+  white-space: normal;
+}
+.shiftTopRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+.shiftTopRow:empty {
+  display: none;
+}
+.shiftTopRow > p {
+  margin: 0 0 0 auto;
+  text-align: right;
+}
+.shiftNote {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.shiftNote label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.shiftNote p {
+  margin: 0;
+  font-size: 13px;
 }
 .shiftWeekHead,
 .shiftBlank,
@@ -637,6 +679,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+.shiftBulk {
+  margin-top: 16px;
 }
 .shiftBulk label {
   display: flex;

@@ -21,7 +21,7 @@ it.each(["telema", "default"])("%sの確定行だけの月は変更できず、�
   await waitFor(() => expect(screen.getAllByRole("combobox").length).toBeGreaterThan(0));
   expect(screen.getAllByRole("combobox").every(element => (element as HTMLSelectElement).disabled)).toBe(true);
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "提出する" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /提出する$/ })).not.toBeInTheDocument();
   expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   expect(screen.queryByText(/まだ確定していません/)).not.toBeInTheDocument();
   expect(screen.queryByText(/^確定：/)).not.toBeInTheDocument();
@@ -39,14 +39,14 @@ it("スマホは提出で始まり、確定に切り替えると備考と提出�
   const fetcher = vi.fn(async () => Response.json(response()));
   vi.stubGlobal("fetch", fetcher);
   render(<MyShift title="自分のシフト" />);
-  await screen.findByRole("button", { name: "提出する" });
+  await screen.findByRole("button", { name: /提出する$/ });
   expect(screen.getByRole("radio", { name: "提出" })).toBeChecked();
   expect(screen.queryByRole("radio", { name: "12月のシフト" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("radio", { name: "確定" }));
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   await waitFor(() => expect(screen.getAllByRole("combobox").length).toBeGreaterThan(0));
-  expect(screen.queryByRole("button", { name: "提出する" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /提出する$/ })).not.toBeInTheDocument();
   expect(fetcher.mock.calls.some(call => String((call as unknown[])[0]).includes("view=confirmed"))).toBe(true);
 });
 

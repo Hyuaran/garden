@@ -83,7 +83,7 @@ it("本人が月の日数分を提出し提出済みになる", async () => {
   fireEvent.click(
     await screen.findByRole("button", { name: "全部の日に入力する" }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "提出する" }));
+  fireEvent.click(screen.getByRole("button", { name: /提出する$/ }));
   await screen.findByText("提出しました");
   const overlay = screen.getByRole("status", { name: "提出しました" });
   expect(overlay.querySelector("svg path")).toBeInTheDocument();
@@ -124,7 +124,7 @@ it("次の月が確定したら本人は確定シフトを読むだけで見る"
   });
   expect(select.value).toBe("16:00");
   expect(select).toBeDisabled();
-  expect(screen.queryByRole("button", { name: "提出する" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /提出する$/ })).toBeNull();
 });
 it("責任者が行を押して月の小窓を開き、確定前に確認する", async () => {
   const d = {
