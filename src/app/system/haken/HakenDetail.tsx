@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import {
+  ActionButton,
   FieldLabel,
+  formStyles,
   RadioGroup,
 } from "@/app/system/forms/_components/form-kit";
 import {
@@ -66,6 +68,7 @@ export default function HakenDetail({
   );
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [issueStart, setIssueStart] = useState("");
   const [issueEnd, setIssueEnd] = useState("");
   const [event, setEvent] = useState({
@@ -170,7 +173,10 @@ export default function HakenDetail({
       />
       <h1>{title}</h1>
       {message && (
-        <p role="alert" className={styles.error}>
+        <p
+          role={message === "保存しました。" ? "status" : "alert"}
+          className={message === "保存しました。" ? undefined : styles.error}
+        >
           {message}
         </p>
       )}
@@ -413,7 +419,11 @@ export default function HakenDetail({
             </>
           )}
           <div className={styles.actions}>
-            <button type="submit" disabled={!canWrite || busy}>
+            <button
+              type="submit"
+              className={formStyles.primary}
+              disabled={!canWrite || busy}
+            >
               保存する
             </button>
           </div>
@@ -491,7 +501,7 @@ export default function HakenDetail({
                   accept="application/pdf,.pdf"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
-                <button
+                <ActionButton
                   disabled={busy || !file}
                   onClick={() =>
                     void run(async () => {
@@ -512,7 +522,7 @@ export default function HakenDetail({
                   }
                 >
                   追加する
-                </button>
+                </ActionButton>
               </div>
             )}
             {data.documents
@@ -583,7 +593,7 @@ export default function HakenDetail({
                     </Field>
                   ))}
                 </div>
-                <button
+                <ActionButton
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
@@ -593,7 +603,7 @@ export default function HakenDetail({
                   }
                 >
                   追加する
-                </button>
+                </ActionButton>
               </>
             )}
             {data.events
@@ -606,21 +616,28 @@ export default function HakenDetail({
               ))}
           </fieldset>
           <div className={styles.actions}>
-            <a href={`/api/system/haken/excel?id=${id}`}>
+            <a
+              className={formStyles.actionButton}
+              href={`/api/system/haken/excel?id=${id}`}
+            >
               台帳を Excel で出力する
             </a>
             {canWrite && (
-              <button
+              <ActionButton
                 disabled={busy}
-                onClick={() =>
+                onClick={() => {
+                  if (!confirmDelete) {
+                    setConfirmDelete(true);
+                    return;
+                  }
                   void run(async () => {
                     await saveHaken("delete-worker", { id });
                     router.push("/system/haken");
-                  })
-                }
+                  });
+                }}
               >
-                台帳を削除する
-              </button>
+                {confirmDelete ? "本当に削除する" : "台帳を削除する"}
+              </ActionButton>
             )}
           </div>
         </>

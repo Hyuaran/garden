@@ -24,20 +24,19 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px 24px;
 }
-.grid label,
 .field {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.page input,
+.page input:not([type="radio"]):not([type="file"]),
 .page select,
 .page textarea,
 .issue input,
 .issue select {
   font: inherit;
   color: inherit;
-  background: transparent;
+  background-color: transparent;
   padding: 8px 10px;
   border: 1px solid var(--border, #c8ceca);
   border-radius: 4px;
@@ -59,6 +58,11 @@
 .actions {
   justify-content: flex-end;
   margin-top: 24px;
+}
+.subheading {
+  margin: 28px 0 8px;
+  font-size: 18px;
+  font-weight: 500;
 }
 .error {
   color: #a43232;

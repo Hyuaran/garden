@@ -9,6 +9,7 @@ import DataTable, {
   type DataColumn,
 } from "@/app/system/_components/DataTable/DataTable";
 import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
+import { ActionButton } from "@/app/system/forms/_components/form-kit";
 import { ledgerNotices } from "@/lib/haken/ledger";
 import { todayJst } from "@/lib/haken/rules";
 import type { HakenData, HakenWorker, HakenParty } from "@/lib/haken/types";
@@ -31,7 +32,6 @@ export default function HakenClient({
   const [tab, setTab] = useState(initialTab);
   const [partyIds, setPartyIds] = useState([""]);
   const [state, setState] = useState([""]);
-  const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const today = todayJst();
   const contract = (worker: HakenWorker) =>
@@ -62,8 +62,7 @@ export default function HakenClient({
     .filter(
       (w) =>
         (!partyIds[0] || partyIds.includes(contract(w).party_id)) &&
-        (!state[0] || state.includes(status(w))) &&
-        w.name.includes(name),
+        (!state[0] || state.includes(status(w))),
     );
   const columns: DataColumn<HakenWorker>[] = [
     { id: "name", label: "氏名", type: "text", value: (w) => w.name },
@@ -155,6 +154,11 @@ export default function HakenClient({
           </button>
         ))}
       </SystemTabs>
+      {message && (
+        <p role="alert" className={styles.error}>
+          {message}
+        </p>
+      )}
       {tab === "workers" && (
         <>
           <div className={styles.tools}>
@@ -177,17 +181,12 @@ export default function HakenClient({
                 (label, i) => ({ value: i ? label : "", label }),
               )}
             />
-            <label>
-              氏名{" "}
-              <input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
             {canWrite && (
-              <button onClick={() => router.push("/system/haken/ukeire/new")}>
+              <ActionButton onClick={() => router.push("/system/haken/ukeire/new")}>
                 追加する
-              </button>
+              </ActionButton>
             )}
           </div>
-          {message && <p role="alert">{message}</p>}
           <DataTable
             rows={rows}
             summary={(filtered) => (
@@ -211,16 +210,16 @@ export default function HakenClient({
           <div className={styles.tools}>
             {canWrite && (
               <>
-                <button
+                <ActionButton
                   onClick={() => router.push("/system/haken/parties/new")}
                 >
                   派遣会社を追加する
-                </button>
-                <button
+                </ActionButton>
+                <ActionButton
                   onClick={() => router.push("/system/haken/offices/new")}
                 >
                   受入事業所を追加する
-                </button>
+                </ActionButton>
               </>
             )}
           </div>
@@ -234,12 +233,18 @@ export default function HakenClient({
             defaultSort={{ id: "name", direction: "asc" }}
             onRowClick={(p) => router.push(`/system/haken/parties/${p.id}`)}
           />
-          <h2>受入事業所</h2>
-          {data.offices.map((o) => (
-            <p key={o.id}>
-              <a href={`/system/haken/offices/${o.id}`}>{o.name}</a>
-            </p>
-          ))}
+          <h2 className={styles.subheading}>受入事業所</h2>
+          <DataTable
+            rows={data.offices}
+            columns={[
+              { id: "name", label: "事業所名", type: "text", value: (o) => o.name },
+              { id: "address", label: "所在地", type: "text", value: (o) => o.address },
+            ]}
+            rowKey={(o) => o.id}
+            searchText={(o) => [o.name, o.address].join(" ")}
+            defaultSort={{ id: "name", direction: "asc" }}
+            onRowClick={(o) => router.push(`/system/haken/offices/${o.id}`)}
+          />
         </>
       )}
       {tab === "deadlines" && (

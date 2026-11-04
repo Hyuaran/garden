@@ -47,7 +47,9 @@ export default function HakenHireFields({
       {error && <p role="alert">{error}</p>}
       <div className={styles.grid}>
         <label className={styles.field}>
-          派遣会社<span className="garden-required">＊</span>
+          <span>
+            派遣会社<span className="garden-required">＊</span>
+          </span>
           <select
             required
             value={partyId}
@@ -63,7 +65,9 @@ export default function HakenHireFields({
           </select>
         </label>
         <label className={styles.field}>
-          派遣期間の終了日<span className="garden-required">＊</span>
+          <span>
+            派遣期間の終了日<span className="garden-required">＊</span>
+          </span>
           <input
             required
             type="date"

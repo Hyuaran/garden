@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import fontkit from "@pdf-lib/fontkit";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
 import reference from "./reference-text.json";
 import type { HakenOffice, HakenParty } from "./types";
 
@@ -38,7 +38,7 @@ export function hakenPdfText(type: IssueType, input: IssueInput): string {
   );
   replace(
     "〒541-0054\n　　　　大阪府大阪市中央区南本町2-6-12\n　　　　サンマリオンタワー地上2階西号室",
-    office.address,
+    office.address.replace(/\n/g, "\n　　　　"),
   );
   replace("2029年9月11日", japaneseDate(input.conflict));
   replace("2026年9月11日", japaneseDate(input.start));
@@ -103,35 +103,142 @@ export function hakenPdfText(type: IssueType, input: IssueInput): string {
   return text;
 }
 
+const PAGE_WIDTH = 595.28;
+const PAGE_HEIGHT = 841.89;
+const LEFT = 70;
+const RIGHT = PAGE_WIDTH - LEFT;
+const PADDING = 14;
+const CONTENT_TOP = PAGE_HEIGHT - 70;
+const CONTENT_BOTTOM = 56;
+
+type BoxLine = { x: number; text: string };
+
+/** 手本と同じ形（右寄せの日付と差出人・中央の題名・枠で囲んだ本文）で組む。 */
 export async function generateHakenPdf(type: IssueType, input: IssueInput) {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
-  // 同梱フォントのみを使う。ホストPCのフォントにはアクセスしない。
   // パスを実行時に変えると、配備物に public 全体が入って容量の上限を超えるので固定する。
   const font = await pdf.embedFont(
     await readFile(path.join(process.cwd(), "public/fonts/NotoSansJP-Regular.ttf")),
+    // subset: true にすると文字が抜ける（テキストは取れても絵が欠ける）。全部を埋め込む。
     { subset: false },
   );
-  let page = pdf.addPage([595.28, 841.89]);
-  let y = 790;
-  const size = type === "reply" ? 9 : 11;
-  const leading = type === "reply" ? 13 : 18;
-  for (const source of hakenPdfText(type, input).split("\n")) {
+  const size = type === "reply" ? 9.5 : 11;
+  const leading = type === "reply" ? 15 : 19;
+  const valueX = LEFT + PADDING + size * 11;
+  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  let y = CONTENT_TOP;
+
+  const newPageIfNeeded = (height: number) => {
+    if (y - height >= CONTENT_BOTTOM) return;
+    page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    y = CONTENT_TOP;
+  };
+  const wrap = (text: string, width: number) => {
+    const lines: string[] = [];
     let line = "";
-    const draw = () => {
-      if (y < 48) {
-        page = pdf.addPage([595.28, 841.89]);
-        y = 790;
+    for (const char of text) {
+      if (line && font.widthOfTextAtSize(line + char, size) > width) {
+        lines.push(line);
+        line = "";
       }
-      page.drawText(line, { x: 48, y, size, font });
-      y -= leading;
-      line = "";
-    };
-    for (const char of source) {
-      if (line && font.widthOfTextAtSize(line + char, size) > 499) draw();
       line += char;
     }
-    draw();
+    lines.push(line);
+    return lines;
+  };
+  const place = (text: string, align: "left" | "right" | "center", gap: number, big = false) => {
+    const fontSize = big ? 16 : size;
+    const width = font.widthOfTextAtSize(text, fontSize);
+    const x = align === "left" ? LEFT : align === "right" ? RIGHT - width : (PAGE_WIDTH - width) / 2;
+    page.drawText(text, { x, y, size: fontSize, font });
+    y -= gap;
+  };
+  const boxLines = (lines: string[]) => {
+    const result: BoxLine[] = [];
+    const inner = LEFT + PADDING;
+    for (const source of lines) {
+      const continued = source.match(/^(\u3000+)(.*)$/);
+      const row = source.match(/^([^：\u3000]{1,14})\u3000*：(.*)$/);
+      if (type === "reply" && continued && continued[1].length >= 8) {
+        const x = valueX + size * (continued[1].length - 11);
+        wrap(continued[2], RIGHT - PADDING - x).forEach((text) => result.push({ x, text }));
+      } else if (type === "reply" && row) {
+        const values = wrap(row[2], RIGHT - PADDING - valueX - size);
+        result.push({ x: inner, text: row[1] });
+        values.forEach((text, index) =>
+          result.push({ x: index ? valueX + size : -1, text: index ? text : `：${text}` }),
+        );
+      } else {
+        const indent = source.match(/^\u3000*/)![0].length * size;
+        const body = source.trimStart();
+        if (!body) result.push({ x: inner, text: "" });
+        else
+          wrap(body, RIGHT - PADDING - inner - indent).forEach((text) =>
+            result.push({ x: inner + indent, text }),
+          );
+      }
+    }
+    return result;
+  };
+  const drawBox = (lines: string[]) => {
+    const rows = boxLines(lines);
+    const count = rows.filter((row) => row.x !== -1).length;
+    const height = count * leading + PADDING * 2 - (leading - size);
+    newPageIfNeeded(height);
+    page.drawRectangle({
+      x: LEFT,
+      y: y - height + size,
+      width: RIGHT - LEFT,
+      height,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 0.7,
+    });
+    let lineY = y - PADDING;
+    rows.forEach((row, index) => {
+      if (row.x === -1) {
+        page.drawText(row.text, { x: valueX - size, y: lineY, size, font });
+        lineY -= leading;
+        return;
+      }
+      if (row.text) page.drawText(row.text, { x: row.x, y: lineY, size, font });
+      if (rows[index + 1]?.x !== -1) lineY -= leading;
+    });
+    y -= height + leading * 0.8;
+  };
+
+  const lines = hakenPdfText(type, input).split("\n");
+  while (lines.at(-1) === "") lines.pop();
+  place(lines[0], "right", leading * 1.6);
+  place(lines[1], "left", leading * 1.6);
+  place(lines[2], "right", leading * 2.2);
+  place(lines[3], "center", leading * 2.2, true);
+  let index = 4;
+  while (index < lines.length && !/^(\d．|○)/.test(lines[index])) {
+    for (const text of wrap(lines[index], RIGHT - LEFT)) place(text, "left", leading);
+    index += 1;
+  }
+  y -= leading * 0.6;
+  while (index < lines.length) {
+    const heading = lines[index];
+    if (heading === "以上") {
+      newPageIfNeeded(leading);
+      place(heading, "right", leading);
+      index += 1;
+      continue;
+    }
+    index += 1;
+    const body: string[] = [];
+    while (index < lines.length && !/^(\d．|○)/.test(lines[index]) && lines[index] !== "以上") {
+      body.push(lines[index]);
+      index += 1;
+    }
+    while (body.at(-1) === "") body.pop();
+    const rows = boxLines(body).filter((row) => row.x !== -1).length;
+    newPageIfNeeded(leading * 1.4 + rows * leading + PADDING * 2);
+    page.drawText(heading, { x: LEFT, y, size: size + 1, font });
+    y -= leading * 1.4;
+    drawBox(body);
   }
   return Buffer.from(await pdf.save());
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ActionButton } from "@/app/system/forms/_components/form-kit";
 import { DOCUMENT_LABELS, type HakenData } from "@/lib/haken/types";
 import { conflictDate, conflictMismatch, todayJst } from "@/lib/haken/rules";
 import styles from "./haken.module.css";
@@ -94,8 +95,7 @@ export default function IssueButtons({
       )}
       <div className={styles.issueButtons}>
         {["conflict_notice", "treatment", "reply"].map((type) => (
-          <button
-            type="button"
+          <ActionButton
             key={type}
             disabled={
               busy || !partyId || !start || !end || !issuedOn || !officeId
@@ -103,7 +103,7 @@ export default function IssueButtons({
             onClick={() => void download(type)}
           >
             {DOCUMENT_LABELS[type]}をダウンロードする
-          </button>
+          </ActionButton>
         ))}
       </div>
       <p>抵触日 {calculated ?? "未計算"}（計算）</p>

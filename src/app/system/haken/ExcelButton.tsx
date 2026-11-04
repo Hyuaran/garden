@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ActionButton } from "@/app/system/forms/_components/form-kit";
 import { todayJst } from "@/lib/haken/rules";
 export default function ExcelButton({
   ids,
@@ -34,12 +35,8 @@ export default function ExcelButton({
     }
   }
   return (
-    <button
-      type="button"
-      disabled={busy || !ids.length}
-      onClick={() => void download()}
-    >
+    <ActionButton disabled={busy || !ids.length} onClick={() => void download()}>
       Excel を出力する
-    </button>
+    </ActionButton>
   );
 }
