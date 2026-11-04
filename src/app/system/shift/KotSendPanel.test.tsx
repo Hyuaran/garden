@@ -22,6 +22,7 @@ it("送信欄・失敗一覧・確認小窓・進捗の幕を表示し、人ご�
       prompt={0}
       onRefresh={refresh}
       onBusy={busy}
+      holidays={[]}
       people={[
         { employee_id: "1", name: "山田 太郎" },
         { employee_id: "2", name: "佐藤 花子" },
@@ -80,6 +81,7 @@ it("確定直後の確認を開き、受付停止の理由を表示する", asyn
       onRefresh={() => {}}
       onBusy={() => {}}
       people={[{ employee_id: "1", name: "山田" }]}
+      holidays={["2026-12-24"]}
       rows={[
         { employee_id: "1", work_date: "2099-12-02", kot_status: "unsent" },
       ]}

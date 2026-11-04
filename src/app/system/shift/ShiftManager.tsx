@@ -244,6 +244,7 @@ export function TeamShift() {
               month={month}
               rows={data.confirmed}
               people={data.people}
+              holidays={data.holidays}
               prompt={kotPrompt}
               disabled={busy}
               onRefresh={() => setRevision((value) => value + 1)}

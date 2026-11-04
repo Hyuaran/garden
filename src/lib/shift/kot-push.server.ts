@@ -21,9 +21,6 @@ export type KotShiftRow = {
   kot_error: string | null;
 };
 
-// KOT の休暇区分コード。定休日は全員「公休」。「欠勤」は Garden からは消さない。
-const KOT_PUBLIC_HOLIDAY_CODE = "9";
-const KOT_ABSENCE_CODE = "3";
 const KOT_EMPTY_RESPONSE = "kot: JSON を解釈できません";
 
 export function kotToday(now = new Date()) {
@@ -106,7 +103,6 @@ type Existing = {
     employeeKey: string;
     clockInSchedule?: string | null;
     clockOutSchedule?: string | null;
-    holidaysObtained?: { fulltimeHoliday?: { code?: string } };
   }[];
 };
 // 登録の成功側の日付は "Mon Apr 01 00:00:00 JST 2024" の形で返るため、日付の照合には使わない。
@@ -136,13 +132,6 @@ export async function pushKotPerson(
   check(confirmation);
   if (!confirmation.data?.confirmed_at)
     throw new Error("先にシフトを確定してください。");
-  const setting = await db
-    .from("system_kanri_month_setting")
-    .select("holidays")
-    .eq("year_month", month)
-    .maybeSingle();
-  check(setting);
-  const closedDays: string[] = setting.data?.holidays ?? [];
   const rows = (await kotRows(month)).filter(
     (row) =>
       row.employee_id === employeeId &&
@@ -218,9 +207,7 @@ export async function pushKotPerson(
     for (const row of rows) await record(row, publicError(error));
     return { sent, failed };
   }
-  const working = rows.filter(
-    (row) => row.start_time || closedDays.includes(row.work_date),
-  );
+  const working = rows.filter((row) => row.start_time);
   if (working.length) {
     let response: PutResult;
     try {
@@ -261,7 +248,7 @@ export async function pushKotPerson(
           ?.filter((item) => item.employeeKey === employee.key)
           .flatMap((item) => item.errors || []) || [];
       const error = errors.find(
-        (item) => item.date === row.work_date || !item.date,
+        (item) => kotErrorDate(item.date) === row.work_date || !item.date,
       );
       const success = response?.successRequest?.some(
         (item) => item.employeeKey === employee.key,
@@ -281,10 +268,8 @@ export async function pushKotPerson(
       const schedule = existing
         .find((day) => String(day.date).slice(0, 10) === row.work_date)
         ?.dailySchedules?.find((item) => item.employeeKey === employee.key);
-      if (
-        schedule &&
-        schedule.holidaysObtained?.fulltimeHoliday?.code !== KOT_ABSENCE_CODE
-      )
+      // 消すのは勤務の予定だけ。公休・欠勤は KOT の画面でしか入れ直せないので残す。
+      if (schedule?.clockInSchedule)
         await relay(
           {
             method: "DELETE",
@@ -300,16 +285,19 @@ export async function pushKotPerson(
   return { sent, failed };
 }
 
+// KOT のエラーの日付は "Thu Dec 24 00:00:00 JST 2026" の形で返る。
+function kotErrorDate(value: string | undefined) {
+  const match = /^\w{3} (\w{3}) (\d{2}) .* (\d{4})$/.exec(value ?? "");
+  if (!match) return value;
+  const month = "JanFebMarAprMayJunJulAugSepOctNovDec".indexOf(match[1]) / 3 + 1;
+  return `${match[3]}-${String(month).padStart(2, "0")}-${match[2]}`;
+}
+
 function scheduleBody(row: KotShiftRow, divisionCode: string) {
-  const base = {
+  const start = row.start_time!.slice(0, 5);
+  return {
     workingDate: row.work_date,
     workPlaceDivisionCode: divisionCode,
-  };
-  if (!row.start_time)
-    return { ...base, fulltimeHoliday: { code: KOT_PUBLIC_HOLIDAY_CODE } };
-  const start = row.start_time.slice(0, 5);
-  return {
-    ...base,
     clockInSchedule: `${row.work_date}T${start}+09:00`,
     clockOutSchedule: `${row.work_date}T21:00+09:00`,
     ...(hasLunchBreak(start)

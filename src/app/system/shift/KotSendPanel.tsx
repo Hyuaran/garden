@@ -21,6 +21,7 @@ export default function KotSendPanel({
   month,
   rows,
   people,
+  holidays,
   prompt,
   onRefresh,
   onBusy,
@@ -29,6 +30,7 @@ export default function KotSendPanel({
   month: string;
   rows: KotDisplayRow[];
   people: { employee_id: string; name: string }[];
+  holidays: string[];
   prompt: number;
   onRefresh: () => void;
   onBusy: (busy: boolean) => void;
@@ -140,6 +142,13 @@ export default function KotSendPanel({
         </ul>
       )}
       <p>今日より前の日は送りません。今日の予定も送りません。</p>
+      {holidays.length > 0 && (
+        <p>
+          定休日の「公休」は KING OF TIME の決まりで自動では送れません。KING OF
+          TIME の画面で入力してください：
+          {holidays.map(shiftDate).join("・")}
+        </p>
+      )}
       <ActionButton
         disabled={disabled || !!progress || !targets.length}
         onClick={() => setOpen(true)}

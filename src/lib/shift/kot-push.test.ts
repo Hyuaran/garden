@@ -71,7 +71,7 @@ beforeEach(() => {
             date: "2026-12-04",
             dailySchedules: [{ date: "2026-12-04", employeeKey: "other" }],
           },
-          // 欠勤は Garden の休みで消さない
+          // 公休・欠勤は Garden の休みで消さない
           {
             date: "2026-12-11",
             dailySchedules: [
@@ -100,10 +100,7 @@ beforeEach(() => {
         return query;
       },
       range: async () => ({ data: rows, error: null }),
-      maybeSingle: async () => ({
-        data: { confirmed_at: "now", holidays: ["2026-12-10"] },
-        error: null,
-      }),
+      maybeSingle: async () => ({ data: { confirmed_at: "now" }, error: null }),
       single: async () => ({ data: { kot_employee_id: code }, error: null }),
       then: (resolve: (value: unknown) => void) => {
         if (patch) mock.patches.push(patch);
@@ -112,7 +109,6 @@ beforeEach(() => {
     };
     expect([
       "system_shift_month",
-      "system_kanri_month_setting",
       "system_shift_confirmed",
       "root_employees",
     ]).toContain(table);
@@ -150,11 +146,6 @@ it("出勤をまとめて送り、手入力の予定がある休みだけ削除�
             startEndBreakSchedule: [
               { start: "2026-12-05T13:00+09:00", end: "2026-12-05T14:00+09:00" },
             ],
-          },
-          {
-            workingDate: "2026-12-10",
-            workPlaceDivisionCode: "1000",
-            fulltimeHoliday: { code: "9" },
           },
         ],
       },
@@ -235,7 +226,11 @@ it("200 の errorRequest を行の失敗にする", async () => {
             {
               employeeKey: "abc123",
               errors: [
-                { date: "2026-12-02", code: "x", message: "打刻があります" },
+                {
+                  date: "Wed Dec 02 00:00:00 JST 2026",
+                  code: "x",
+                  message: "打刻があります",
+                },
               ],
             },
           ],
@@ -243,8 +238,8 @@ it("200 の errorRequest を行の失敗にする", async () => {
       : normal(id),
   );
   expect(await pushKotPerson("2026-12", "1", "boss")).toEqual({
-    sent: 3,
-    failed: 3,
+    sent: 4,
+    failed: 2,
   });
   expect(mock.patches[0]).toMatchObject({
     kot_status: "failed",
