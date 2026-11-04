@@ -107,10 +107,11 @@ export async function generateHakenPdf(type: IssueType, input: IssueInput) {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
   // 同梱フォントのみを使う。ホストPCのフォントにはアクセスしない。
-  const fontPath =
-    process.env.GARDEN_HAKEN_PDF_FONT_PATH ||
-    path.join(process.cwd(), "public/fonts/NotoSansJP-Regular.ttf");
-  const font = await pdf.embedFont(await readFile(fontPath), { subset: false });
+  // パスを実行時に変えると、配備物に public 全体が入って容量の上限を超えるので固定する。
+  const font = await pdf.embedFont(
+    await readFile(path.join(process.cwd(), "public/fonts/NotoSansJP-Regular.ttf")),
+    { subset: false },
+  );
   let page = pdf.addPage([595.28, 841.89]);
   let y = 790;
   const size = type === "reply" ? 9 : 11;
