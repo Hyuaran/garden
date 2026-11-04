@@ -711,4 +711,19 @@
 
 .shiftDay select {
   width: 100%;
+  /* 四角の中に四角を重ねない。枠は日のマスだけにする */
+  border-color: transparent;
+  background-color: transparent;
+  padding-left: 0;
+}
+.shiftDay select option {
+  background: var(--card, #fff);
+  color: var(--ink, #1f2937);
+}
+.shiftDay select:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--teal, #0ea5a0) 12%, transparent);
+}
+.shiftDay select:focus-visible {
+  outline: 2px solid var(--teal, #0ea5a0);
+  outline-offset: 1px;
 }
