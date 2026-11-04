@@ -550,6 +550,14 @@
     padding: 4px;
   }
 }
+.shiftDays.shiftDaysWide {
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+}
+@media (max-width: 480px) {
+  .shiftDays.shiftDaysWide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .shiftDay select,
 .shiftBulk select {
   box-sizing: border-box;

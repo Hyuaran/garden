@@ -23,7 +23,7 @@ export default function DefaultShiftDays({
   }
   return (
     <div>
-    <div className={formStyles.shiftDays}>
+    <div className={`${formStyles.shiftDays} ${!manager && options.length > 0 ? formStyles.shiftDaysWide : ""}`}>
       {rows.map(row => {
         const base = defaults.find(day => day.work_date === row.work_date);
         const choices = !manager && !weekend(row.work_date) ? options : [];
