@@ -5,6 +5,10 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checked, punchRelay } from "@/lib/attendance/kot-punch-push.server";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
+type Day = {
+  date: string;
+  dailyWorkings?: { employeeKey: string; isClosing?: boolean }[];
+};
 export async function GET(request: Request) {
   const denied = await systemViewResponse("system-kanri", "kanri", true);
   if (denied) return denied;
@@ -24,11 +28,10 @@ export async function GET(request: Request) {
       { method: "GET", path: "/daily-workings/" + date },
       actor.employee_id,
       false,
-    )) as {
-      date: string;
-      dailyWorkings?: { employeeKey: string; isClosing?: boolean }[];
-    }[];
-    if (!Array.isArray(result) || !Array.isArray(employees))
+    )) as Day | Day[] | null;
+    // 日を指定した日別勤怠は、配列ではなく 1 日分の形で返る。
+    const days = Array.isArray(result) ? result : result ? [result] : [];
+    if (!days.length || !Array.isArray(employees))
       throw new Error("KING OF TIME の締めを確認できませんでした。");
     const people =
       checked(
@@ -36,7 +39,7 @@ export async function GET(request: Request) {
           .from("root_employees")
           .select("employee_id,kot_employee_id,name"),
       ) || [];
-    const rows = result
+    const rows = days
       .flatMap((day) => day.dailyWorkings || [])
       .map((row) => {
         const code = employees.find(

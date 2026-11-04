@@ -254,9 +254,11 @@ export async function pushPunchDay(
       },
       actor,
     );
-    if (!Array.isArray(existing))
+    // 1 日だけ指定すると配列でなく 1 日分の形で返ることがある。
+    const days = Array.isArray(existing) ? existing : existing ? [existing] : [];
+    if (!days.length)
       throw new Error("KING OF TIME の打刻を確認できませんでした。");
-    const records = existing
+    const records = days
       .flatMap((day) => day.dailyWorkings || [])
       .filter((person) => person.employeeKey === employee.key)
       .flatMap((person) => person.timeRecord || []);

@@ -277,8 +277,8 @@ export async function main(args = process.argv.slice(2)) {
       if (error.message === "kot: JSON を解釈できません") return [];
       throw error;
     });
-    if (!Array.isArray(response)) throw new Error("打刻の形を確認できません。");
-    recordDays.push(...response);
+    // 1 日だけのときは配列でなく 1 日分の形で返ることがある。
+    recordDays.push(...(Array.isArray(response) ? response : [response]));
   }
   const plans = [];
   const holidays =
