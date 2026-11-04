@@ -129,7 +129,7 @@ it('一斉送信が終わると全画面で「〇人に送信しました」を�
   vi.stubGlobal('fetch',fetchMock);
   render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
   fireEvent.click(await screen.findByRole('button',{name:'雇用契約書のお知らせ'}));
-  fireEvent.click(screen.getByRole('button',{name:'送る人と残り通数を確認する'}));
+  fireEvent.click(screen.getByRole('button',{name:'送信する'}));
   const dialog=within(await screen.findByRole('dialog'));
   fireEvent.click(dialog.getByRole('button',{name:'送信する'}));
   expect(await screen.findByRole('status',{name:'2人に送信しました'})).toBeTruthy();
@@ -137,6 +137,18 @@ it('一斉送信が終わると全画面で「〇人に送信しました」を�
   expect((screen.getByLabelText('送信内容') as HTMLTextAreaElement).value).toBe('');
   expect(screen.queryByText('2人に送信しました。')).toBeNull();
   expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='send')).toBe(true);
+});
+
+it('題名が空のまま送信すると、エラーを画面の上に出す',async()=>{
+  window.history.replaceState(null,'','/?tab=broadcast');
+  const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>({...data})});
+  vi.stubGlobal('fetch',fetchMock);
+  render(<InitialUrlView search={window.location.search}><LineManager/></InitialUrlView>);
+  fireEvent.click(await screen.findByRole('button',{name:'送信する'}));
+  const notice=(await screen.findByText('題名・送信内容を入力してください。')).closest('[role="alert"][style]') as HTMLElement;
+  expect(notice.style.top).toBe('16px');
+  expect(notice.style.bottom).toBe('');
+  expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='preview')).toBe(false);
 });
 
 it('鉛筆は定型文の変更を開き、入力した名前を保存する',async()=>{

@@ -20,6 +20,7 @@ type Props = {
   enabled: boolean;
   onModeChange: (enabled: boolean) => void;
   onReset: () => void;
+  onError: (text: string) => void;
   act: (payload: object, refresh?: boolean) => Promise<unknown>;
 };
 
@@ -75,34 +76,31 @@ export function ScheduleEditor({ row, tags, busy, act, onClose, message }: {
   </>;
 }
 
-export function ScheduleMode({ draft, data, busy, enabled, onModeChange, onReset, act, message }: Props) {
+export function ScheduleMode({ draft, data, busy, enabled, onModeChange, onReset, onError, act, message }: Props) {
   const [date, setDate] = useState(`${initialDate()}T09:00`);
   const [confirm, setConfirm] = useState<string>();
-  const [error, setError] = useState('');
   const [done, setDone] = useState('');
   const people = recipients(data.employees, draft.tagIds, data.tags, data.members);
   return <>
-    <RadioGroup
-      name="send-mode"
-      label="送信のしかた"
-      options={['今すぐ送信', '日時を指定して予約']}
-      value={enabled ? '日時を指定して予約' : '今すぐ送信'}
-      onChange={value => onModeChange(value === '日時を指定して予約')}
-    />
+    <div className={styles.sendMode}>
+      <RadioGroup
+        name="send-mode"
+        label="送信のしかた"
+        options={['今すぐ送信', '日時を指定して予約']}
+        value={enabled ? '日時を指定して予約' : '今すぐ送信'}
+        onChange={value => onModeChange(value === '日時を指定して予約')}
+      />
+    </div>
     {enabled && <FormRow label="送信日時">
       <DateFields value={date} onChange={setDate} />
       <p>指定の時刻から最大5分ほど遅れて送信されます。</p>
     </FormRow>}
-    {enabled && <>
-      {error && <ResultMessage>{error}</ResultMessage>}
-      <SubmitButton busy={busy} onClick={() => {
-        try {
-          if (!draft.title.trim() || !draft.body.trim()) throw new Error('題名・送信内容を入力してください。');
-          setConfirm(validateScheduledAt(`${date}:00+09:00`));
-          setError('');
-        } catch (cause) { setError((cause as Error).message); }
-      }}>確認する</SubmitButton>
-    </>}
+    {enabled && <SubmitButton busy={busy} onClick={() => {
+      try {
+        if (!draft.title.trim() || !draft.body.trim()) throw new Error('題名・送信内容を入力してください。');
+        setConfirm(validateScheduledAt(`${date}:00+09:00`));
+      } catch (cause) { onError((cause as Error).message); }
+    }}>予約する</SubmitButton>}
     {confirm && <Modal title="送信の確認" onClose={() => setConfirm(undefined)} actions={
       <SubmitButton busy={busy} onClick={async () => {
         if (!await act({ action: 'schedule', ...draft, scheduledAt: confirm })) return;

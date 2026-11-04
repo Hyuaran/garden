@@ -5,3 +5,8 @@
 .modal :global(.garden-modal-body)::-webkit-scrollbar {
   display: none;
 }
+
+/* 送信のしかたの選択と、下のボタンの間をあける */
+.sendMode {
+  margin: 8px 0 24px;
+}

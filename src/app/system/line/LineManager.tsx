@@ -46,7 +46,7 @@ export default function LineManager() {
   const [title,setTitle]=useState(''); const [body,setBody]=useState(''); const [preview,setPreview]=useState<Preview>(); const [sentView,setSentView]=useState<History>(); const [messageOk,setMessageOk]=useState(false); const [sendState,setSendState]=useState<LineSendState|null>(null);
   const load=useCallback(async()=>{setLoading(true);try{const r=await fetch('/api/system/line/manage',{cache:'no-store'}); const d=await r.json();if(!r.ok)throw new Error(d.error||'一覧を開けませんでした。');setData(d);}finally{setLoading(false);}},[]);
   useEffect(()=>{load().catch(e=>setMessage(e.message));},[load]);
-  // 成功の知らせは 4 秒で消す（画面の下に浮かべるので、出ても消えても部品は動かない）
+  // 成功の知らせは 4 秒で消す（画面の上に浮かべるので、出ても消えても部品は動かない）
   useEffect(()=>{if(!message||!messageOk)return;const t=window.setTimeout(()=>setMessage(''),4000);return()=>window.clearTimeout(t);},[message,messageOk]);
   async function act(payload:object,refresh=true) {setBusy(true);setMessage('');setMessageOk(false);try {const r=await fetch('/api/system/line/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await r.json();if(!r.ok)throw new Error(result.error);if(refresh)await load();// 人数の確認だけでは帯を出さない（送ったように見えるため）
 if((payload as {action?:string}).action!=='preview'&&!((payload as {action?:string}).action==='send'&&!result.failed)){setMessage(result.failed?`${result.sent}人に送信しました。${result.failed}人への送信に失敗しました。`:(payload as {action?:string}).action==='send'?`${result.sent??''}人に送信しました。`:doneMessage((payload as {action?:string}).action));setMessageOk(!result.failed);}return result;}catch(e){setMessage(e instanceof Error?e.message:'処理に失敗しました。');return null;}finally{setBusy(false);}}
@@ -61,7 +61,7 @@ if((payload as {action?:string}).action!=='preview'&&!((payload as {action?:stri
     <HeaderViewToggle><span style={{visibility:viewReady?"visible":"hidden"}}><button type="button" disabled={activeTab!=='greeting'} aria-label={viewMode==='list'?'カード表示にする':'一覧表示にする'} title={activeTab==='greeting'?(viewMode==='list'?'カード表示にする':'一覧表示にする'):'このタブは表示の切り替えがありません'} onClick={()=>{const next=viewMode==='list'?'grid':'list';setViewMode(next);try{localStorage.setItem('garden.line.greeting.viewMode',next);}catch{}}}><svg viewBox="0 0 24 24" aria-hidden="true">{viewMode==='list'?<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>:<path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11"/>}</svg></button></span></HeaderViewToggle>
     <SystemTabs actions={<SystemViewButton tabKey={activeTab==='people'?'tags':activeTab}/>}>{[['people','人とタグ'],['greeting','あいさつ文'],['broadcast','一斉送信'],['contacts','連絡先'],['richmenu','リッチメニュー'],['groups','グループ']].filter(([id])=>allowed(id)).map(([id,label])=><button key={id} role="tab" aria-selected={activeTab===id} onClick={()=>changeTab(id)}>{label}</button>)}</SystemTabs>
     {activeTab==='groups'&&<GroupSettings/>}
-    {message&&!templateEdit&&!edit&&<div style={{position:'fixed',left:'50%',bottom:24,transform:'translateX(-50%)',zIndex:900,width:'min(92vw,640px)',display:'flex',alignItems:'center',gap:8,boxShadow:'0 8px 24px rgba(0,0,0,.25)',borderRadius:12}}><div style={{flex:1}}><ResultMessage success={messageOk}>{message}</ResultMessage></div>{!messageOk&&<button type="button" aria-label="知らせを閉じる" onClick={()=>setMessage('')} style={{border:0,background:'transparent',color:'inherit',fontSize:20,cursor:'pointer',padding:'0 8px'}}>×</button>}</div>}{!data&&<p>読み込み中...</p>}
+    {message&&!templateEdit&&!edit&&<div role="alert" style={{position:'fixed',left:'50%',top:16,transform:'translateX(-50%)',zIndex:900,width:'min(92vw,640px)',display:'flex',alignItems:'center',gap:8,boxShadow:'0 8px 24px rgba(0,0,0,.25)',borderRadius:12}}><div style={{flex:1}}><ResultMessage success={messageOk}>{message}</ResultMessage></div>{!messageOk&&<button type="button" aria-label="知らせを閉じる" onClick={()=>setMessage('')} style={{border:0,background:'transparent',color:'inherit',fontSize:20,cursor:'pointer',padding:'0 8px'}}>×</button>}</div>}{!data&&<p>読み込み中...</p>}
     {activeTab==='people'&&<><DataTable loading={loading} searchPlaceholder="氏名・社員番号" searchText={e=>e.name+e.employee_number} defaultSort={{id:"number",direction:"asc"}} rows={(data?.employees??[]).filter(e=>statusOf(e)!=='退職')} columns={columns} rowKey={e=>e.employee_id} onRowClick={e=>setPerson(e)}/><FormRow label="タグの管理"><button onClick={()=>setTagEdit({kind:'free',name:''})}>自由タグを作る</button>{(data?.tags??[]).filter(t=>t.kind==='free').map(t=><p key={t.id}>{t.name} <RowActionButton kind="edit" onClick={()=>setTagEdit({id:t.id,kind:'free',name:t.name})} /> <RowActionButton kind="delete" disabled={busy} onClick={()=>act({action:'deleteTag',id:t.id})} /></p>)}</FormRow></>}
     {data&&activeTab==='greeting'&&<><ActionRow><ActionButton onClick={()=>setEdit({...emptyGreeting})}>文を追加する</ActionButton></ActionRow>{viewMode==='list'?<DataTable loading={loading} rows={data.greetings} rowKey={g=>g.id} searchPlaceholder="あいさつ文" searchText={g=>g.body} defaultSort={{id:'employment',direction:'asc'}} onRowClick={g=>setEdit({...g})} columns={[
       {id:'employment',label:'雇用形態',type:'text',value:g=>data.tags.find(t=>t.id===g.employment_tag_id)?.name||'共通'},
@@ -79,13 +79,17 @@ if((payload as {action?:string}).action!=='preview'&&!((payload as {action?:stri
         enabled={scheduleMode}
         onModeChange={setScheduleMode}
         act={act}
+        onError={text => {
+          setMessage(text);
+          setMessageOk(false);
+        }}
         onReset={() => {
           setTitle('');
           setBody('');
           setRecipientTags([]);
         }}
       />
-      {!scheduleMode&&<SubmitButton busy={busy} onClick={async()=>{const r=await act({action:'preview',tagIds:recipientTags,title,body},false);if(r)setPreview(r);}}>送る人と残り通数を確認する</SubmitButton>}
+      {!scheduleMode&&<SubmitButton busy={busy} onClick={async()=>{if(!title.trim()||!body.trim()){setMessage('題名・送信内容を入力してください。');setMessageOk(false);return;}const r=await act({action:'preview',tagIds:recipientTags,title,body},false);if(r)setPreview(r);}}>送信する</SubmitButton>}
       <ScheduledBroadcasts data={data} busy={busy} act={act} message={messageOk ? undefined : message} />
       <DataTable loading={loading} emptyText="まだ送っていません。" searchPlaceholder="題名" searchText={r=>r.title} defaultSort={{id:"date",direction:"desc"}} rows={data.history} rowKey={r=>r.id} onRowClick={r=>setSentView(r)} columns={[{id:'title',label:'題名',type:'text',value:r=>r.title},{id:'date',label:'日時',type:'text',align:'fixed',value:r=>new Date(r.sent_at??r.created_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})},{id:'count',label:'人数',type:'number',value:r=>r.recipient_count},{id:'sent',label:'送信済',type:'number',value:r=>r.sent_count},{id:'failed',label:'失敗',type:'number',value:r=>r.failed_count},{id:'state',label:'状態',type:'text',value:()=>'送信済み'}]}/></>}
     {data&&activeTab==='richmenu'&&<RichMenuSettings data={data} busy={busy} act={act}/>}

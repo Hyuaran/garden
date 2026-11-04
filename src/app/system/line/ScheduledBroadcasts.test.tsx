@@ -18,13 +18,13 @@ it('予約選択・日時の確認・保存・完了の幕と入力リセット'
   function Harness() {
     const [enabled, setEnabled] = useState(false);
     return <ScheduleMode draft={{ title: '題名', body: '本文', tagIds: [] }} data={data}
-      busy={false} enabled={enabled} onModeChange={setEnabled} onReset={reset} act={act} />;
+      busy={false} enabled={enabled} onModeChange={setEnabled} onReset={reset} onError={vi.fn()} act={act} />;
   }
   render(<Harness />);
-  expect(screen.queryByRole('button', { name: '確認する' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '予約する' })).toBeNull();
   fireEvent.click(screen.getByRole('radio', { name: '日時を指定して予約' }));
   expect(screen.getByLabelText('送信時刻').querySelectorAll('option[value]:not([value=""])')).toHaveLength(72);
-  fireEvent.click(screen.getByRole('button', { name: '確認する' }));
+  fireEvent.click(screen.getByRole('button', { name: '予約する' }));
   const dialog = screen.getByRole('dialog', { name: '送信の確認' });
   expect(within(dialog).getByText('送信日時')).toBeInTheDocument();
   expect(within(dialog).getByText('送信する時点の人に送ります。今の時点で0人')).toBeInTheDocument();
@@ -32,6 +32,15 @@ it('予約選択・日時の確認・保存・完了の幕と入力リセット'
   expect(await screen.findByRole('status')).toHaveTextContent('に予約しました');
   expect(act).toHaveBeenCalledWith(expect.objectContaining({ action: 'schedule', title: '題名', body: '本文', tagIds: [] }));
   expect(reset).toHaveBeenCalledTimes(1);
+});
+
+it('予約で題名が空なら、知らせを親に渡して小窓を開かない', () => {
+  const onError = vi.fn();
+  render(<ScheduleMode draft={{ title: '', body: '本文', tagIds: [] }} data={data}
+    busy={false} enabled onModeChange={vi.fn()} onReset={vi.fn()} onError={onError} act={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: '予約する' }));
+  expect(onError).toHaveBeenCalledWith('題名・送信内容を入力してください。');
+  expect(screen.queryByRole('dialog')).toBeNull();
 });
 
 it('予定の行から題名・内容・日時を変更して保存できる', async () => {
