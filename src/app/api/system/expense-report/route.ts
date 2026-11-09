@@ -3,6 +3,7 @@ import { requireEmployee } from '@/app/system/mypage/_lib/submission-server';
 import { systemViewResponse } from '@/lib/auth/view-permission.server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { createRecord } from '@/lib/kintone/records';
+import { rosterLookupKey } from '@/lib/kintone/roster-lookup-key.server';
 import { ChatworkClient } from '@/lib/chatwork';
 import { expenseRecord, recentCombinations, validateExpense } from '@/app/system/forms/expense/_lib/expense';
 export const runtime = 'nodejs';
@@ -19,7 +20,8 @@ export async function POST(request: Request) {
   try {
     const token = process.env.KINTONE_EXPENSE_REPORT_TOKEN, roster = process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN;
     if (!token || !roster || !process.env.KINTONE_SUBDOMAIN) throw new Error('Kintone の設定がありません');
-    const result = await createRecord(process.env.KINTONE_EXPENSE_REPORT_APP_ID || '95', `${token},${roster}`, expenseRecord(input, String(employee.employee_number), report.created_at));
+    const lookupKey = await rosterLookupKey(String(employee.employee_number));
+    const result = await createRecord(process.env.KINTONE_EXPENSE_REPORT_APP_ID || '95', `${token},${roster}`, expenseRecord(input, lookupKey, report.created_at));
     kintone_record_id = result.id; kintone_sent_at = new Date().toISOString();
   } catch (error) { kintone_error = error instanceof Error ? error.message : String(error); }
   const sync = { kintone_error, kintone_record_id, kintone_sent_at };

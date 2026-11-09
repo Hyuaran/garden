@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { syncSubmissionToKintone } from './submission-kintone.server';
 import { queueRosterPush } from '@/app/root/_lib/roster-push.server';
 import type { SubmissionRow } from './submission-types';
+vi.mock('@/lib/kintone/roster-lookup-key.server',()=>({rosterLookupKey:vi.fn(async()=>'r9230001')}));
 vi.mock('@/app/root/_lib/roster-push.server',()=>({getRosterDirection:vi.fn(async()=>'garden_to_kintone'),queueRosterPush:vi.fn(async()=>({status:'held'}))}));
 beforeEach(()=>{
   vi.clearAllMocks();
@@ -16,6 +17,8 @@ it.each([['commute_route','93'],['bank_account','92']] as const)('queues %s whil
   expect(fetch).toHaveBeenCalledTimes(1);
   const [,request]=vi.mocked(fetch).mock.calls[0];
   expect(request?.method).toBe('POST');expect(JSON.parse(String(request?.body)).app).toBe(app);
+  // 名簿の KOTID（r923 の形の人もいる）で人を探す
+  const record=JSON.parse(String(request?.body)).record;expect(record.ルックアップ?.value ?? record.ルックアップ_0?.value).toBe('r9230001');
 });
 it('queues even without app credentials or a KOT ID',async()=>{
   await syncSubmissionToKintone({employee_id:'EMP-1',submission_type:'bank_account',payload:{}} as SubmissionRow,{name:'社員',kot_employee_id:null,commute_monthly_cap:null});
