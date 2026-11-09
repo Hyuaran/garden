@@ -57,7 +57,9 @@ export function rosterPayload(c: HireCandidate, companyName: string) {
  従業員名_姓: c.last_name, 従業員名_名: c.first_name || "",
  従業員名_姓名: [c.last_name,c.first_name].filter(Boolean).join(" "), 従業員名_姓名カナ: [c.last_name_kana,c.first_name_kana].filter(Boolean).join(" "),
  生年月日: c.birthday || "", 入社日: c.hire_date, 雇用形態: c.employment_type,
- 社員番号: c.employee_number, 打刻ID: c.employee_number, 従業員ステータス: "在籍中", ドロップダウン_15: rosterCompanyName(companyName),
+ 社員番号: c.employee_number, 打刻ID: c.employee_number,
+ // KOTID は経費（アプリ95）などのルックアップが人を探す欄。空だと経費が名簿で見つからず Kintone に入らない（2026-11-10 清水 1574）
+ 文字列__1行__5: c.employee_number, 従業員ステータス: "在籍中", ドロップダウン_15: rosterCompanyName(companyName),
  }).map(([k,value]) => [k,{value}]));
 }
 
