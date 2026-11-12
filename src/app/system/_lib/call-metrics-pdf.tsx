@@ -197,8 +197,8 @@ function Chrome({ data, generatedAt }: { data: CallMetricsResponse; generatedAt:
   const target = data.from === data.to ? formatPdfTargetDate(data.from) : `${formatPdfTargetDate(data.from)}〜${formatPdfTargetDate(data.to)}`;
   const header = <>
     <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-      <VectorText width={180} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
-      <VectorText width={260} height={18} fontSize={11} bold align="left" color={COLORS.navy}>{target}</VectorText>
+      {/* 日付を先・題名を後に1本の文字で並べる（間が空いて見えたため・2026-11-12 東海林さん） */}
+      <VectorText width={440} height={18} fontSize={11} bold align="left" color={COLORS.navy}>{`${target}　テレマ コール集計ポータル`}</VectorText>
     </View>
     <View style={{ height: 18 }}>
       <VectorText width={330} height={12} fontSize={8} align="right">{formatPdfSnapshot(generatedAt)}</VectorText>
