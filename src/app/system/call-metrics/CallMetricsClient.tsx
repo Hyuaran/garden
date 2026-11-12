@@ -185,7 +185,7 @@ export default function CallMetricsClient() {
           </StickyTable></div>
           {data.listName && <p className={styles.period}>リスト名で絞り込んだ場合も、通話時間と WEBインバウンド（ランディングページ）はリスト名では絞り込みません。</p>}
           <h2>事業別の小計</h2>
-          <div className={styles.tableWrap}><StickyTable style={{ width: "max-content", minWidth: "max-content" }}>
+          <div className={`${styles.tableWrap} ${styles.fitWrap}`}><StickyTable style={{ width: "max-content", minWidth: "max-content" }}>
             <thead><tr><th>事業</th><th>着信</th><th>応答</th><th>不在</th><th>留守電</th><th>発信</th><th>発信の応答</th><th>通話時間</th><th>申込み</th></tr></thead>
             <tbody>{[...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => <tr key={row.bizCode}>
               <td className="garden-cell-text">{row.bizName}</td><td className="garden-cell-number">{maybeNumber(row.inbound)}</td><td className="garden-cell-number">{maybeNumber(row.answered)}</td><td className="garden-cell-number">{maybeNumber(row.missed)}</td><td className="garden-cell-number">{maybeNumber(row.voicemail)}</td><td className="garden-cell-number">{maybeNumber(row.outbound)}</td><td className="garden-cell-number">{maybeNumber(row.outboundAnswered)}</td><td className="garden-cell-number">{maybeTime(row.talkSeconds)}</td><td className="garden-cell-number" style={{ fontWeight: 700 }}>{maybeNumber(row.applications)}{row.unassignedApplications ? `（うち担当者未設定 ${row.unassignedApplications}）` : ""}</td>

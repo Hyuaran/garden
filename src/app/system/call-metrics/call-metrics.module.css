@@ -72,3 +72,5 @@
 .main tr.funnelNote td { color: var(--sub); }
 .pageShell { --tree-line: #9aa8b8; --band-top: #e3f4f3; --band-branch: #f1f5fa; }
 :global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell { --tree-line: #5d7088; --band-top: #173b44; --band-branch: #1b2c42; }
+/* 中身に合わせた幅の表は、外枠も中身の幅にそろえる（右に空いた白い枠を出さない） */
+.fitWrap { width: fit-content; max-width: 100%; }

@@ -38,6 +38,20 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>, remountKey?: 
       if (!original) return;
       const copy = table.cloneNode(false) as HTMLTableElement;
       const cloned = original.cloneNode(true) as HTMLTableSectionElement;
+      // 見出しが 2 段（上の段に「テレマ」などのまとめ見出し）だと、table-layout:fixed は 1 段目で列幅を決めるため、
+      // 複製の列幅が均等になって本文とずれていた（2026-11-12）。本文の列幅を colgroup で渡して合わせる。
+      const zoomForCols = table.getBoundingClientRect().width / table.offsetWidth || 1;
+      const sampleRow = [table.tBodies[0]?.rows[0], original.rows[original.rows.length - 1]]
+        .find(row => row && Array.from(row.cells).every(cell => cell.colSpan === 1));
+      if (sampleRow) {
+        const colgroup = document.createElement("colgroup");
+        for (const cell of Array.from(sampleRow.cells)) {
+          const col = document.createElement("col");
+          col.style.width = `${cell.getBoundingClientRect().width / zoomForCols}px`;
+          colgroup.append(col);
+        }
+        copy.append(colgroup);
+      }
       copy.append(cloned);
       let groupCopy: HTMLTableRowElement | null = null;
       if (activeGroup) {
