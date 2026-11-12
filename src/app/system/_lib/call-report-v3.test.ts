@@ -38,7 +38,8 @@ describe("本文v3の集計", () => {
   it("ポイント表の合計付与Pと配信の内訳を使い、ゼロを消し不明商材を警告する", () => {
     const orders = reportOrders([record({ 受注日: date, 商材名区分2: "コラボ", 事業名: "自社" }), record({ 受注日: date, 商材名区分2: "au光プラス", 事業名: "自社" })], date);
     const result = reportPoints(orders, [row("コラボ", "hakuchi", "collab", 1.2)]);
-    expect(result.text).toContain("合計件数：1.2P\n白地：1.2P（コラボ1.2）\nLP：0.0P\nアライアンス：0.0P");
+    expect(result.text).toBe("\n\n【テレマ全体】\n合計件数：1.2P\n白地：1.2P（コラボ1.2）");
+    expect(reportPoints([], []).text).toBe("\n\n【テレマ全体】\n合計件数：0.0P");
     expect(result.text).not.toContain("AU0");
     expect(result.warnings).toEqual(["⚠ポイント表に無い商材：au光プラス 1件"]);
   });

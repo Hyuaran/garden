@@ -60,6 +60,7 @@ type RunResponse = {
   error?: string;
   runs?: KanriRunView[];
   setting?: { holidays?: string[] };
+  products?: string[];
   inputs?: KanriManualInputs;
   grid?: KanriSheetGrid;
   jisseki?: JissekiSheetGrid;
@@ -208,6 +209,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const activeTab = allowedTab(requestedTab) ? requestedTab : (["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"] as const).find(allowedTab);
   const [closingGate, setClosingGate] = useState(false);
   const [targetDate, setTargetDate] = useState(today);
+  const [products, setProducts] = useState(initialProducts);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
   const [latest, setLatest] = useState<KanriRunView | null>(initialRuns[0] ?? null);
@@ -251,7 +253,10 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     const nextMonth = monthRange(nextDate).yearMonth;
     const response = await fetch(`/api/system/kanri/month-settings/${nextMonth}`);
     const json = await readJson(response);
-    if (response.ok) setHolidays(json.setting?.holidays ?? []);
+    if (response.ok) {
+      setHolidays(json.setting?.holidays ?? []);
+      if (json.products) setProducts(json.products);
+    }
   }
 
   async function loadInputs(nextYearMonth: string) {
@@ -545,6 +550,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       if (!response.ok || !json.grid) setMessage(json.error ?? "計算できませんでした。");
       else {
         setGrid(json.grid);
+        if (json.warnings?.length) setMessage(json.warnings.map((warning: { message: string }) => warning.message).join("／"));
         if (json.houhan) setHouhan(json.houhan);
         if (json.jisseki) setJisseki(json.jisseki);
         if (json.aporan) setAporan(json.aporan);
@@ -783,13 +789,13 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <thead>
             <tr>
               <th>チーム</th>
-              {initialProducts.map((product) => <th key={product}>{product}</th>)}
+              {products.map((product) => <th key={product}>{product}</th>)}
             </tr>
           </thead>
           <tbody>
             {initialTeams.map((team) => <tr key={team}>
               <th className="garden-cell-text">{team}</th>
-              {initialProducts.map((product) => <td key={`${team}-${product}`} className="garden-cell-number">
+              {products.map((product) => <td key={`${team}-${product}`} className="garden-cell-number">
                 <input type="number" step="0.01" value={rateValue(inputs, team, product)} onChange={(event) => updateRate(team, product, event.target.value)} />
               </td>)}
             </tr>)}
@@ -829,6 +835,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
       </div>
       <p className={styles.hint}>最新の取り込みをもとに計算します。</p>
+      {grid?.warnings?.length ? <ul>{grid.warnings.map(warning => <li key={warning.message}>{warning.message}</li>)}</ul> : null}
       {grid ? <div className={styles.resultScroller}>
         <StickyTable className={styles.resultTable}>
           <thead>

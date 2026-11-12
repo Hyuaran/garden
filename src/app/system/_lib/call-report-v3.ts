@@ -53,21 +53,27 @@ export function reportOrders(records: KintoneRecord[], date: string, credit = fa
   return records.flatMap(r => {
     const orderDate = credit ? text(r, "日付_4") || text(r, "紹介日") : text(r, "受注日");
     if (orderDate !== date || (EXCLUDE_CANCELLED_REPORT_ORDERS && text(r, "商材ステータス") === "キャンセル")) return [];
+    const order = extractPointOrder(r, orderDate, credit);
+    return order?.channel ? [order] : [];
+  });
+}
+
+// 日付の絞り込みは呼び出し側で行う。獲得方法が不明な受注も返す。
+export function extractPointOrder(r: KintoneRecord, orderDate: string, credit = false): Order | null {
+    if (EXCLUDE_CANCELLED_REPORT_ORDERS && text(r, "商材ステータス") === "キャンセル") return null;
     // 管理表のクレカには事業名相当の「文字列__1行__14」がある。
     const business = text(r, "事業名") || (credit ? text(r, "文字列__1行__14") : "");
     const list = text(r, "B_リスト名") || text(r, "リスト名");
     const hasChannelField = ["事業名", "文字列__1行__14", "B_リスト名", "リスト名"].some(k => k in r);
     const channel = credit && !hasChannelField ? "hakuchi" : resolveChannel({ 事業名: business || (credit && list ? "自社" : ""), リスト名: list });
-    if (!channel) return [];
     // 顧客一覧は「商材区分2（マスタ）」（m_product）も持つ。商材名区分2 で表に無いとき（例：タイプなしの「au光プラス」）だけ使う
     const masterProduct = credit ? "" : text(r, "m_product");
-    return [{ productName: credit ? text(r, "ドロップダウン_12") || text(r, "商材名区分2") : text(r, "商材名区分2") || masterProduct, masterProduct, orderDate, channel }];
-  });
+    return { productName: credit ? text(r, "ドロップダウン_12") || text(r, "商材名区分2") : text(r, "商材名区分2") || masterProduct, masterProduct, orderDate, channel };
 }
 export function reportPoints(orders: Order[], rows: PointRow[]) {
   let total = 0;
   const missing = new Map<string, number>();
-  const buckets = Object.keys(CHANNELS).map(channel => {
+  const buckets = Object.keys(CHANNELS).flatMap(channel => {
     let subtotal = 0;
     const groups = new Map<string, number>();
     for (const order of orders.filter(o => o.channel === channel)) {
@@ -78,10 +84,11 @@ export function reportPoints(orders: Order[], rows: PointRow[]) {
     }
     total = roundPoints(total + subtotal);
     const details = Object.entries(REPORT_GROUPS).flatMap(([key, label]) => (groups.get(key) ?? 0) ? [`${label}${groups.get(key)!.toFixed(1)}`] : []);
-    return `${CHANNELS[channel as keyof typeof CHANNELS]}：${subtotal.toFixed(1)}P${subtotal && details.length ? `（${details.join("／")}）` : ""}`;
+    if (subtotal === 0) return [];
+    return [`${CHANNELS[channel as keyof typeof CHANNELS]}：${subtotal.toFixed(1)}P${details.length ? `（${details.join("／")}）` : ""}`];
   });
   return {
-    text: `\n\n【テレマ全体】\n合計件数：${total.toFixed(1)}P\n${buckets.join("\n")}`,
+    text: `\n\n【テレマ全体】\n${[`合計件数：${total.toFixed(1)}P`, ...buckets].join("\n")}`,
     warnings: [...missing].map(([name, count]) => `⚠ポイント表に無い商材：${name} ${count}件`),
   };
 }

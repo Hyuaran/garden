@@ -1,3 +1,4 @@
+import { loadKanriPoints } from "@/app/system/kanri/_lib/kanri-points.server";
 import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { withSystemView } from "@/lib/auth/system-view-page.server";
@@ -58,11 +59,7 @@ async function KanriPortalPage({
       .select("year_month,holidays,updated_at")
       .eq("year_month", yearMonth)
       .maybeSingle() : { data: null },
-    admin
-      .from("system_kanri_point_master")
-      .select("product,sort_order,active")
-      .eq("active", true)
-      .order("sort_order", { ascending: true }),
+    loadKanriPoints(yearMonth),
     admin
       .from("system_kanri_team")
       .select("team,sort_order,active")

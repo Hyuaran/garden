@@ -1,3 +1,4 @@
+import { matchedKanriOrders } from "../soil-points";
 import { fieldValue, normalizeName, type KanriSourceRow } from "../kanri-core";
 import type { HouhanSheetGrid } from "./houhan-sheet";
 import type { KanriManualInputs, KanriPointMaster } from "./kanri-sheet";
@@ -214,6 +215,19 @@ export function calculateJissekiSheet(input: JissekiSheetInput): JissekiSheetGri
   const products = points.map((point) => point.product);
   const columns = productColumns(points);
   const counts = sourceCounts(input, points);
+  const soil=input.yearMonth>="2026-11";
+  const awarded=new Map<string,number>();
+  if(soil) {
+   counts.clear();
+   for(const {source,point} of matchedKanriOrders(input.sourceRows,points,input.yearMonth)) {
+    const add=(fields:string[],suffix:string,value:number)=> {
+     const name=firstFieldValue(source,fields); addCount(counts,name,point.product,suffix);
+     const key=[normalizeName(name),point.product,suffix].join("\t"); awarded.set(key,(awarded.get(key)??0)+value);
+    };
+    if(point.category==="kaisen") {add(CUSTOMER_TOSS_FIELDS,"toss",point.toss_points);add(CUSTOMER_AP_FIELDS,"ap",point.closer_points);}
+    else add(source.source==="credit_card" ? CREDIT_AP_FIELDS : CUSTOMER_TOSS_FIELDS,"single",point.total_points);
+   }
+  }
   const pointByProduct = new Map(points.map((point, index) => [point.product, { point, index }]));
   const commuteByName = Object.fromEntries(Object.entries(input.commuteByName).map(([name, value]) => [normalizeName(name), value]));
   const houhanByPerson = new Map((input.houhan?.people ?? []).map((person) => [normalizeName(person.personName), person]));
@@ -237,7 +251,8 @@ export function calculateJissekiSheet(input: JissekiSheetInput): JissekiSheetGri
       rowCounts[key] = count;
       const point = pointByProduct.get(column.product)?.point;
       const coefficient = toNumber(point?.coefficient);
-      if (column.kind === "hikari_toss") totalPoints += count * 0.2;
+      if (soil) totalPoints += person.is_field_sales ? 0 : (awarded.get([nameKey,column.product,suffix].join("\t"))??0);
+      else if (column.kind === "hikari_toss") totalPoints += count * 0.2;
       else if (column.kind === "hikari_ap") totalPoints += count * (coefficient - 0.2);
       else totalPoints += count * coefficient;
     });

@@ -1,3 +1,5 @@
+import type { PointRow } from "@/lib/product-points";
+import { missingKanriProducts, matchedKanriOrders, unknownKanriChannels } from "../soil-points";
 import { fieldValue, monthRange, weekdayJa, type KanriSourceRow } from "../kanri-core";
 
 export type KanriPointMaster = {
@@ -7,6 +9,7 @@ export type KanriPointMaster = {
   coefficient: number | string | null;
   unit_price: number | string | null;
   sort_order: number | null;
+  soilRows?: PointRow[];
   active?: boolean | null;
 };
 
@@ -132,6 +135,7 @@ export type KanriTeamTotal = {
 };
 
 export type KanriSheetGrid = {
+  warnings?: { code: "point_product_missing" | "point_channel_unknown"; message: string }[];
   yearMonth: string;
   products: string[];
   teams: string[];
@@ -154,6 +158,10 @@ export type KanriSheetInput = {
   manualInputs: KanriManualInputs;
 };
 
+export function kanriTeamBlocks(month:string, products:number, teams=3) {
+ if(month<"2026-11") return KANRI_TEAM_BLOCKS;
+ return Array.from({length:teams},(_,i)=>{const n=9+i*(products+3); return {hours:numberToColumn(n),efficiency:numberToColumn(n+1),total:numberToColumn(n+2),firstProduct:numberToColumn(n+3)};});
+}
 export const KANRI_TEAM_BLOCKS = [
   { hours: "I", efficiency: "J", total: "K", firstProduct: "L" },
   { hours: "AF", efficiency: "AG", total: "AH", firstProduct: "AI" },
@@ -278,7 +286,13 @@ export function calculateKanriSheet(input: KanriSheetInput): KanriSheetGrid {
   const pointByProduct = new Map(input.points.map((point) => [point.product, point]));
   const teams = sortByOrder(input.teams.filter(active)).map((team) => team.team);
   const holidays = new Set(input.holidays);
-  const sourceCounts = countSourceProducts(input.sourceRows, input.points);
+  const soil = input.yearMonth >= "2026-11";
+  const matched = soil ? matchedKanriOrders(input.sourceRows,input.points,input.yearMonth) : [];
+  const sourceCounts = soil ? new Map<string,number>() : countSourceProducts(input.sourceRows,input.points);
+  for(const {date,point,team} of matched) {
+    const key = [date,team,point.product].join("\t");
+    sourceCounts.set(key,(sourceCounts.get(key)??0)+1);
+  }
 
   const teamTotals = Object.fromEntries(teams.map((team) => [team, {
     hours: 0,
@@ -328,8 +342,9 @@ export function calculateKanriSheet(input: KanriSheetInput): KanriSheetGrid {
       const count = total.products[product];
       const openRate = toNumber(input.manualInputs.openRateByTeamByProduct[team]?.[product]);
       const unitPrice = toNumber(point?.unit_price);
-      total.pointsByProduct[product] = count * toNumber(point?.coefficient);
-      total.amountByProduct[product] = count * openRate * unitPrice;
+      const orders=matched.filter(i=>i.team===team && i.point.product===product && !holidays.has(i.date) && (!input.targetDate || i.date<=input.targetDate));
+      total.pointsByProduct[product] = soil ? orders.reduce((n,i)=>n+i.point.total_points,0) : count * toNumber(point?.coefficient);
+      total.amountByProduct[product] = soil ? orders.reduce((n,i)=>n+toNumber(i.point.unit_price),0)*openRate : count * openRate * unitPrice;
       total.points += total.pointsByProduct[product];
       total.amount += total.amountByProduct[product];
     });
@@ -359,6 +374,10 @@ export function calculateKanriSheet(input: KanriSheetInput): KanriSheetGrid {
     openRate: input.manualInputs.openRateByTeamByProduct,
     cellValues: {},
   };
+  if (soil) grid.warnings = [
+    ...missingKanriProducts(input.sourceRows, input.points, input.yearMonth),
+    ...unknownKanriChannels(input.sourceRows, input.yearMonth),
+  ];
   grid.cellValues = kanriSheetCells(grid);
   return grid;
 }
@@ -376,7 +395,7 @@ export function kanriSheetCells(grid: Omit<KanriSheetGrid, "cellValues">) {
   };
 
   grid.teams.forEach((team, teamIndex) => {
-    const block = KANRI_TEAM_BLOCKS[teamIndex];
+    const block = kanriTeamBlocks(grid.yearMonth, grid.products.length, grid.teams.length)[teamIndex];
     if (!block) return;
     const total = grid.totals.teams[team];
     cells[`${block.hours}4`] = total.hours;
@@ -404,7 +423,7 @@ export function kanriSheetCells(grid: Omit<KanriSheetGrid, "cellValues">) {
     cells[`${ALL_COLUMNS.efficiency}${row}`] = day.all.efficiency;
     cells[`${ALL_COLUMNS.total}${row}`] = day.all.total;
     grid.teams.forEach((team, teamIndex) => {
-      const block = KANRI_TEAM_BLOCKS[teamIndex];
+      const block = kanriTeamBlocks(grid.yearMonth, grid.products.length, grid.teams.length)[teamIndex];
       if (!block) return;
       const teamDay = day.teams[team];
       cells[`${block.hours}${row}`] = teamDay.hours;

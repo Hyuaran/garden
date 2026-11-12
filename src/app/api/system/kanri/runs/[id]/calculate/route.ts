@@ -1,3 +1,5 @@
+import { missingKanriProducts } from "@/app/system/kanri/_lib/soil-points";
+import { loadKanriPoints } from "@/app/system/kanri/_lib/kanri-points.server";
 import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
@@ -75,11 +77,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       .select("holidays")
       .eq("year_month", range.yearMonth)
       .maybeSingle(),
-    admin
-      .from("system_kanri_point_master")
-      .select("product,kintone_names,category,coefficient,unit_price,sort_order,active")
-      .eq("active", true)
-      .order("sort_order", { ascending: true }),
+    loadKanriPoints(range.yearMonth),
     admin
       .from("system_kanri_team")
       .select("team,sort_order,active")
@@ -169,5 +167,6 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       { run_id: id, sheet: "payroll", grid: payroll, calculated_at: new Date().toISOString() },
     ], { onConflict: "run_id,sheet" });
   if (saveError) return NextResponse.json({ ok: false, error: "計算結果を保存できませんでした" }, { status: 500 });
-  return NextResponse.json({ ok: true, grid, houhan, jisseki, aporan, incentive, payroll });
+  const warnings = missingKanriProducts(sourceRows, points, range.yearMonth);
+  return NextResponse.json({ ok: true, warnings, grid, houhan, jisseki, aporan, incentive, payroll });
 }

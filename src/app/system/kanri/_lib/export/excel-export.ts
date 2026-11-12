@@ -4,7 +4,7 @@ import type { AporanSheetGrid } from "../calc/aporan-sheet";
 import { HOUHAN_PRODUCTS, type HouhanSheetGrid } from "../calc/houhan-sheet";
 import type { IncentiveSheetGrid } from "../calc/incentive-sheet";
 import type { JissekiSheetGrid } from "../calc/jisseki-sheet";
-import { KANRI_TEAM_BLOCKS, type KanriPointMaster, type KanriSheetGrid } from "../calc/kanri-sheet";
+import { kanriTeamBlocks, type KanriPointMaster, type KanriSheetGrid } from "../calc/kanri-sheet";
 import type { PayrollSheetGrid } from "../calc/payroll-sheet";
 import labels from "./template-labels.json";
 
@@ -61,7 +61,19 @@ export function buildKanriWorkbook({ run, results, points }: {
   workbook.subject = kanriExcelFilename(run.target_date);
 
   for (const [sheetName, key] of SHEETS) {
-    const worksheet = addTemplateWorksheet(workbook, sheetName);
+    const worksheet = addTemplateWorksheet(workbook, sheetName, key === "kanri" ? results.kanri : undefined);
+    if (key === "jisseki" && results.jisseki.yearMonth >= "2026-11") {
+      for (const range of TEMPLATE[sheetName].merged) worksheet.unMergeCells(range);
+      for (let column=13;column<=Math.max(worksheet.columnCount,12+results.jisseki.productColumns.length);column++) {
+        worksheet.getCell(2,column).value=null;
+        worksheet.getCell(3,column).value=null;
+      }
+      results.jisseki.productColumns.forEach((column,index)=> {
+        worksheet.getCell(2,13+index).value=column.product;
+        worksheet.getCell(3,13+index).value=column.label;
+        worksheet.getColumn(13+index).width=12;
+      });
+    }
     writeCells(worksheet, extraCellsFor(sheetName, results[key]));
     writeCells(worksheet, results[key].cellValues);
     applyCommonFormats(worksheet);
@@ -79,8 +91,9 @@ export async function writeKanriWorkbookBuffer(input: Parameters<typeof buildKan
   return workbook.xlsx.writeBuffer();
 }
 
-function addTemplateWorksheet(workbook: ExcelJS.Workbook, sheetName: string) {
-  const template = TEMPLATE[sheetName];
+function addTemplateWorksheet(workbook: ExcelJS.Workbook, sheetName: string, grid?: KanriSheetGrid) {
+  let template = TEMPLATE[sheetName];
+  if (grid && grid.yearMonth >= "2026-11") template = expandedKanriTemplate(template,grid);
   const worksheet = workbook.addWorksheet(sheetName);
   if (!template) return worksheet;
 
@@ -98,6 +111,24 @@ function addTemplateWorksheet(workbook: ExcelJS.Workbook, sheetName: string) {
   for (const range of template.merged ?? []) worksheet.mergeCells(range);
   worksheet.views = [{ state: "frozen", ySplit: 3 }];
   return worksheet;
+}
+
+function expandedKanriTemplate(template: TemplateSheet, grid: KanriSheetGrid): TemplateSheet {
+  const delta=grid.products.length-20;
+  const shift=(address:string)=>address.replace(/^[A-Z]+/,column=>{
+    const n=[...column].reduce((sum,c)=>sum*26+c.charCodeAt(0)-64,0);
+    if(n<9) return column;
+    const block=Math.min(2,Math.floor((n-9)/23));
+    return numberToColumn(n+block*delta);
+  });
+  const static_cells=Object.fromEntries(Object.entries(template.static_cells).map(([address,value])=>[shift(address),value]));
+  const col_widths=Object.fromEntries(Object.entries(template.col_widths).map(([column,width])=>[shift(column),width]));
+  grid.teams.forEach((team,index)=> {
+    const block=kanriTeamBlocks(grid.yearMonth,grid.products.length,grid.teams.length)[index];
+    static_cells[block.hours+"2"]=team;
+    grid.products.forEach((product,i)=> {const column=shiftColumn(block.firstProduct,i);static_cells[column+"3"]=product;col_widths[column]=template.col_widths.L??12;});
+  });
+  return {...template,static_cells,col_widths,max_col:template.max_col+2*delta,merged:template.merged.map(range=>range.split(":").map(shift).join(":"))};
 }
 
 function writeCells(worksheet: ExcelJS.Worksheet, cells: Record<string, CellValue>) {
@@ -142,7 +173,7 @@ function extraCellsFor(sheetName: string, grid: SheetGrid) {
 function kanriOpenRateCells(grid: KanriSheetGrid) {
   const cells: Record<string, CellValue> = {};
   (grid.teams ?? []).forEach((team, teamIndex) => {
-    const block = KANRI_TEAM_BLOCKS[teamIndex];
+    const block = kanriTeamBlocks(grid.yearMonth,grid.products.length,grid.teams.length)[teamIndex];
     if (!block) return;
     (grid.products ?? []).forEach((product, productIndex) => {
       cells[`${shiftColumn(block.firstProduct, productIndex)}2`] = grid.openRate?.[team]?.[product] ?? null;
@@ -165,8 +196,28 @@ function writePointMaster(worksheet: ExcelJS.Worksheet, points: KanriPointMaster
   const activePoints = [...points]
     .filter((point) => point.active !== false)
     .sort((a, b) => (a.sort_order ?? 1000) - (b.sort_order ?? 1000));
+  if (activePoints.some(point=>point.soilRows)) {
+    ["商材","獲得方法","開始日","終了日","ポイント","単価"].forEach((label,index)=>worksheet.getCell(8,index+2).value=label);
+  }
+  let detailRow = 9;
   activePoints.forEach((point, index) => {
+    if(point.soilRows) {
+      const rows=point.soilRows;
+      const baseline=rows.find(row=>row.channel==="hakuchi")??rows[0];
+      point={...point,coefficient:baseline.total_points,unit_price:baseline.unit_price};
+      const differing=rows.filter(row=>row.total_points!==baseline.total_points || row.unit_price!==baseline.unit_price);
+      differing.forEach((row)=> {
+        const line=detailRow++;
+        worksheet.getCell(`B${line}`).value=point.product;
+        worksheet.getCell(`C${line}`).value={hakuchi:"白地",lp:"LP",alliance:"アライアンス"}[row.channel];
+        worksheet.getCell(`D${line}`).value=row.start_date;
+        worksheet.getCell(`E${line}`).value=row.end_date;
+        worksheet.getCell(`F${line}`).value=row.total_points;
+        worksheet.getCell(`G${line}`).value=row.unit_price;
+      });
+    }
     const column = numberToColumn(POINT_FIRST_COLUMN + index);
+    if (point.soilRows) worksheet.getColumn(column).width=16;
     worksheet.getCell(`${column}3`).value = point.product;
     worksheet.getCell(`${column}4`).value = nullableNumber(point.coefficient);
     worksheet.getCell(`${column}5`).value = nullableNumber(point.unit_price);

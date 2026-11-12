@@ -1,3 +1,4 @@
+import { loadKanriPoints } from "@/app/system/kanri/_lib/kanri-points.server";
 import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
@@ -25,7 +26,9 @@ export async function GET(_request: Request, context: { params: Promise<{ yearMo
     .eq("year_month", yearMonth)
     .maybeSingle();
   if (error) return NextResponse.json({ ok: false, error: "定休日を読み込めませんでした" }, { status: 500 });
-  return NextResponse.json({ ok: true, setting: data ?? { year_month: yearMonth, holidays: [] } });
+  const points = await loadKanriPoints(yearMonth);
+  if (points.error) return NextResponse.json({ ok: false, error: "ポイント表を読み込めませんでした" }, { status: 500 });
+  return NextResponse.json({ ok: true, products: (points.data ?? []).map(point => point.product), setting: data ?? { year_month: yearMonth, holidays: [] } });
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ yearMonth: string }> }) {

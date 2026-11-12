@@ -1,3 +1,4 @@
+import { loadKanriPoints } from "@/app/system/kanri/_lib/kanri-points.server";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
@@ -24,7 +25,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { id } = await context.params;
   const admin = getSupabaseAdmin();
 
-  const [runResult, resultRows, pointResult] = await Promise.all([
+  const [runResult, resultRows] = await Promise.all([
     admin
       .from("system_kanri_run")
       .select("id,target_date")
@@ -35,14 +36,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       .select("sheet,grid")
       .eq("run_id", id)
       .in("sheet", [...RESULT_SHEETS]),
-    admin
-      .from("system_kanri_point_master")
-      .select("product,kintone_names,category,coefficient,unit_price,sort_order,active")
-      .eq("active", true)
-      .order("sort_order", { ascending: true }),
   ]);
 
-  if (runResult.error || resultRows.error || pointResult.error) {
+  if (runResult.error || resultRows.error) {
     return NextResponse.json({ ok: false, error: "Excel を作成できませんでした" }, { status: 500 });
   }
   if (!runResult.data) {
@@ -57,6 +53,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   }
 
   const run = runResult.data as RunRow;
+  const pointResult = await loadKanriPoints(String(run.target_date).slice(0,7));
+  if (pointResult.error) return NextResponse.json({ok:false,error:"ポイント表を読み込めませんでした"},{status:500});
   const filename = kanriExcelFilename(String(run.target_date));
   const asciiFilename = `kanri-report-${String(run.target_date).replaceAll("-", "")}.xlsx`;
   const buffer = await writeKanriWorkbookBuffer({
