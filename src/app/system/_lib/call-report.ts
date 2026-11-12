@@ -85,8 +85,10 @@ function buildLpBlock(metrics?: CallMetricsResponse) {
   if (!metrics?.lp) return "";
   const stopped = metrics.innovera?.stopped ? `※INNOVERA 取込停止中（最終 ${formatShortJstTime(metrics.innovera.lastSyncAt)}）\n` : "";
   const funnelByBiz = new Map((metrics.lpFunnel?.businesses ?? []).map((biz) => [biz.bizCode, biz]));
-  const names = ["ヒカリのプロ", "電気お申込み受付窓口", "フレッツ"];
-  const blocks = names.flatMap(name => metrics.lp!.businesses.filter(row => row.bizName === name).map(row => lpBusinessBlock(row, funnelByBiz.get(row.bizCode))));
+  // 並びは事業の番号で決める（名前は Kintone の事業マスタのまま。フレッツは「フレッツ光 お申し込み窓口」）。
+  // 事業マスタで「稼働中」の事業だけが届くので、フレッツは稼働中になったら自動で出る。電気開始受付センターは出さない
+  const order = ["hikari-pro", "denki-kaishi", "flets"];
+  const blocks = order.flatMap(code => metrics.lp!.businesses.filter(row => row.bizCode === code).map(row => lpBusinessBlock(row, funnelByBiz.get(row.bizCode))));
   // 顧客一覧の受注で、リスト名 WEB_〇〇 の〇〇が事業の名前と違うもの（数え漏れを出さないため最後に知らせる）
   const unmatched = (metrics.lpUnmatchedOrders ?? []).map((o) => `${o.listName} ${formatLpCountUnit(o.count)}`);
   const warn = unmatched.length ? `\n\n⚠事業に結びつかない受注（リスト名を確認）：${unmatched.join("、")}` : "";

@@ -44,7 +44,8 @@ describe("本文v3の集計", () => {
   });
   it("事業を指定順に並べ、開始受付を除きフレッツを出し、LP受注率を出さない", () => {
     const m = normalizeCallMetricsRpc({ metrics: [{ call_count: 172 }] }, { from: date, to: date, listName: null, employeeName: null });
-    const business = (bizName: string) => ({ bizCode: bizName, bizName, inbound: 15, outbound: 7, reportCustomers: { handled: 17, effective: 13 }, customerOrders: 1 });
+    const codes: Record<string, string> = { "ヒカリのプロ": "hikari-pro", "電気お申込み受付窓口": "denki-kaishi", "フレッツ": "flets", "電気開始受付センター": "denki-uketsuke" };
+    const business = (bizName: string) => ({ bizCode: codes[bizName], bizName, inbound: 15, outbound: 7, reportCustomers: { handled: 17, effective: 13 }, customerOrders: 1 });
     m.lp = { businesses: ["フレッツ", "電気開始受付センター", "電気お申込み受付窓口", "ヒカリのプロ"].map(business) as NonNullable<typeof m.lp>["businesses"], totals: null, notes: [], unregisteredExtensionSummary: null };
     m.reportV3 = { employeeCount: 7, hours: 109, points: "", ranking: "", warnings: [] };
     const text = buildCallReport(summarizeCallMetrics(m), new Date(date + "T06:00:00Z"), m).text!;

@@ -1,9 +1,8 @@
 import "server-only";
-import { fetchKotDailyWorkings, fetchKotEmployees } from "@/app/root/_lib/kot-api";
 import { getAllRecords } from "@/lib/kintone/records";
 import { loadPoints } from "@/app/soil/product-points/server";
 import { creditApps, safeFetchCredit } from "../kanri/_lib/kanri-import.server";
-import { reportEmployeeCount, reportOrders, reportPoints, reportRanking, telemaEmployees, type ReportEmployee } from "./call-report-v3";
+import { reportEmployeeCount, reportHoursFromMetrics, reportOrders, reportPoints, reportRanking, telemaEmployees, type ReportEmployee } from "./call-report-v3";
 import type { CallMetricsResponse } from "./call-metrics";
 
 type DailyActual = { date?: string; employeeKey: string; employeeCode?: string; workMinutes?: number };
@@ -28,11 +27,7 @@ export function kotReportHours(raw: unknown, date: string, employees: ReportEmpl
 type PointClient = Parameters<typeof loadPoints>[0];
 export async function loadCallReportV3(client: PointClient, metrics: CallMetricsResponse, employees: ReportEmployee[]): Promise<CallMetricsResponse> {
   const warnings: string[] = [];
-  let hours: number | null = null;
-  try {
-    const [daily, people] = await Promise.all([fetchKotDailyWorkings(metrics.from), fetchKotEmployees({ date: metrics.from, includeResigner: true })]);
-    hours = kotReportHours(daily, metrics.from, employees, new Map(people.map(p => [p.key, p.code])));
-  } catch { warnings.push("⚠KING OF TIMEの当日実績を読めませんでした"); }
+  const hours = reportHoursFromMetrics(metrics.employeeMetrics, employees);
 
   let points = "\n\n【テレマ全体】\n合計件数：-";
   try {

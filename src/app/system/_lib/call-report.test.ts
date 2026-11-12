@@ -10,8 +10,8 @@ function fixture(): CallMetricsResponse {
     employeeMetrics: Array.from({ length: 12 }, (_, i) => ({ employeeName: String(i), callCount: i ? 0 : 2345, effectiveCount: i ? 0 : 903, effectiveRate: 0, tossCount: 0, orderCount: i ? 0 : 6, acquiredCount: i ? 0 : 5, callOrderRate: 0, callAcquiredRate: 0, prospectCount: 0, absentCount: 0, awayCount: 0, invalidCount: 0, workSeconds: 2345 * 3600 / 42 / 12 })),
     reportTelema: { acquired: 5, waiting: 4, ng: 1, ok: 6 },
     reportV3: { employeeCount: 12, hours: 56, ranking: "", points: "", warnings: [] },
-    lp: { businesses: [{ bizCode: "hikari", bizName: "ヒカリのプロ", recordOrder: 1, inbound: 6, answered: 6, missed: 0, voicemail: 0, outbound: 11, outboundAnswered: 6, talkSeconds: 0, applications: 2, unassignedApplications: 0, customerOrders: 3, reportCustomers: { handled: 12, effective: 10 }, registeredCounts: { denominator: 3, preconfirmWaiting: 1, preconfirmNg: 0, applications: 2, won: 3, excluded: 0 } }], totals: null, notes: [], unregisteredExtensionSummary: null },
-    lpFunnel: { businesses: [{ bizCode: "hikari", inbound: 6, answered: 6, answerRate: 1, noRecord: 0 } as NonNullable<CallMetricsResponse["lpFunnel"]>["businesses"][number]], totals: null, asOf: "2026-10-20T06:00:00Z", notes: [] },
+    lp: { businesses: [{ bizCode: "hikari-pro", bizName: "ヒカリのプロ", recordOrder: 1, inbound: 6, answered: 6, missed: 0, voicemail: 0, outbound: 11, outboundAnswered: 6, talkSeconds: 0, applications: 2, unassignedApplications: 0, customerOrders: 3, reportCustomers: { handled: 12, effective: 10 }, registeredCounts: { denominator: 3, preconfirmWaiting: 1, preconfirmNg: 0, applications: 2, won: 3, excluded: 0 } }], totals: null, notes: [], unregisteredExtensionSummary: null },
+    lpFunnel: { businesses: [{ bizCode: "hikari-pro", inbound: 6, answered: 6, answerRate: 1, noRecord: 0 } as NonNullable<CallMetricsResponse["lpFunnel"]>["businesses"][number]], totals: null, asOf: "2026-10-20T06:00:00Z", notes: [] },
   };
 }
 const now = new Date("2026-10-20T06:04:00Z");

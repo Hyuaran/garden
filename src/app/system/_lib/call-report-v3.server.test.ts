@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ daily: vi.fn(), employees: vi.fn(), records: vi.fn() }));
-vi.mock("@/app/root/_lib/kot-api", () => ({ fetchKotDailyWorkings: mocks.daily, fetchKotEmployees: mocks.employees }));
 vi.mock("@/lib/kintone/records", () => ({ getAllRecords: mocks.records }));
 import { loadCallReportV3 } from "./call-report-v3.server";
 import { normalizeCallMetricsRpc, summarizeCallMetrics } from "./call-metrics";
@@ -51,11 +50,16 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
     await safeFetchCredit("66", date);
     expect(mocks.records.mock.calls.at(-1)?.[2]).toContain('ドロップダウン_17 in ("OK")');
   });
-  it("KOT取得失敗は旧コール稼働時間で代用せず、ポイントは継続する", async () => {
-    mocks.daily.mockRejectedValue(new Error("mock failure"));
-    const result = await loadCallReportV3(client([]), metrics(), people);
-    expect(result.reportV3?.hours).toBeNull();
-    expect(result.reportV3?.warnings).toContain("⚠KING OF TIMEの当日実績を読めませんでした");
+  it("稼働時間は取り込み済みの勤務時間のうちテレマ4チームの人だけを足す（上田・チーム無しは除く）", async () => {
+    const m = metrics();
+    m.employeeMetrics = [
+      { ...m.employeeMetrics[0], employeeName: "南薗 太郎", workSeconds: 5 * 3600 },
+      { ...m.employeeMetrics[0], employeeName: "上田 基人", workSeconds: 8 * 3600 },
+      { ...m.employeeMetrics[0], employeeName: "外部 花子", workSeconds: 3 * 3600 },
+    ];
+    const roster = [...people, { name: "上田 基人", current_team: "宮永チーム", kot_employee_id: "2" }, { name: "外部 花子", current_team: null, kot_employee_id: "3" }];
+    const result = await loadCallReportV3(client([]), m, roster);
+    expect(result.reportV3?.hours).toBe(5);
     expect(result.reportV3?.points).toContain("合計件数：0.0P");
   });
   it("モックの本文を全文で確認する", async () => {
@@ -67,12 +71,13 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
     const m = metrics();
     m.employeeMetrics = [
       ...Array.from({ length: 6 }, (_, i) => ({ ...m.employeeMetrics[0], employeeName: `従業員${i} 花子`, callCount: 1, acquiredCount: 0, tossCount: 0, effectiveCount: 0 })),
-      { ...m.employeeMetrics[0], callCount: 166, tossCount: 0, effectiveCount: 50 },
+      { ...m.employeeMetrics[0], callCount: 166, tossCount: 0, effectiveCount: 50, workSeconds: 109 * 3600 },
       { ...m.employeeMetrics[0], employeeName: "宮本 桃華", callCount: 0, acquiredCount: 0, tossCount: 4, effectiveCount: 0 },
     ];
     const roster = m.employeeMetrics.map((r, i) => ({ name: r.employeeName, current_team: "宮永チーム", kot_employee_id: String(i + 1) }));
     m.reportTelema = { acquired: 0, waiting: 0, ng: 0, ok: 0 };
-    const lpRow = (name: string) => ({ bizName: name, bizCode: name, inbound: 15, outbound: 7, reportCustomers: { handled: 17, effective: 13 }, customerOrders: 1, registeredCounts: { preconfirmWaiting: 1, preconfirmNg: 0, applications: 1 } });
+    const codes: Record<string, string> = { "ヒカリのプロ": "hikari-pro", "電気お申込み受付窓口": "denki-kaishi", "フレッツ": "flets" };
+    const lpRow = (name: string) => ({ bizName: name, bizCode: codes[name], inbound: 15, outbound: 7, reportCustomers: { handled: 17, effective: 13 }, customerOrders: 1, registeredCounts: { preconfirmWaiting: 1, preconfirmNg: 0, applications: 1 } });
     m.lp = { businesses: [lpRow("ヒカリのプロ"), lpRow("電気お申込み受付窓口"), lpRow("フレッツ")] as NonNullable<typeof m.lp>["businesses"], totals: null, notes: [], unregisteredExtensionSummary: null };
     m.lpFunnel = { businesses: m.lp.businesses.map(r => ({ bizCode: r.bizCode, answered: 8, inbound: 12, answerRate: 8 / 12, noRecord: r.bizName === "ヒカリのプロ" ? 2 : 0 })) as NonNullable<typeof m.lpFunnel>["businesses"], totals: null, notes: [], asOf: date };
     const result = await loadCallReportV3(client([point("コラボ", "collab", 1.2), point("でんき", "denki", 0.4), point("コラボLP", "collab", 1.6, "lp")]), m, roster);
