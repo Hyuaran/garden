@@ -85,7 +85,7 @@ it("期間切り替えは先に2行を表示し、失敗したら元へ戻す", 
   fireEvent.change(screen.getByLabelText("合計付与ポイント"), {
     target: { value: "2" },
   });
-  fireEvent.click(screen.getByText("保存する"));
+  fireEvent.click(screen.getByText("保存"));
   expect(save).toHaveBeenCalledWith(
     expect.objectContaining({ total_points: 2 }),
     "source",
@@ -109,7 +109,7 @@ it("重複は上で知らせ、保存を呼ばない", () => {
   fireEvent.change(screen.getByLabelText("商材"), {
     target: { value: row.product },
   });
-  fireEvent.click(screen.getByText("保存する"));
+  fireEvent.click(screen.getByText("保存"));
   expect(save).not.toHaveBeenCalled();
   expect(
     screen.getAllByText(/同じ商材・獲得方法で期間が重なっています/).length,

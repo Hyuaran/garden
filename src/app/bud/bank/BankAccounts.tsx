@@ -67,7 +67,7 @@ function Settings({ account, employees, inherited, onSave, onClose }: { account:
     <h2>{accountDisplayName(account.name)}</h2>
     <People employees={employees} selected={draft.visible_employee_ids} inherited={inherited} onChange={ids => setDraft({ ...draft, visible_employee_ids: ids })} />
     {account.kind === "bank" && <label>マネーフォワードの知らせメールでの名前<input value={draft.mail_alias ?? ""} maxLength={500} onChange={e => setDraft({ ...draft, mail_alias: e.target.value })} /></label>}
-    <label><input type="checkbox" checked={draft.hidden} onChange={e => setDraft({ ...draft, hidden: e.target.checked })} />この{account.kind === "bank" ? "口座" : "カード"}を表示しない</label>
+    <label><input type="checkbox" checked={draft.hidden} onChange={e => setDraft({ ...draft, hidden: e.target.checked })} />この{account.kind === "bank" ? "口座" : "カード"}を非表示</label>
     {account.kind === "bank" && <>
       <label>帳簿の補助科目名<input value={draft.book_sub_account_name} maxLength={500} onChange={e => setDraft({ ...draft, book_sub_account_name: e.target.value })} /><small>帳簿に科目がない場合は空欄にしてください。</small></label>
       <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="arrival">届いた入出金で動かす（おすすめ）</option><option value="auto">計算した残高を表示</option><option value="anchor">銀行の残高を基準にする</option><option value="manual_check">残高はマネーフォワードで確認</option></select></label>

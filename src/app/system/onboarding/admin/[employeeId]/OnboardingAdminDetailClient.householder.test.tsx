@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OnboardingAdminDetailClient from "./OnboardingAdminDetailClient";
+vi.mock("../../_components/AdminTemplates", () => ({ default: () => null }));
 import { initialAdminRecord } from "../../_lib/onboarding-admin";
 
 const refresh = vi.hoisted(() => vi.fn());

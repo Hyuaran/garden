@@ -509,7 +509,7 @@ export default function ProductPointsClient({
                 </ActionButton>
               )}
               <SubmitButton busy={busy} onClick={() => void save()}>
-                保存する
+                保存
               </SubmitButton>
             </ActionRow>
           )}

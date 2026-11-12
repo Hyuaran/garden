@@ -77,3 +77,8 @@ export function hireInformationPending(row: HireInput) {
  return row.employment_type === "派遣" && [row.first_name,row.first_name_kana,row.birthday,row.gender].some(value => !value);
 }
 export function lineComplete(row: HireChecklistState) { return (!!row.line_verified_at && !!row.line_display_renamed_at) || (!!row.checklist?.line_skipped?.checked_at && !!row.checklist.line_skipped.checked_by); }
+
+/** 採番・外部登録を始める前の予定だけ削除できる。 */
+export function canDeleteHireCandidate(row?: HireCandidate) {
+ return !!row && ["planned", "no_show"].includes(row.status) && !row.employee_number && !row.employee_id && !row.kintone_roster_record_id && !Object.keys(row.steps ?? {}).length;
+}

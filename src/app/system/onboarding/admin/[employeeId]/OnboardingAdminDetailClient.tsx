@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import AdminTemplates from "../../_components/AdminTemplates";
 import { minimumWageAt, hourlyEquivalent, type MinimumWage } from "@/lib/minimum-wages";
 import DependentAdminField from "../../_components/DependentAdminField";
 import OnboardingReview from "../../_components/OnboardingReview";
@@ -358,6 +359,14 @@ export default function OnboardingAdminDetailClient({ record, canWrite = true, s
 
     <section className={styles.adminSection}>
       <h2>事務が入れる</h2>
+      <AdminTemplates current={admin} canWrite={canWrite} isSuperAdmin={sensitive} disabled={busy} onApply={values => {
+        setConfirmApply(false);
+        setCommutePaymentEdited(false);
+        setAdmin(previous => {
+          const next = { ...previous, ...values };
+          return { ...next, commute_fixed_monthly: commutePaymentMonthlyForSalaryKind(record.values, next.commute_cap_monthly, next.salary_kind) };
+        });
+      }} />
       <form onSubmit={event => { event.preventDefault(); void post("save"); }}>
         <fieldset disabled={busy} className={styles.adminFields}>
           <label className={styles.field}>所属店舗<input value={admin.office} maxLength={2000} onChange={event => change("office", event.target.value)} /></label>

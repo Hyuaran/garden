@@ -61,6 +61,6 @@ it("取得失敗を空の口座一覧として隠さない", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("口座の一覧を取得できませんでした");
 });
 
-it("任意項目が空でも未定義の文字や区切りを表示しない", () => {
+it("任意項目が空でも未定義の文字や区切りを非表示", () => {
   expect(statementAccountLabel({ ...account, branch_name: null, account_number: null, sub_account_label: null })).toBe("楽天銀行");
 });

@@ -17,8 +17,8 @@ export const adminRowComplete = (row: AdminListItem) => row.status === "submitte
 export default function AdminOnboardingList({ rows }: { rows: AdminListItem[] }) {
   const router = useRouter();
   const [hideComplete, setHideComplete, ready] = useStoredView("onboarding-all:hide-complete", true, raw => raw !== "false", value => String(value));
-  return <main {...CLARITY_MASK}><DataTable loading={!ready} rows={hideComplete ? rows.filter(row => !adminRowComplete(row)) : rows} columns={columns} rowKey={row => row.employeeId}
-    searchText={row => `${row.name} ${row.nameKana ?? ""}`} searchPlaceholder="氏名・カナで探す" defaultSort={{ id: "name", direction: "asc" }}
+  return <main {...CLARITY_MASK}><div className={styles.listActions}><span /><label className={styles.hireCheck}><input type="checkbox" checked={hideComplete} onChange={e => setHideComplete(e.target.checked)} />完了を非表示</label></div><DataTable loading={!ready} rows={hideComplete ? rows.filter(row => !adminRowComplete(row)) : rows} columns={columns} rowKey={row => row.employeeId}
+    searchText={row => `${row.name} ${row.nameKana ?? ""}`} searchPlaceholder="氏名・カナで探す" defaultSort={{ id: "hireDate", direction: "desc" }}
     onRowClick={row => router.push(`/system/onboarding/admin/${encodeURIComponent(row.employeeId)}`)} />
-    <label className={styles.hireCheck}><input type="checkbox" checked={hideComplete} onChange={e => setHideComplete(e.target.checked)} />完了を表示しない</label></main>;
+    </main>;
 }

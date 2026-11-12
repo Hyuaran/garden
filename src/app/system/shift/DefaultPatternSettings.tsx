@@ -87,7 +87,7 @@ export default function DefaultPatternSettings({ employees, settings, patterns, 
       <button type="button" disabled={busy} onClick={() => void change(p.employee_id, "exclude")}>外す</button>
     </li>)}</ul>
     {person && <Modal title={`${person.name}さんの既定の勤務`} onClose={() => { if (!busy) setPerson(null); }}
-      actions={<SubmitButton busy={busy} onClick={() => void save()}>保存する</SubmitButton>}>
+      actions={<SubmitButton busy={busy} onClick={() => void save()}>保存</SubmitButton>}>
       {draft.map(row => <p key={row.weekday}>
         {weekdayLabels[row.weekday]}　
         <select aria-label={`${weekdayLabels[row.weekday]}の開始`} value={row.start_time ?? ""} disabled={busy}

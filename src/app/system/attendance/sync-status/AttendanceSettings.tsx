@@ -54,7 +54,7 @@ export default function AttendanceSettings() {
         onChange={(event) => setDate(event.target.value)}
       />
       <ActionButton disabled={busy} onClick={() => void save()}>
-        保存する
+        保存
       </ActionButton>
       <p>
         この日以降の打刻を KING OF TIME へ送ります。この日から KING OF TIME

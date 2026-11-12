@@ -50,7 +50,7 @@ async function OnboardingPage({ searchParams = Promise.resolve({}) }: { searchPa
     <SystemTabs aria-label="入社手続き" actions={<ViewPermissionButton key={tab} pageKey="system-onboarding" tabKey={tab} tabLabel={activeLabel} admin={context.viewer.role === "super_admin"} canAdd={canAdd} />}>{tabs.map(item => <Link key={item.id} role="tab" aria-selected={tab === item.id} href={`/system/onboarding?tab=${item.id}`} scroll={false}>{item.label}</Link>)}</SystemTabs>
     {tab === "self" && (initial ? <OnboardingClient key={`${initial.status}-${initial.submittedAt ?? "draft"}`} initial={initial} />
       : <section className={styles.panel} role="status"><h2>入社手続きのご案内</h2><p>{message}</p></section>)}
-    {(tab === "candidates" || tab === "confirmations") && hireContext && <HireCandidatesClient key={tab} initialRows={initialCandidates} userId={hireContext.userId} tab={tab} canWrite={true} />}
+    {(tab === "candidates" || tab === "confirmations") && hireContext && <HireCandidatesClient key={tab} initialRows={initialCandidates} userId={hireContext.userId} tab={tab} canWrite={true} isSuperAdmin={context.viewer.role === "super_admin"} />}
     {tab === "all" && (rows ? <AdminOnboardingList rows={rows} /> : <section className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></section>)}
   </div>;
 }

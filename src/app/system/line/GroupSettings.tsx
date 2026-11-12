@@ -44,7 +44,7 @@ export default function GroupSettings() {
       {id:'linked',label:'結んだ日時',type:'text',align:'fixed',value:g=>g.linked_at?new Date(g.linked_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}):'—'},
     ]}/>
     {draft&&<Modal title={draft.id?'グループの変更':'グループを追加する'} onClose={()=>{if(!busy)setDraft(undefined);}} actions={<>
-      {draft.id&&<ActionButton disabled={busy} onClick={()=>act('save')}>保存する</ActionButton>}
+      {draft.id&&<ActionButton disabled={busy} onClick={()=>act('save')}>保存</ActionButton>}
       <SubmitButton busy={busy} onClick={()=>act('code')}>確認コードを作る</SubmitButton>
     </>}>
       <FormRow label="1 グループの名前"><TextField aria-label="グループの名前" maxLength={100} value={draft.label} onChange={e=>{setDraft({...draft,label:e.target.value});setCode('');}}/></FormRow>

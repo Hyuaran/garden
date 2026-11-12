@@ -41,7 +41,7 @@ export default function TeamHistoryPanel({employeeId,canWrite,onChanged}:{employ
         <FormRow label="1 移動日"><TextField aria-label="移動日" type="date" disabled={!canWrite||busy} value={edit.effective_date||''} onChange={e=>setEdit({...edit,effective_date:e.target.value})}/></FormRow>
         <FormRow label="2 チーム"><SelectField aria-label="チーム" disabled={!canWrite||busy} value={edit.team||''} onChange={e=>setEdit({...edit,team:e.target.value})}>{TEAMS.map(t=><option key={t}>{t}</option>)}</SelectField></FormRow>
         <FormRow label="3 メモ"><TextArea aria-label="メモ" disabled={!canWrite||busy} maxLength={5000} value={edit.memo||''} onChange={e=>setEdit({...edit,memo:e.target.value})}/></FormRow>
-        {canWrite&&<><SubmitButton busy={busy} onClick={()=>save(edit.id?'PATCH':'POST')}>{edit.id?'保存する':'登録する'}</SubmitButton>{edit.id&&<ActionButton disabled={busy} onClick={()=>save('DELETE')}>削除する</ActionButton>}</>}
+      {canWrite&&<><SubmitButton busy={busy} onClick={()=>save(edit.id?'PATCH':'POST')}>{edit.id?'保存':'登録する'}</SubmitButton>{edit.id&&<ActionButton disabled={busy} onClick={()=>save('DELETE')}>削除する</ActionButton>}</>}
       </>}{message&&<ResultMessage>{message}</ResultMessage>}
     </Modal>}
   </section>;

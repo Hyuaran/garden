@@ -3,6 +3,15 @@ import { expect, it, vi } from "vitest";
 const push = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ push }) }));
 import AdminOnboardingList from "./AdminOnboardingList";
+it("入社日の新しい順で並び、非表示チェックを表より上の右寄せ行に置く", () => {
+  const base = { status: "draft" as const, submittedAt: null, missingCount: 0, adminComplete: false };
+  render(<AdminOnboardingList rows={[{...base,employeeId:"old",name:"古い人",hireDate:"2026-01-01"},{...base,employeeId:"new",name:"新しい人",hireDate:"2026-11-12"}]} />);
+  const names=screen.getAllByRole("row").slice(1).map(row=>row.textContent);
+  expect(names[0]).toContain("新しい人");
+  const check=screen.getByRole("checkbox",{name:"完了を非表示"});
+  expect(check.closest("label")?.parentElement?.className).toContain("listActions");
+  expect(check.compareDocumentPosition(screen.getByRole("table")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
 it("氏名以外のセル・行のEnterとSpaceで詳細を開き、カナ検索できる", () => {
   render(<AdminOnboardingList rows={[{ employeeId: "EMP-1", name: "後道 愛美", nameKana: "ウシロミチ マナミ", hireDate: "2026-10-26", status: "draft", submittedAt: null, missingCount: 1, adminComplete: false }]} />);
   const row = screen.getByText("後道 愛美").closest("tr")!;
@@ -14,7 +23,7 @@ it("氏名以外のセル・行のEnterとSpaceで詳細を開き、カナ検索
   fireEvent.change(screen.getByPlaceholderText("氏名・カナで探す"), { target: { value: "ウシロミチ" } });
   expect(screen.getByText("後道 愛美")).toBeInTheDocument();
 });
-it("完了（提出ずみ・事務入力済）は最初から出さず、「完了を表示しない」を外すと出る。未着手も並ぶ", () => {
+it("完了（提出ずみ・事務入力済）は最初から出さず、「完了を非表示」を外すと出る。未着手も並ぶ", () => {
   window.localStorage.removeItem("onboarding-all:hide-complete");
   const base = { nameKana: "", hireDate: "2026-11-01", submittedAt: null, missingCount: 0 };
   render(<AdminOnboardingList rows={[
@@ -22,7 +31,7 @@ it("完了（提出ずみ・事務入力済）は最初から出さず、「完�
     { ...base, employeeId: "EMP-2", name: "事務 待ち", status: "submitted", adminComplete: false },
     { ...base, employeeId: "EMP-3", name: "籔 僚太", status: "not_started", adminComplete: false },
   ]} />);
-  const box = screen.getByRole("checkbox", { name: "完了を表示しない" });
+  const box = screen.getByRole("checkbox", { name: "完了を非表示" });
   expect(box).toBeChecked();
   expect(screen.queryByText("完了 太郎")).toBeNull();
   expect(screen.getByText("事務 待ち")).toBeInTheDocument();

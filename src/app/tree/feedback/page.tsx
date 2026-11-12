@@ -210,7 +210,7 @@ export default function FeedbackPage() {
                   />
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
                     <ActionButton
-                      label="保存する"
+                      label="保存"
                       color={C.midGreen}
                       onClick={handleSave}
                     />

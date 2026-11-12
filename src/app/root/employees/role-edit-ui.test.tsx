@@ -351,7 +351,7 @@ describe("Garden権限の編集UI", () => {
     );
   });
 
-  it("manager 未満には Chatwork 連携欄を表示しない", async () => {
+  it("manager 未満には Chatwork 連携欄を非表示", async () => {
     mocks.operatorRole = "staff";
     renderPage();
     await openEmployee();
@@ -528,7 +528,7 @@ describe("Garden権限の編集UI", () => {
       },
     );
 
-    it("氏名と権限だけを表示し、従業員の他項目を表示しない", async () => {
+    it("氏名と権限だけを表示し、従業員の他項目を非表示", async () => {
       renderPage();
       await openRoleDialog();
       const heading = screen.getByRole("heading", { name: "Garden権限の変更" });
@@ -569,7 +569,7 @@ describe("Garden権限の編集UI", () => {
       expect(mocks.updateEmployeeGardenRole).not.toHaveBeenCalled();
     });
 
-    it("権限変更をDBに拒否されたときは開発者向け文字列を表示しない", async () => {
+    it("権限変更をDBに拒否されたときは開発者向け文字列を非表示", async () => {
       mocks.fetchEmployees.mockResolvedValue([employeeWithoutBank]);
       mocks.updateEmployeeGardenRole.mockRejectedValueOnce(
         new Error("updateEmployeeGardenRole failed: P0001 enforce_garden_role_change upsertEmployee employee_number not-null constraint"),

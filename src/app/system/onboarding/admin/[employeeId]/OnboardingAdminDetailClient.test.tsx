@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OnboardingAdminDetailClient from "./OnboardingAdminDetailClient";
+// ひな形の通信と操作は AdminTemplates.test.tsx で検証する。
+vi.mock("../../_components/AdminTemplates", () => ({ default: () => null }));
 import { ADMIN_SELECT_OPTIONS, initialAdminRecord } from "../../_lib/onboarding-admin";
 
 const refresh = vi.hoisted(() => vi.fn());

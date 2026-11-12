@@ -536,7 +536,7 @@ export function TeamShift({
                 })
               }
             >
-              保存する
+              保存
             </SubmitButton>
           }
         >

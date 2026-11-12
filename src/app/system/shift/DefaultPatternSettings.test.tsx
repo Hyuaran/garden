@@ -20,7 +20,7 @@ it("選べる勤務を追加・削除し、曜日の勤務と一緒に保存す�
     target: { value: "出社" },
   });
   fireEvent.click(screen.getByRole("button", { name: "1件目の選べる勤務を削除" }));
-  fireEvent.click(screen.getByRole("button", { name: "保存する" }));
+  fireEvent.click(screen.getByRole("button", { name: "保存" }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
   const init = (fetcher.mock.calls[0] as unknown as [string, RequestInit])[1];
   expect(JSON.parse(String(init.body))).toMatchObject({

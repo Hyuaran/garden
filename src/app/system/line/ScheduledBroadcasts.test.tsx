@@ -52,7 +52,7 @@ it('予定の行から題名・内容・日時を変更して保存できる', a
   fireEvent.change(within(dialog).getByLabelText('予約の題名'), { target: { value: '変更した題名' } });
   fireEvent.change(within(dialog).getByLabelText('予約の送信内容'), { target: { value: '変更した本文' } });
   fireEvent.change(within(dialog).getByLabelText('送信時刻'), { target: { value: '10:20' } });
-  fireEvent.click(within(dialog).getByRole('button', { name: '保存する' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: '保存' }));
   expect(act).toHaveBeenCalledWith(expect.objectContaining({ action: 'scheduleUpdate', id: row.id, title: '変更した題名', body: '変更した本文' }));
 });
 

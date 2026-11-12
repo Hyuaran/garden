@@ -56,7 +56,7 @@ export function ScheduleEditor({ row, tags, busy, act, onClose, message }: {
           const scheduledAt = validateScheduledAt(`${date}:00+09:00`);
           if (await act({ action: 'scheduleUpdate', id: row.id, ...draft, scheduledAt })) onClose();
         } catch (cause) { setError((cause as Error).message); }
-      }}>保存する</SubmitButton>
+      }}>保存</SubmitButton>
     </>}>
       {error && <ResultMessage>{error}</ResultMessage>}
       {message && <ResultMessage>{message}</ResultMessage>}

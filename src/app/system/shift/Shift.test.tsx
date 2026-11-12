@@ -149,7 +149,7 @@ it("責任者が行を押して月の小窓を開き、確定前に確認する"
   expect(
     screen.getByRole("dialog", { name: /山田 太郎さんのシフト/ }),
   ).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "保存する" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
   fireEvent.click(
     screen.getByRole("button", { name: "この月のシフトを確定する" }),
   );

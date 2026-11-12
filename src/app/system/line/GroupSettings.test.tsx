@@ -17,7 +17,7 @@ it('追加の小窓でコードを作る',async()=>{
 });
 it('行を押して変更し、確認後に外す',async()=>{
   render(<GroupSettings/>);fireEvent.click(await screen.findByText('A'));
-  fireEvent.click(screen.getByLabelText('オン'));fireEvent.click(screen.getByText('保存する'));
+  fireEvent.click(screen.getByLabelText('オン'));fireEvent.click(screen.getByText('保存'));
   await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(vi.mocked(fetch).mock.calls.some(([,init])=>init?.body&&JSON.parse(String(init.body)).notify===true)).toBe(true);
   fireEvent.click(screen.getByText('A'));fireEvent.click(screen.getByText('このグループの記録を外す'));

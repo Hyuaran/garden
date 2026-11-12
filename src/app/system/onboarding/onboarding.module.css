@@ -123,3 +123,10 @@
 .hakenHireDialog .hireGrid { gap:8px 16px; margin:12px 0; }
 .hakenHireDialog .hireGrid input:not([type="radio"]) { height:36px; }
 @container (min-width:800px) { .hakenHireDialog .hireGrid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+
+.listActions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:12px 0; }
+.listActions > label { margin-left:auto; }
+.adminFields > .field { align-content:start; grid-auto-rows:max-content; }
+.adminFields .field > :is(input,select) { box-sizing:border-box; height:48px; min-height:48px; padding:10px 12px; font:inherit; }
+
+.candidateDangerActions { display:flex; gap:10px; margin-right:auto; }

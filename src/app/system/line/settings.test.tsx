@@ -160,7 +160,7 @@ it('鉛筆は定型文の変更を開き、入力した名前を保存する',as
  let dialog=within(screen.getByRole('dialog',{name:'定型文の変更'}));
  expect(dialog.getByLabelText('定型文の題名')).toHaveValue('{年}年{月}月分 雇用契約書');
  fireEvent.change(dialog.getByLabelText('ボタンの名前'),{target:{value:'変更した名前'}});
- fireEvent.click(dialog.getByRole('button',{name:'保存する'}));
+ fireEvent.click(dialog.getByRole('button',{name:'保存'}));
  await screen.findByRole('button',{name:'雇用契約書のお知らせを変更する'});
  expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateSave'&&JSON.parse(init.body).label==='変更した名前')).toBe(true);
 });
@@ -182,7 +182,7 @@ it('定型文を追加でき、削除は確認の小窓で確定するまで送�
  fireEvent.click(await screen.findByRole('button',{name:'＋ 定型文を追加'}));
  let dialog=within(screen.getByRole('dialog',{name:'定型文の追加'}));
  for(const [name,value] of [['ボタンの名前','新しい定型文'],['定型文の題名','{年}年のお知らせ'],['定型文の送信内容','お疲れ様です']]) fireEvent.change(dialog.getByLabelText(name),{target:{value}});
- fireEvent.click(dialog.getByRole('button',{name:'保存する'}));
+ fireEvent.click(dialog.getByRole('button',{name:'保存'}));
  await waitFor(()=>expect(screen.queryByRole('dialog',{name:'定型文の追加'})).toBeNull());
  expect(fetchMock.mock.calls.some(([,init])=>init?.body&&JSON.parse(init.body).action==='templateSave'&&!JSON.parse(init.body).id)).toBe(true);
  // 結果は画面の下に浮かべる（出ても消えても部品を押し下げない）。何をしたかが分かる文

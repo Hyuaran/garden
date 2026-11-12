@@ -429,7 +429,7 @@ export default function HakenDetail({
               className={formStyles.primary}
               disabled={!canWrite || busy}
             >
-              保存する
+              保存
             </button>
           </div>
         </fieldset>
