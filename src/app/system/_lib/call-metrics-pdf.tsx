@@ -54,9 +54,9 @@ export function measureVectorTextLayout(value: string, width: number, fontSize =
   return { lines, fontSize, lineWidths: lines.map((item) => textWidth(font, item, fontSize)) };
 }
 
-// 文字の大きさと行の分け方は fontkit で測って決め（はみ出すときは縮める）、描くのは react-pdf の文字（Text）。
+// 文字の幅を fontkit で測り、折り返して文字サイズを保つ。描画は react-pdf の文字（Text）。
 // 名前は図形で描いていたころ（〜2026-10-15）のまま
-function VectorText({ children, width, height = 22, fontSize = 7.5, bold = false, align = "right", color = COLORS.ink, fixed = false, wrap = false }: {
+function VectorText({ children, width, height = 22, fontSize = 7.5, bold = false, align = "right", color = COLORS.ink, fixed = false, wrap = true }: {
   children: string; width: number; height?: number; fontSize?: number; bold?: boolean; align?: TextAlign; color?: string; fixed?: boolean; wrap?: boolean;
 }) {
   const layout = measureVectorTextLayout(children, width, fontSize, bold, wrap);
@@ -117,25 +117,25 @@ const fmTone = (r: EmployeeCallMetricRow, value: number) => isUnregisteredRow(r)
 const employeeColumnGroups: ColumnGroup[] = [{ label: "テレマ", span: 15 }, { label: "WEBインバウンド（ランディングページ）", span: 4 }];
 
 const employeeColumns: Column<EmployeeCallMetricRow>[] = [
-  { label: "社員名", width: 92, value: (r) => r.employeeName, align: "left" },
-  { label: "稼働時間", width: 58, value: (r) => fm(r, formatWorkTime(r.workSeconds)) },
-  { label: "通話時間", width: 58, value: (r) => maybeTime(r.talkSecondsOther) },
-  { label: "コール数", width: 43, value: (r) => fm(r, r.callCount.toLocaleString("ja-JP")) },
-  { label: "コール数/h", width: 46, value: (r) => fm(r, formatCallsPerWorkHour(r.callCount, r.workSeconds)) },
-  { label: "有効数", width: 39, value: (r) => fm(r, r.effectiveCount.toLocaleString("ja-JP")) },
-  { label: "有効率", width: 42, value: (r) => fm(r, pct(r.effectiveRate)) },
-  { label: "トス数", width: 37, value: (r) => fm(r, String(r.tossCount)), emphasized: (r) => fmTone(r, r.tossCount) },
-  { label: "トス率", width: 41, value: (r) => fm(r, pct(r.callCount ? r.tossCount / r.callCount : 0)) },
-  { label: "受注数", width: 39, value: (r) => fm(r, String(r.acquiredCount)), emphasized: (r) => fmTone(r, r.acquiredCount) },
-  { label: "前確OK数", width: 46, value: (r) => fm(r, String(r.orderCount)), emphasized: (r) => fmTone(r, r.orderCount) },
-  { label: "見込", width: 34, value: (r) => fm(r, String(r.prospectCount)) },
-  { label: "担不", width: 34, value: (r) => fm(r, String(r.absentCount)) },
-  { label: "留守", width: 34, value: (r) => fm(r, String(r.awayCount)) },
-  { label: "無効", width: 34, value: (r) => fm(r, String(r.invalidCount)) },
-  { label: "WEB応答", width: 44, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpAnswered) : "-", groupStart: true },
-  { label: "WEB発信", width: 44, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpOutbound) : "-" },
-  { label: "WEB通話時間", width: 58, value: (r) => hasEmployeeWebActivity(r) ? maybeTime(r.lpTalkSeconds) : "-" },
-  { label: "WEB申込み", bold: true, width: 44, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpApplications) : "-" },
+  { label: "社員名", width: 85, value: (r) => r.employeeName, align: "left" },
+  { label: "稼働時間", width: 48, value: (r) => fm(r, formatWorkTime(r.workSeconds)) },
+  { label: "通話時間", width: 48, value: (r) => maybeTime(r.talkSecondsOther) },
+  { label: "コール数", width: 39, value: (r) => fm(r, r.callCount.toLocaleString("ja-JP")) },
+  { label: "コール数/h", width: 43, value: (r) => fm(r, formatCallsPerWorkHour(r.callCount, r.workSeconds)) },
+  { label: "有効数", width: 34, value: (r) => fm(r, r.effectiveCount.toLocaleString("ja-JP")) },
+  { label: "有効率", width: 37, value: (r) => fm(r, pct(r.effectiveRate)) },
+  { label: "トス数", width: 31, value: (r) => fm(r, String(r.tossCount)), emphasized: (r) => fmTone(r, r.tossCount) },
+  { label: "トス率", width: 37, value: (r) => fm(r, pct(r.callCount ? r.tossCount / r.callCount : 0)) },
+  { label: "受注数", width: 31, value: (r) => fm(r, String(r.acquiredCount)), emphasized: (r) => fmTone(r, r.acquiredCount) },
+  { label: "前確OK数", width: 40, value: (r) => fm(r, String(r.orderCount)), emphasized: (r) => fmTone(r, r.orderCount) },
+  { label: "見込", width: 25, value: (r) => fm(r, String(r.prospectCount)) },
+  { label: "担不", width: 25, value: (r) => fm(r, String(r.absentCount)) },
+  { label: "留守", width: 25, value: (r) => fm(r, String(r.awayCount)) },
+  { label: "無効", width: 25, value: (r) => fm(r, String(r.invalidCount)) },
+  { label: "WEB応答", width: 40, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpAnswered) : "-", groupStart: true },
+  { label: "WEB発信", width: 40, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpOutbound) : "-" },
+  { label: "WEB通話時間", width: 48, value: (r) => hasEmployeeWebActivity(r) ? maybeTime(r.lpTalkSeconds) : "-" },
+  { label: "WEB申込み", bold: true, width: 43, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpApplications) : "-" },
 ];
 
 const listColumns: Column<CallMetricRow>[] = [
@@ -188,7 +188,7 @@ function Chrome({ data, generatedAt }: { data: CallMetricsResponse; generatedAt:
   const period = `対象期間 ${data.from}〜${data.to}`;
   const innovera = innoveraHeaderText(data);
   const header = <>
-    <VectorText width={350} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
+    <VectorText width={300} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
     <View style={{ height: 30 }}>
       <VectorText width={470} height={12} fontSize={8} align="right">{formatPdfSnapshot(generatedAt)}</VectorText>
       <VectorText width={250} height={12} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText>
@@ -213,7 +213,7 @@ function DataTable<T>({ columns, rows, groups }: { columns: Column<T>[]; rows: T
     <View fixed style={styles.row}>{columns.map((column, index) => <View key={column.label} style={cellStyle(styles.th, column)}><VectorText width={column.width - 1} height={22} bold align="center" color="#FFFFFF">{column.label}</VectorText></View>)}</View>
     {rows.length ? rows.map((row, rowIndex) => <View key={rowIndex} wrap={false} style={styles.row}>{columns.map((column, columnIndex) => {
       const emphasis = column.emphasized?.(row);
-      return <View key={column.label} style={[...cellStyle(styles.td, column), { backgroundColor: rowIndex % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={column.bold || emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
+      return <View key={column.label} style={[...cellStyle(styles.td, column), { backgroundColor: rowIndex % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={column.width - 1} height={22} wrap bold={column.bold || emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
     })}</View>) : <View style={styles.row}><View style={[styles.td, { width: columns.reduce((sum, c) => sum + c.width, 0) }]}><VectorText width={columns.reduce((sum, c) => sum + c.width, 0)} align="left">対象データがありません</VectorText></View></View>}
   </View>;
 }
@@ -222,7 +222,7 @@ function DataTable<T>({ columns, rows, groups }: { columns: Column<T>[]; rows: T
 const lpSubtotalWidths = (applicationTexts: string[]) => {
   // 申込みの列は中身に合わせる（「5（うち担当者未設定 1）」があるときだけ広げる・2026-11-12）
   const longest = Math.max(...applicationTexts.map((text) => text.length), 3);
-  return [150, 45, 45, 45, 45, 45, 65, 75, Math.max(55, Math.ceil(longest * 8.5) + 10)];
+  return [150, 45, 45, 45, 45, 45, 65, 75, Math.min(PDF_CONTENT_WIDTH - 516, Math.max(55, Math.ceil(longest * 8.5) + 10))];
 };
 function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
   const rows = [...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => [
@@ -239,17 +239,17 @@ function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
   return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths(rows.map((row) => row[8]))} boldColumn={8} alignRightFrom={1}/>;
 }
 
-// 表A・表Bは縦に配置し、まとまりごとに改ページできるようにする。
-// 親は太字＋帯、子は罫線でつなぐ（縦の線が行をまたいでつながる）。率は太い区切り線の下。列幅 pt＝指標名 262／事業ごと・合計 92
+// A4 横では階層名と内訳の可読性を優先し、表A・表Bを別ページの全幅に配置する。
+// 親は太字＋帯、子は罫線でつなぐ（縦の線が行をまたいでつながる）。率は太い区切り線の下。列幅 pt＝指標名 262／残りは事業ごと・合計で均等配分
 const TREE_STEP = 13;
 const TREE_LINE = "#9AA8B8";
 function TreeConnector({ link, level }: { link: LpFunnelTreeLink; level: number }) {
   if (level <= 0) return null;
-  return <View style={{ flexDirection: "row", width: TREE_STEP * level, height: 22 }}>
-    {link.continues.map((on, depth) => <View key={depth} style={{ width: TREE_STEP, height: 22 }}>{on ? <View style={{ position: "absolute", left: 6, top: 0, width: 0.8, height: 22, backgroundColor: TREE_LINE }}/> : null}</View>)}
-    <View style={{ width: TREE_STEP, height: 22 }}>
-      <View style={{ position: "absolute", left: 6, top: 0, width: 0.8, height: link.last ? 11 : 22, backgroundColor: TREE_LINE }}/>
-      <View style={{ position: "absolute", left: 6, top: 10.6, width: 7, height: 0.8, backgroundColor: TREE_LINE }}/>
+  return <View style={{ flexDirection: "row", width: TREE_STEP * level, height: 18 }}>
+    {link.continues.map((on, depth) => <View key={depth} style={{ width: TREE_STEP, height: 18 }}>{on ? <View style={{ position: "absolute", left: 6, top: 0, width: 0.8, height: 18, backgroundColor: TREE_LINE }}/> : null}</View>)}
+    <View style={{ width: TREE_STEP, height: 18 }}>
+      <View style={{ position: "absolute", left: 6, top: 0, width: 0.8, height: link.last ? 9 : 18, backgroundColor: TREE_LINE }}/>
+      <View style={{ position: "absolute", left: 6, top: 8.6, width: 7, height: 0.8, backgroundColor: TREE_LINE }}/>
     </View>
   </View>;
 }
@@ -257,35 +257,35 @@ function TreeTable({ headers, rows, widths }: { headers: string[]; rows: LpFunne
   const tableWidth = widths.reduce((sum, width) => sum + width, 0);
   const links = lpFunnelTreeLinks(rows);
   const firstRate = rows.findIndex((row) => row.kind === "rate");
-  return <View wrap={false} style={[styles.table, { width: tableWidth }]}>
-    <View style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>
+  return <View style={[styles.table, { width: tableWidth }]}>
+    <View fixed style={[styles.row, { minHeight: 18 }]}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={18} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>
     {rows.map((row, i) => {
       const tree = row.kind === "node" || row.kind === "group";
       const level = tree ? row.level : 0;
       const band = i % 2 ? "#F1F5F9" : COLORS.card;
       const strong = row.kind === "rate" || (tree && level <= 1);
       const tone = row.kind === "note" ? COLORS.sub : COLORS.ink;
-      return <View key={i} wrap={false} style={[styles.row, i === firstRate ? { borderTopWidth: 2, borderTopColor: COLORS.navy } : {}, { backgroundColor: band }]}>
+      return <View key={i} wrap={false} style={[styles.row, { minHeight: 18 }, i === firstRate ? { borderTopWidth: 2, borderTopColor: COLORS.navy } : {}, { backgroundColor: band }]}>
         <View style={[styles.td, { width: widths[0], flexDirection: "row", paddingLeft: 4 }]}>
           {tree ? <TreeConnector link={links[i]} level={level}/> : null}
-          <VectorText width={widths[0] - 5 - TREE_STEP * level} height={22} align="left" bold={strong} color={tone}>{row.label}</VectorText>
+          <VectorText width={widths[0] - 5 - TREE_STEP * level} height={18} wrap align="left" bold={strong} color={tone}>{row.label}</VectorText>
         </View>
-        {row.values.map((value, j) => <View key={j} style={[styles.td, { width: widths[j + 1], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[j + 1] - 1} height={22} align="right" bold={strong && row.kind !== "note"} color={tone}>{value}</VectorText></View>)}
+        {row.values.map((value, j) => <View key={j} style={[styles.td, { width: widths[j + 1], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[j + 1] - 1} height={18} align="right" bold={strong && row.kind !== "note"} color={tone}>{value}</VectorText></View>)}
       </View>;
     })}
   </View>;
 }
 function LpFunnelPart({ data }: { data: CallMetricsResponse }) {
   const funnel = data.lpFunnel;
-  if (!funnel) return <VectorParagraph width={870}>WEBインバウンドの対応と結果を取得できませんでした。</VectorParagraph>;
+  if (!funnel) return <VectorParagraph width={PDF_CONTENT_WIDTH}>WEBインバウンドの対応と結果を取得できませんでした。</VectorParagraph>;
   const headers = lpFunnelHeaders(funnel);
   const widths = lpFunnelPdfWidths(headers.length);
   const notes = lpFunnelCalcNotes(funnel);
   const noRecordTotal = funnel.businesses.reduce((sum, biz) => sum + (biz.noRecord ?? 0), 0);
   return <>
     <View style={{ flexDirection: "column", alignItems: "flex-start", marginBottom: 12 }}>
-      <View wrap={false} style={{ marginBottom: 20 }}><DefinitionTitle>表A　対応</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableA(funnel)} widths={widths}/></View>
-      <View wrap={false}><DefinitionTitle>表B　結果</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableB(funnel)} widths={widths}/></View>
+      <View style={{ marginBottom: 0 }}><DefinitionTitle>表A　対応</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableA(funnel)} widths={widths}/></View>
+      <View break><DefinitionTitle>表B　結果</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableB(funnel)} widths={widths}/></View>
     </View>
     <VectorParagraph width={PDF_CONTENT_WIDTH}>{`${LP_FUNNEL_LEAD_NOTE}${noRecordTotal ? ` 記録なし ${noRecordTotal} 件の番号はポータルの「WEBインバウンド」タブで確かめてください。` : ""}`}</VectorParagraph>
     {notes.map((note) => <VectorParagraph key={note} width={PDF_CONTENT_WIDTH}>{note}</VectorParagraph>)}
@@ -308,15 +308,15 @@ function ContinuationLabel({ label, marker }: { label: string; marker: string })
 }
 export function CallMetricsPdfDocument({ data, definitionRows = DEFINITIONS, generatedAt = new Date() }: { data: CallMetricsResponse; definitionRows?: string[][]; generatedAt?: Date }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics} groups={employeeColumnGroups}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={870}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><LpFunnelPart data={data}/></Page>
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
+    <Page size="A4" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics} groups={employeeColumnGroups}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={PDF_CONTENT_WIDTH}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
+    <Page size="A4" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><LpFunnelPart data={data}/></Page>
+    <Page size="A4" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
+    <Page size="A4" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
       <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={definitionRows} widths={[155, 580]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>休憩時間割</DefinitionTitle><SimpleTable headers={["回", "開始", "終了", "長さ"]} rows={BREAKS} widths={[100, 170, 170, 170]}/><VectorParagraph width={735}>※ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</VectorParagraph></View>
       <View style={styles.definitionBlock}><DefinitionTitle>コール履歴のフラグ名 → ポータル表示名</DefinitionTitle><SimpleTable headers={["コール履歴", "ポータル表示"]} rows={[["獲得", "受注数"], ["前確OK", "前確OK数"], ["トス", "トス数"]]} widths={[240, 370]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>結果フラグの扱い（分類ルール）</DefinitionTitle><SimpleTable headers={["結果フラグ", "扱い"]} rows={FLAG_RULES} widths={[240, 370]}/></View>
-      <View style={styles.definitionBlock}><DefinitionTitle>WEBインバウンドの対応と結果</DefinitionTitle><SimpleTable headers={["項目", "定義"]} rows={LP_FUNNEL_DEFINITIONS} widths={[200, 680]}/></View>
+      <View style={styles.definitionBlock}><DefinitionTitle>WEBインバウンドの対応と結果</DefinitionTitle><SimpleTable headers={["項目", "定義"]} rows={LP_FUNNEL_DEFINITIONS} widths={[200, PDF_CONTENT_WIDTH - 201]}/></View>
     </Page>
   </Document>;
 }
@@ -332,7 +332,7 @@ export async function renderCallMetricsPdf(data: CallMetricsResponse, options: {
   return renderToBuffer(<CallMetricsPdfDocument data={data} definitionRows={options.definitionRows} generatedAt={options.generatedAt}/>);
 }
 
-export const PDF_CONTENT_WIDTH = 1190.55 - 56;
+export const PDF_CONTENT_WIDTH = 841.89 - 56;
 
 export function lpFunnelPdfWidths(columnCount: number) {
   const labelWidth = 262;
