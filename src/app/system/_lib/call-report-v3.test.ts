@@ -16,11 +16,18 @@ describe("本文v3の集計", () => {
   it("四チームのリーダーを含め、上田とチーム無しを時間と人数から除く", () => {
     expect(telemaEmployees(people)).toHaveLength(4);
     const codes = new Map(people.map((p, i) => [String(i), p.kot_employee_id]));
-    const raw = { date, dailyWorkings: people.map((p, i) => ({ employeeKey: String(i), totalWork: i < 4 ? 1633 : 9000 })) };
-    expect(kotReportHours(raw, date, people, codes)).toBe(109);
-    expect(kotReportHours({ date, dailyWorkings: [{ employeeKey: "0", totalWork: 0 }] }, date, people, codes)).toBe(0);
-    expect(() => kotReportHours({ date, dailyWorkings: [{ employeeKey: "0", workMinutes: 60 }] }, date, people, codes)).toThrow();
-    expect(kotReportHours({ date, dailyWorkings: [{ employeeKey: "0", totalWork: 90 }, { employeeKey: "4" }] }, date, people, codes)).toBe(2);
+    const scheduled = (employeeKey: string, start = "10:00", end = "18:00", breaks: { start: string; end: string }[] = []) => ({ date, employeeKey, clockInSchedule: date + "T" + start + "+09:00", clockOutSchedule: date + "T" + end + "+09:00", startEndBreakSchedule: breaks });
+    const raw = [{ date, dailySchedules: [
+      scheduled("0", "10:00", "18:00", [{ start: date + "T12:00+09:00", end: date + "T13:00+09:00" }]),
+      scheduled("1"),
+      { date, employeeKey: "2", clockOutSchedule: date + "T18:00+09:00" },
+      { date, employeeKey: "3", clockInSchedule: date + "T10:00+09:00" },
+      scheduled("4"), scheduled("5"),
+    ] }];
+    expect(kotReportHours(raw, date, people, codes)).toBe(15);
+    expect(kotReportHours([], date, people, codes)).toBe(0);
+    expect(kotReportHours([{ date, dailySchedules: [scheduled("0", "10:00", "11:30")] }], date, people, codes)).toBe(2);
+    expect(() => kotReportHours([{ date, dailySchedules: [scheduled("0", "bad")] }], date, people, codes)).toThrow();
     expect(reportEmployeeCount([metric("宮永　ひかり", 0, 0), metric("小泉 翔", 0, 0), metric("上田 太郎", 0, 0), metric("無所属 太郎", 0, 0)], people)).toBe(2);
     expect(() => kotReportHours(raw, "2026-11-11", people, codes)).toThrow();
     expect(() => kotReportHours([{ date, employeeCode: "1", employeeKey: "1" }], date, people, codes)).toThrow();

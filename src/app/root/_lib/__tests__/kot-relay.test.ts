@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const relay = vi.hoisted(() => ({ enqueueRelayJob: vi.fn(), getRelayHeartbeat: vi.fn(), isRelayAlive: vi.fn(), waitRelayJob: vi.fn() }));
 vi.mock("@/lib/relay/queue.server", () => relay);
-import { fetchKotEmployees } from "../kot-api";
+import { fetchKotEmployees, fetchKotDailySchedules } from "../kot-api";
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubEnv("KOT_RELAY_MODE", "queue");
@@ -39,5 +39,25 @@ describe("KOT queue mode", () => {
     expect(await fetchKotEmployees()).toEqual([]);
     expect(fetch).toHaveBeenCalled();
     expect(relay.getRelayHeartbeat).not.toHaveBeenCalled();
+  });
+});
+
+describe("配信用の所属別予定", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-13T15:00:00+09:00")); });
+  afterEach(() => { vi.useRealTimers(); });
+  it("予定を中継経由で読み、JSONでない空応答を0件にする", async () => {
+    relay.waitRelayJob.mockResolvedValueOnce([{ date: "2026-11-13", dailySchedules: [] }]);
+    expect(await fetchKotDailySchedules("A B", "2026-11-13")).toEqual([{ date: "2026-11-13", dailySchedules: [] }]);
+    expect(relay.enqueueRelayJob).toHaveBeenCalledWith("kot", { method: "GET", path: "/daily-schedules?division=A+B&ondivision=true&start=2026-11-13&end=2026-11-13" }, "kot-api");
+    relay.waitRelayJob.mockRejectedValueOnce(new Error("kot: JSON を解釈できません"));
+    expect(await fetchKotDailySchedules("A", "2026-11-13")).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("停止中の中継やその他のエラーを空予定にしない", async () => {
+    relay.isRelayAlive.mockReturnValue(false);
+    await expect(fetchKotDailySchedules("A", "2026-11-13")).rejects.toMatchObject({ code: "NETWORK_ERROR" });
+    relay.isRelayAlive.mockReturnValue(true);
+    relay.waitRelayJob.mockRejectedValue(new Error("kot: 503 HTTP エラー"));
+    await expect(fetchKotDailySchedules("A", "2026-11-13")).rejects.toMatchObject({ code: "SERVER_ERROR" });
   });
 });

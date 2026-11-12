@@ -348,3 +348,19 @@ export async function updateKotEmployee(key: string, fields: import("@/lib/relay
   const job = await enqueueRelayJob("kot", { method: "PUT", path: `/employees/${key}?updateDate=${updateDate}`, body }, "kot-api");
   return waitRelayJob(job.id, { timeoutMs: 25_000 });
 }
+
+/** 配信で使う所属ごとの当日予定。空応答だけを0件として扱う。 */
+export function kotDailySchedulesPath(division: string, date: string) {
+  return "/daily-schedules?" + new URLSearchParams({ division, ondivision: "true", start: date, end: date });
+}
+
+export async function fetchKotDailySchedules(division: string, date: string): Promise<unknown> {
+  assertKotAvailable();
+  try {
+    return await kotFetchViaRelay<unknown>(kotDailySchedulesPath(division, date));
+  } catch (error) {
+    if (error instanceof KotApiClientError && error.code === "PARSE_ERROR" && error.httpStatus === 200) return [];
+    throw error;
+  }
+}
+

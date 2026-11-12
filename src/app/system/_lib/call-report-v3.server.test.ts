@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ daily: vi.fn(), employees: vi.fn(), records: v
 vi.mock("@/lib/kintone/records", () => ({ getAllRecords: mocks.records }));
 vi.mock("@/app/root/_lib/kot-api", async (original) => ({
   ...await original<typeof import("@/app/root/_lib/kot-api")>(),
-  fetchKotDailyWorkings: mocks.daily,
+  fetchKotDailySchedules: mocks.daily,
   fetchKotEmployees: mocks.employees,
 }));
 import { loadCallReportV3 } from "./call-report-v3.server";
@@ -16,6 +16,7 @@ const date = "2026-11-10";
 const rec = (fields: Record<string, string>) => Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { value }]));
 const point = (product: string, report_group: PointRow["report_group"], total_points: number, channel: PointRow["channel"] = "hakuchi"): PointRow => ({ id: product, category: "kaisen", toss_points: 0, closer_points: total_points, unit_price: null, has_option: null, sort_order: 0, note: null, updated_at: date, updated_by: null, product, report_group, total_points, channel, kintone_names: [], start_date: date, end_date: null });
 const metrics = () => normalizeCallMetricsRpc({ metrics: [{ call_count: 172 }], employee_metrics: [{ employee_name: "南薗 太郎", call_count: 172, acquired_count: 2, toss_count: 4 }] }, { from: date, to: date, listName: null, employeeName: null });
+const schedule = (minutes: number) => [{ date, dailySchedules: [{ date, employeeKey: "key", clockInSchedule: date + "T00:00:00+09:00", clockOutSchedule: new Date(Date.parse(date + "T00:00:00+09:00") + minutes * 60000).toISOString(), startEndBreakSchedule: [] }] }];
 const people = [{ name: "南薗 太郎", current_team: "宮永チーム", kot_employee_id: "1" }];
 const client = (rows: PointRow[]) => {
   const query = { order: vi.fn(), range: vi.fn(async () => ({ data: rows, error: null })) };
@@ -29,8 +30,8 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
     vi.useFakeTimers();
     vi.setSystemTime(new Date(date + "T06:00:00Z"));
     vi.unstubAllEnvs();
-    mocks.daily.mockReset().mockResolvedValue({ date, dailyWorkings: [{ employeeKey: "key", totalWork: 6540 }] });
-    mocks.employees.mockReset().mockResolvedValue([{ key: "key", code: "1" }]);
+    mocks.daily.mockReset().mockResolvedValue(schedule(6540));
+    mocks.employees.mockReset().mockResolvedValue([{ key: "key", code: "1", divisionCode: "A" }]);
     mocks.records.mockReset().mockResolvedValue([]);
     vi.stubEnv("KINTONE_KANRI_CUSTOMER_TOKEN", "mock-customer");
     vi.stubEnv("KINTONE_KANRI_CREDIT_APPS", "66,84,89,91,94,96,229,230");
@@ -68,10 +69,25 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
     const roster = [...people, { name: "上田 基人", current_team: "宮永チーム", kot_employee_id: "2" }, { name: "外部 花子", current_team: null, kot_employee_id: "3" }];
     const result = await loadCallReportV3(client([]), m, roster);
     expect(result.reportV3?.hours).toBe(109);
-    expect(mocks.daily).toHaveBeenCalledWith(date);
+    expect(mocks.daily).toHaveBeenCalledWith("A", date);
     expect(mocks.employees).toHaveBeenCalledWith({ date, includeResigner: true });
     expect(result.reportV3?.points).toContain("合計件数：0.0P");
   });
+  it("対象の所属だけを重複なく読み、複数所属の予定を合計する", async () => {
+    const roster = [...people, { name: "担当 花子", current_team: "宮永チーム", kot_employee_id: "2" }, { name: "担当 次郎", current_team: "宮永チーム", kot_employee_id: "3" }];
+    mocks.employees.mockResolvedValue([
+      { key: "key", code: "1", divisionCode: "A" },
+      { key: "key2", code: "2", divisionCode: "A" },
+      { key: "key3", code: "3", divisionCode: "B" },
+      { key: "outside", code: "9", divisionCode: "C" },
+    ]);
+    mocks.daily.mockImplementation(async (division: string) => division === "A" ? schedule(300) : [{ date, dailySchedules: schedule(120)[0].dailySchedules.map(row => ({ ...row, employeeKey: "key3" })) }]);
+    expect((await loadCallReportV3(client([]), metrics(), roster)).reportV3?.hours).toBe(7);
+    expect(mocks.daily.mock.calls).toEqual([["A", date], ["B", date]]);
+    mocks.daily.mockImplementation(async (division: string) => division === "A" ? schedule(300) : []);
+    expect((await loadCallReportV3(client([]), metrics(), roster)).reportV3?.hours).toBe(5);
+  });
+
   it("モックの本文を全文で確認する", async () => {
     mocks.records.mockImplementation(async (app: string | number) => app === 10 ? [
       rec({ 受注日: date, 商材名区分2: "コラボ", 事業名: "自社" }),
@@ -90,6 +106,7 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
     const lpRow = (name: string) => ({ bizName: name, bizCode: codes[name], inbound: 15, outbound: 7, reportCustomers: { handled: 17, effective: 13 }, customerOrders: 1, registeredCounts: { preconfirmWaiting: 1, preconfirmNg: 0, applications: 1 } });
     m.lp = { businesses: [lpRow("ヒカリのプロ"), lpRow("電気お申込み受付窓口"), lpRow("フレッツ")] as NonNullable<typeof m.lp>["businesses"], totals: null, notes: [], unregisteredExtensionSummary: null };
     m.lpFunnel = { businesses: m.lp.businesses.map(r => ({ bizCode: r.bizCode, answered: 8, inbound: 12, answerRate: 8 / 12, noRecord: r.bizName === "ヒカリのプロ" ? 2 : 0 })) as NonNullable<typeof m.lpFunnel>["businesses"], totals: null, notes: [], asOf: date };
+    mocks.employees.mockResolvedValue(roster.map((person, i) => ({ key: i === 0 ? "key" : `key${i}`, code: person.kot_employee_id, divisionCode: "A" })));
     const result = await loadCallReportV3(client([point("コラボ", "collab", 1.2), point("でんき", "denki", 0.4), point("コラボLP", "collab", 1.6, "lp")]), m, roster);
     const output = buildCallReport(summarizeCallMetrics(result), new Date(date + "T06:00:00Z"), result).text;
     expect(output).toMatchSnapshot();
@@ -107,10 +124,10 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
   });
 
   it("読めた勤務時間0は0、形式が違う結果はnullにする", async () => {
-    mocks.daily.mockResolvedValue({ date, dailyWorkings: [{ employeeKey: "key", totalWork: 0 }] });
+    mocks.daily.mockResolvedValue(schedule(0));
     expect((await loadCallReportV3(client([]), metrics(), people)).reportV3?.hours).toBe(0);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    mocks.daily.mockResolvedValue({ date, dailyWorkings: [{ employeeKey: "key", workMinutes: 600 }] });
+    mocks.daily.mockResolvedValue([{ date, dailySchedules: [{ date, employeeKey: "key", clockInSchedule: "bad", clockOutSchedule: "bad", startEndBreakSchedule: [] }] }]);
     const result = await loadCallReportV3(client([]), metrics(), people);
     expect(result.reportV3?.hours).toBeNull();
     expect(result.reportV3?.warnings).toEqual([]);
@@ -135,9 +152,9 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
           return query;
         });
       }
-      query.maybeSingle = vi.fn(async () => ({ data: { result: path.startsWith("/daily-workings/")
-        ? { date, dailyWorkings: [{ employeeKey: "key", totalWork: 300 }] }
-        : [{ key: "key", code: "1" }] }, error: null }));
+      query.maybeSingle = vi.fn(async () => ({ data: { result: path.startsWith("/daily-schedules?")
+        ? schedule(300)
+        : [{ key: "key", code: "1", divisionCode: "A" }] }, error: null }));
       relayQueries.push(query);
       return query as unknown as ReturnType<typeof db.from>;
     });
@@ -154,8 +171,8 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
       expect(query.order).toHaveBeenCalledWith("created_at", { ascending: false });
       expect(query.limit).toHaveBeenCalledWith(1);
     }
-    expect(relayQueries[0].eq).toHaveBeenCalledWith("request->>path", `/daily-workings/${date}`);
-    expect(relayQueries[1].eq).toHaveBeenCalledWith("request->>path", `/employees?date=${date}&includeResigner=true`);
+    expect(relayQueries[1].eq).toHaveBeenCalledWith("request->>path", `/daily-schedules?division=A&ondivision=true&start=${date}&end=${date}`);
+    expect(relayQueries[0].eq).toHaveBeenCalledWith("request->>path", `/employees?date=${date}&includeResigner=true`);
     relayQueries[1].maybeSingle.mockResolvedValue({ data: null, error: null });
     let index = 0;
     vi.mocked(db.from).mockImplementation((table: string) => table === "system_relay_jobs"
@@ -165,5 +182,8 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
     expect(missing.reportV3?.hours).toBeNull();
     expect(missing.reportV3?.warnings).toEqual([]);
     expect(warn).toHaveBeenCalledTimes(1);
+    relayQueries[0].maybeSingle.mockResolvedValue({ data: null, error: null });
+    index = 0;
+    expect((await loadCallReportV3(db, metrics(), people)).reportV3?.hours).toBeNull();
   });
 });

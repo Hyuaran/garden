@@ -5,24 +5,38 @@ import { creditApps, safeFetchCredit } from "../kanri/_lib/kanri-import.server";
 import { reportEmployeeCount, reportOrders, reportPoints, reportRanking, telemaEmployees, type ReportEmployee } from "./call-report-v3";
 import type { CallMetricsResponse } from "./call-metrics";
 
-import { fetchKotDailyWorkings, fetchKotEmployees, isKotUnavailable } from "@/app/root/_lib/kot-api";
+import { fetchKotDailySchedules, kotDailySchedulesPath, fetchKotEmployees, isKotUnavailable } from "@/app/root/_lib/kot-api";
 
-type DailyActual = { date?: string; employeeKey: string; totalWork?: number };
 export function kotReportHours(raw: unknown, date: string, employees: ReportEmployee[], codes: Map<string, string>) {
-  const days = Array.isArray(raw) ? raw : [raw];
-  const rows: DailyActual[] = days.flatMap(day => day && typeof day === "object" && "dailyWorkings" in day
-    ? day.date === date && Array.isArray(day.dailyWorkings) ? day.dailyWorkings : []
-    : day && typeof day === "object" && day.date === date && "employeeKey" in day ? [day] : []);
-  if (!rows.length) throw new Error("KOT当日実績なし");
+  if (!Array.isArray(raw)) throw new Error("KOT予定の形式不正");
   const targets = new Set(telemaEmployees(employees).map(e => e.kot_employee_id).filter(Boolean));
   if (!targets.size) throw new Error("テレマのKOTコードなし");
+  const duration = (start: unknown, end: unknown) => {
+    if (typeof start !== "string" || typeof end !== "string") throw new Error("KOT予定時間の形式不正");
+    const minutes = (Date.parse(end) - Date.parse(start)) / 60000;
+    if (!Number.isFinite(minutes) || minutes < 0) throw new Error("KOT予定時間の形式不正");
+    return minutes;
+  };
   let minutes = 0;
-  for (const row of rows) {
-    if (!row || typeof row.employeeKey !== "string") throw new Error("KOT実績の形式不正");
-    const code = codes.get(row.employeeKey);
-    if (!code || !targets.has(code)) continue;
-    if (typeof row.totalWork !== "number" || !Number.isFinite(row.totalWork) || row.totalWork < 0) throw new Error("KOT実績時間なし");
-    minutes += row.totalWork;
+  const seen = new Set<string>();
+  for (const day of raw) {
+    if (!day || typeof day.date !== "string" || !Array.isArray(day.dailySchedules)) throw new Error("KOT予定の形式不正");
+    if (day.date !== date) throw new Error("KOT当日予定なし");
+    for (const row of day.dailySchedules) {
+      if (!row || typeof row.employeeKey !== "string" || row.date !== date) throw new Error("KOT予定の形式不正");
+      const code = codes.get(row.employeeKey);
+      if (!code || !targets.has(code) || seen.has(row.employeeKey)) continue;
+      seen.add(row.employeeKey);
+      if (row.clockInSchedule == null || row.clockInSchedule === "" || row.clockOutSchedule == null || row.clockOutSchedule === "") continue;
+      if (!Array.isArray(row.startEndBreakSchedule)) throw new Error("KOT予定時間の形式不正");
+      const breaks = row.startEndBreakSchedule.reduce((sum: number, rest: { start?: unknown; end?: unknown } | null) => {
+        if (!rest) throw new Error("KOT予定時間の形式不正");
+        return sum + duration(rest.start, rest.end);
+      }, 0);
+      const work = duration(row.clockInSchedule, row.clockOutSchedule) - breaks;
+      if (work < 0) throw new Error("KOT予定時間の形式不正");
+      minutes += work;
+    }
   }
   return Math.round(minutes / 60);
 }
@@ -34,14 +48,13 @@ export async function loadCallReportV3(client: PointClient, metrics: CallMetrics
   let failure = "KING OF TIME の取得に失敗";
   try {
     const now = new Date();
-    let daily: unknown;
-    let kotEmployees: unknown;
+    let readSaved: ((path: string) => Promise<unknown>) | undefined;
     if (isKotUnavailable(now)) {
       failure = "停止時間前の中継結果が不足または読み取り失敗";
       const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
       const day = jst.toISOString().slice(0, 10);
       const cutoff = day + (jst.getUTCHours() < 10 ? "T08:30:00+09:00" : "T17:30:00+09:00");
-      const read = async (path: string) => {
+      readSaved = async (path: string) => {
         const { data, error } = await client.from("system_relay_jobs")
           .select("result")
           .eq("kind", "kot")
@@ -55,22 +68,36 @@ export async function loadCallReportV3(client: PointClient, metrics: CallMetrics
         if (error || !data) throw new Error("中継結果なし");
         return data.result;
       };
-      [daily, kotEmployees] = await Promise.all([
-        read(`/daily-workings/${metrics.from}`),
-        read(`/employees?date=${metrics.from}&includeResigner=true`),
-      ]);
-    } else {
-      [daily, kotEmployees] = await Promise.all([
-        fetchKotDailyWorkings(metrics.from),
-        fetchKotEmployees({ date: metrics.from, includeResigner: true }),
-      ]);
     }
-    failure = "KING OF TIME の結果の形式または勤務時間が不正";
+    const kotEmployees = readSaved
+      ? await readSaved(`/employees?date=${metrics.from}&includeResigner=true`)
+      : await fetchKotEmployees({ date: metrics.from, includeResigner: true });
+
+    failure = "KING OF TIME の結果の形式または予定時間が不正";
     if (!Array.isArray(kotEmployees) || kotEmployees.some(e => !e || typeof e.key !== "string" || typeof e.code !== "string")) {
       throw new Error("従業員一覧の形式不正");
     }
     const codes = new Map<string, string>(kotEmployees.map(e => [e.key, e.code]));
-    hours = kotReportHours(daily, metrics.from, employees, codes);
+    const targets = new Set(telemaEmployees(employees).map(e => e.kot_employee_id).filter(Boolean));
+    const divisions = new Set<string>();
+    for (const person of kotEmployees) {
+      if (!targets.has(person.code)) continue;
+      // 所属の無い人（退職者など）は予定も無いので数えない
+      if (typeof person.divisionCode !== "string" || !person.divisionCode) continue;
+      divisions.add(person.divisionCode);
+    }
+    // Root のコードが KING OF TIME に無い人（在籍していない人など・2026-11-13 時点で 52 人中 24 人）は予定が無いので飛ばす。
+    // 1 人でも無ければ全体を「-ｈ」にする作りだと毎回「-ｈ」になるため。
+    failure = readSaved ? "停止時間前の予定の中継結果が不足または読み取り失敗" : "KING OF TIME の予定の取得または形式が不正";
+    const schedules = await Promise.all([...divisions].map(async division => {
+      const result = readSaved
+        ? await readSaved(kotDailySchedulesPath(division, metrics.from))
+        : await fetchKotDailySchedules(division, metrics.from);
+      if (!Array.isArray(result)) throw new Error("KOT予定の形式不正");
+      return result;
+    }));
+    failure = "KING OF TIME の予定の形式または予定時間が不正";
+    hours = kotReportHours(schedules.flat(), metrics.from, employees, codes);
   } catch {
     console.warn(`[call-report-v3] 勤務時間を取得できませんでした: ${failure}`);
   }
