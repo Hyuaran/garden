@@ -184,15 +184,23 @@ export function innoveraHeaderText(data: CallMetricsResponse) {
   return data.innovera.stopped ? { text: `INNOVERA 取込停止中（最終 ${time}）`, stopped: true } : { text: `INNOVERA 最終取込 ${time}`, stopped: false };
 }
 
+// 見出しの横の日付＝集計した日（対象日）。曜日つき（例 2026/11/12(木)）。期間のときは「〜」でつなぐ
+function formatPdfTargetDate(value: string) {
+  const [y, m, d] = value.split("-").map(Number);
+  const weekday = ["日", "月", "火", "水", "木", "金", "土"][new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${y}/${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}(${weekday})`;
+}
+
 function Chrome({ data, generatedAt }: { data: CallMetricsResponse; generatedAt: Date }) {
-  const period = `対象期間 ${data.from}〜${data.to}`;
-  const innovera = innoveraHeaderText(data);
+  // 対象期間・INNOVERA 最終取込の行は置かない（中ほどの中途半端な位置に出ていた・2026-11-12 東海林さん）。日付は見出しの横へ
+  const target = data.from === data.to ? formatPdfTargetDate(data.from) : `${formatPdfTargetDate(data.from)}〜${formatPdfTargetDate(data.to)}`;
   const header = <>
-    <VectorText width={300} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
+    <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+      <VectorText width={180} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
+      <VectorText width={260} height={18} fontSize={11} bold align="left" color={COLORS.navy}>{target}</VectorText>
+    </View>
     <View style={{ height: 30 }}>
-      <VectorText width={470} height={12} fontSize={8} align="right">{formatPdfSnapshot(generatedAt)}</VectorText>
-      <VectorText width={250} height={12} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText>
-      {innovera ? <VectorText width={220} height={12} fontSize={8} align="right" bold={innovera.stopped} color={innovera.stopped ? COLORS.red : COLORS.sub}>{innovera.text}</VectorText> : null}
+      <VectorText width={330} height={12} fontSize={8} align="right">{formatPdfSnapshot(generatedAt)}</VectorText>
     </View>
   </>;
   // ヘッダーは fixed の 1 つだけ（2 つ重ねると、文字にした 2026-10-15 からコピーでタイトルが 2 回出るため）
