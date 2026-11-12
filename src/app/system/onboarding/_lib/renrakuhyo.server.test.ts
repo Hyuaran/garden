@@ -54,7 +54,7 @@ describe("入社連絡表の生成保存", () => {
     expect(mocks.saveFiles).toHaveBeenCalledWith({
       xlsx: { filename: "01【提出用ヨシダヒナ】TLCC様入社連絡表.xlsx", content: Buffer.from("xlsx") },
       pdf: { filename: "01【提出用ヨシダヒナ】TLCC様入社連絡表.pdf", content: Buffer.from("pdf") },
-    });
+    }, "1_吉田ひな");
     expect(result.folderLabel).toBe("経理部 ／ 30_入社連絡票");
   });
 
@@ -73,5 +73,20 @@ describe("入社連絡表の生成保存", () => {
     });
     await expect(createAndSaveRenrakuhyo(context() as never, "EMP-1", { buildExcel: mocks.buildExcel, buildPdf: mocks.buildPdf, saveFiles: mocks.saveFiles })).rejects.toMatchObject({ status: 409 });
     expect(mocks.saveFiles).not.toHaveBeenCalled();
+  });
+});
+
+describe("入社連絡表の置き場", () => {
+  it("経理部／30_入社連絡票の下の <社員番号>_<氏名> フォルダに保存する（無ければ作る）", async () => {
+    const { saveRenrakuhyoToDrive } = await import("./renrakuhyo-drive.server");
+    const uploader = vi.fn(async (_folder: string, name: string) => ({ id: name, webViewLink: null }));
+    const findFolder = vi.fn(async () => "sub-folder-id");
+    const result = await saveRenrakuhyoToDrive(
+      { xlsx: { filename: "a.xlsx", content: Buffer.from("x") }, pdf: { filename: "a.pdf", content: Buffer.from("p") } },
+      "1574_清水和恵", uploader as never, findFolder as never,
+    );
+    expect(findFolder).toHaveBeenCalledWith(expect.any(String), "1574_清水和恵");
+    expect(uploader.mock.calls.every(call => call[0] === "sub-folder-id")).toBe(true);
+    expect(result.folderLabel).toBe("経理部 ／ 30_入社連絡票 ／ 1574_清水和恵");
   });
 });

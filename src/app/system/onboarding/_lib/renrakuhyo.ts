@@ -325,6 +325,13 @@ function taxClass(value: string) {
   return "";
 }
 
+// 置き場は 経理部／30_入社連絡票／<社員番号>_<氏名>（空白なし）／（2026-11-12 東海林さん）
+export function renrakuhyoFolderName(record: AdminOnboardingRecord) {
+  const number = record.employee.employee_id.replace(/^EMP-/, "");
+  const name = (record.values.name || record.employee.name || "").replace(/[\s　]+/g, "");
+  return name ? `${number}_${name}` : number;
+}
+
 export function renrakuhyoBaseName(record: AdminOnboardingRecord) {
   const label = (record.values.name_kana || record.values.name || record.employee.employee_id).replace(/[\s　]+/g, "");
   return `01【提出用${label}】TLCC様入社連絡表`;

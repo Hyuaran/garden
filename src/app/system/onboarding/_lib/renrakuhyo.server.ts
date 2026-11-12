@@ -7,7 +7,7 @@ import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { databaseError, OnboardingError } from "./onboarding.server";
 import { readAdminOnboardingDetailForFuyou, type AdminContext } from "./onboarding-admin.server";
-import { buildRenrakuhyoValues, RENRAKUHYO_EXCEL_CELLS, RENRAKUHYO_PDF_FIELDS, renrakuhyoBaseName, renrakuhyoPdfText, type RenrakuhyoCompany, type RenrakuhyoValues } from "./renrakuhyo";
+import { buildRenrakuhyoValues, RENRAKUHYO_EXCEL_CELLS, RENRAKUHYO_PDF_FIELDS, renrakuhyoBaseName, renrakuhyoFolderName, renrakuhyoPdfText, type RenrakuhyoCompany, type RenrakuhyoValues } from "./renrakuhyo";
 import { saveRenrakuhyoToDrive } from "./renrakuhyo-drive.server";
 
 const TEMPLATE_BUCKET = "system-docs";
@@ -21,7 +21,7 @@ type SaveResult = Awaited<ReturnType<typeof saveRenrakuhyoToDrive>>;
 type RenrakuhyoDeps = {
   buildExcel?: typeof buildRenrakuhyoExcel;
   buildPdf?: typeof buildRenrakuhyoPdf;
-  saveFiles?: (files: { xlsx: { filename: string; content: Buffer }; pdf: { filename: string; content: Buffer } }) => Promise<SaveResult>;
+  saveFiles?: (files: { xlsx: { filename: string; content: Buffer }; pdf: { filename: string; content: Buffer } }, folderName: string) => Promise<SaveResult>;
 };
 
 async function readCompany(context: AdminContext, companyId: string | null): Promise<RenrakuhyoCompany> {
@@ -95,5 +95,5 @@ export async function createAndSaveRenrakuhyo(context: AdminContext, employeeId:
   return (deps.saveFiles ?? saveRenrakuhyoToDrive)({
     xlsx: { filename: `${baseName}.xlsx`, content: xlsx },
     pdf: { filename: `${baseName}.pdf`, content: pdf },
-  });
+  }, renrakuhyoFolderName(record));
 }
