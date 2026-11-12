@@ -2,6 +2,8 @@ import type { CallMetricsResponse, EmployeeCallMetricRow, LpBusinessMetricRow, L
 import { normalizeLpAssigneeName, type LpRegisteredCounts, type LpScopeBusiness } from "./lp-kintone";
 
 export type RootEmployeeForCallMetrics = {
+  current_team?: string | null;
+  kot_employee_id?: string | null;
   employee_id?: string | null;
   name?: string | null;
   filemaker_employee_name?: string | null;

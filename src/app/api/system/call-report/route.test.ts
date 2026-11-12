@@ -1,3 +1,4 @@
+vi.mock("@/app/system/_lib/call-report-v3.server", () => ({ loadCallReportV3: async (_client: unknown, metrics: unknown) => metrics }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), deliverCallReport: vi.fn() }));

@@ -36,7 +36,7 @@ function requiredEnv(name: string) {
   return value;
 }
 
-function creditApps() {
+export function creditApps() {
   return (process.env.KINTONE_KANRI_CREDIT_APPS ?? "66,84,89,91,94,96,229,230")
     .split(",")
     .map((value) => value.trim())
@@ -85,15 +85,17 @@ async function safeFetchEnv(
   }
 }
 
-async function safeFetchCredit(app: string, targetDate: string): Promise<FetchOutcome> {
+export async function safeFetchCredit(app: string, targetDate: string, options?: { report: boolean }): Promise<FetchOutcome> {
   try {
     return await safeFetch(
       "credit_card",
       app,
       app,
       requiredEnv(`KINTONE_KANRI_CREDIT_TOKEN_${app}`),
-      buildCreditCondition(targetDate),
-      CREDIT_FIELDS,
+      // 配信は受注前確の状態で絞らず、日付・商材の代替欄と獲得方法の欄も必要。
+      // 全フィールドを読むことで、アプリごとの任意欄が無くても取得を失敗させない。
+      options?.report ? "" : buildCreditCondition(targetDate),
+      options?.report ? [] : CREDIT_FIELDS,
     );
   } catch {
     return { source: "credit_card", sourceApp: app, records: [], ok: false };

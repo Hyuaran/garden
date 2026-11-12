@@ -97,6 +97,7 @@ export type LpMetricsPayload = {
 import type { LpFunnelResult } from "./lp-funnel";
 
 export type CallMetricsResponse = {
+  reportV3?: import("./call-report-v3").CallReportV3;
   reportTelema?: { acquired: number; waiting: number; ok: number; ng: number } | null;
   from: string;
   to: string;

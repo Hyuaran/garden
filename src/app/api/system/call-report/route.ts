@@ -1,3 +1,4 @@
+import { loadCallReportV3 } from "@/app/system/_lib/call-report-v3.server";
 import { loadCallReportCounts } from "@/app/system/_lib/call-report-counts.server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -19,8 +20,8 @@ const VIEW_ROLES = MANAGER_VIEW_ROLES;
 async function loadRootEmployees(supabase: Awaited<ReturnType<typeof createServerClient>>): Promise<RootEmployeeForCallMetrics[]> {
   try {
     const result = await supabase
-      .from("root_employees")
-      .select("employee_id,name,filemaker_employee_name,innovera_extension,innovera_mobile_extension,is_active,deleted_at");
+      .from("root_employees_with_team")
+      .select("employee_id,name,filemaker_employee_name,innovera_extension,innovera_mobile_extension,is_active,deleted_at,current_team,kot_employee_id");
     const rows = "data" in result ? result.data : null;
     return Array.isArray(rows) ? rows as RootEmployeeForCallMetrics[] : [];
   } catch {
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
     // 本文 v2 の新しい項目（受注の内訳・対応顧客数など）だけ取れないときは「-」のまま配信は送る（配信を止めない）
     console.error("[system/call-report/manual] report counts failed", { error: error instanceof Error ? error.message : String(error) });
   }
+  metrics = await loadCallReportV3(supabase, metrics, rootEmployees);
   const summary = summarizeCallMetrics(filemaker);
   const report = buildCallReport(summary, now, metrics);
   if (report.skipped) {
