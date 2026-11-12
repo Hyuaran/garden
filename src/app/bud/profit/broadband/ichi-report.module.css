@@ -1,0 +1,19 @@
+.report { color: var(--text-main, #3d3528); display: grid; gap: 24px; }
+.report section { min-width: 0; }
+.report h2 { font-size: 1.15rem; border-bottom: 1px solid var(--border-card, #b4a582); padding: 12px 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.tiles > div { padding: 18px; background: var(--bg-card, var(--bg-main, #fff)); border: 1px solid var(--border-card, #b4a582); border-radius: 8px; }
+.tiles dt { color: var(--text-sub, #6d6356); }
+.tiles dd { margin: 10px 0 0; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.charts figure { min-width: 0; margin: 0; padding: 16px; }
+.scroll { overflow-x: auto; margin: 20px 0; }
+.scroll table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.scroll caption { text-align: left; font-weight: 600; padding: 12px 0; }
+.scroll th, .scroll td { border: 1px solid var(--border-card, #b4a582); padding: 10px 12px; white-space: nowrap; }
+.scroll th { text-align: center; background: var(--bg-paper-soft, #eee); }
+.scroll td { text-align: right; }
+.scroll td:first-child { text-align: left; }
+.scroll tbody tr:nth-child(odd) { background: var(--bg-card-solid, #fff); }
+.scroll tbody tr:nth-child(even) { background: color-mix(in srgb, var(--text-main, #3d3528) 7%, var(--bg-card-solid, #fff)); }
+@media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }

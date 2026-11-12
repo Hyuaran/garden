@@ -1,3 +1,4 @@
+vi.mock("./ichi-actions", () => ({ refreshIchiReport: vi.fn() }));
 import { render, screen, fireEvent, cleanup, act, within } from "@testing-library/react";
 import { expect, it, vi, beforeEach, afterEach } from "vitest";
 import BroadbandTable, { Details } from "./BroadbandTable";
@@ -8,7 +9,7 @@ it("filters business tabs and totals, keeps unknown codes only in broadband and 
  const rows=["101","103","105","102","999"].map((code,i)=>({...sample("取引先"+code,(i+1)*10),business:code+"_事業"}));
  const props={rows,userId:"tabs",today:"2026-10-28",kintoneBase:""};
  const view=render(<BroadbandTable {...props}/>);
- expect(screen.getAllByRole("tab").map(t=>t.textContent)).toEqual(["ブロードバンド事業","テレマ事業","ストック事業","関西電力事業","ブレーカー事業","NHK事業","その他","SES事業"]);
+ expect(screen.getAllByRole("tab").map(t=>t.textContent)).toEqual(["ブロードバンド事業","テレマ事業","ストック事業","関西電力事業","ブレーカー事業","NHK事業","その他","SES事業","Ichi光事業"]);
  expect(screen.getByText("999_事業")).toBeTruthy();
  fireEvent.click(screen.getByRole("tab",{name:"テレマ事業"}));
  expect(screen.queryByText("102_事業")).toBeNull();expect(screen.queryByText("999_事業")).toBeNull();

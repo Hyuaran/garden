@@ -7,13 +7,13 @@ export function UpdatedStampRow({ children }: { children: ReactNode }) {
   return <div className={styles.row}>{children}</div>;
 }
 
-export default function UpdatedStamp({ label, date, emptyText = "未取得", onRefresh, busy = false, disabled = false, refreshLabel, title, hideRefresh = false, children, showSeconds = false }: {
-  showSeconds?: boolean; children?: ReactNode; hideRefresh?: boolean; label: string; date?: string | Date | null; emptyText?: string;
+export default function UpdatedStamp({ label, labelSuffix = "最終更新", date, emptyText = "未取得", onRefresh, busy = false, disabled = false, refreshLabel, title, hideRefresh = false, children, showSeconds = false }: {
+  labelSuffix?: string; showSeconds?: boolean; children?: ReactNode; hideRefresh?: boolean; label: string; date?: string | Date | null; emptyText?: string;
   onRefresh?: () => void; busy?: boolean; disabled?: boolean; refreshLabel?: string; title?: string;
 }) {
   const stamp = date ? formatSyncStamp(date, showSeconds) : "";
   return <div className={styles.stamp}>
-    <span className={styles.text}><span className={styles.reserve} aria-hidden="true">{label}最終更新：2026/11/02(月) 15:18</span><span className={styles.value}>{label}最終更新：{stamp || emptyText}</span></span>
+    <span className={styles.text}><span className={styles.reserve} aria-hidden="true">{label}{labelSuffix}：2026/11/02(月) 15:18</span><span className={styles.value}>{label}{labelSuffix}：{stamp || emptyText}</span></span>
     {children}
     {!hideRefresh && <span className={styles.refresh} tabIndex={!onRefresh ? 0 : undefined}>
     <button type="button" className={styles.button} onClick={onRefresh} disabled={!onRefresh || busy || disabled} aria-busy={busy} aria-label={onRefresh ? refreshLabel : "自動で更新されます（手動の取り直しはできません）"}>

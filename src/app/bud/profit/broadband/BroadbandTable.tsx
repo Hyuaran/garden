@@ -1,4 +1,5 @@
 "use client";
+import IchiReport, { type ReportResult } from "./IchiReport";
 import { useStoredView } from "@/lib/ui/useStoredView";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { useInitialSearch } from "@/lib/ui/InitialUrlView";
@@ -24,7 +25,7 @@ import styles from "./broadband.module.css";
 import ViewerPicker, { type ViewerEmployee } from "@/app/bud/_components/ViewerPicker/ViewerPicker";
 import viewerStyles from "@/app/bud/_components/ViewerPicker/ViewerPicker.module.css";
 
-const businessTabs = [["broadband","ブロードバンド事業"],["telema","テレマ事業"],["stock","ストック事業"],["kanden","関西電力事業"],["breaker","ブレーカー事業"],["nhk","NHK事業"],["other","その他"],["ses","SES事業"]] as const;
+const businessTabs = [["broadband","ブロードバンド事業"],["telema","テレマ事業"],["stock","ストック事業"],["kanden","関西電力事業"],["breaker","ブレーカー事業"],["nhk","NHK事業"],["other","その他"],["ses","SES事業"],["ichi","Ichi光事業"]] as const;
 type BusinessTab = typeof businessTabs[number][0];
 const businessCodes: Partial<Record<BusinessTab,string[]>> = {telema:["101","103","105"],stock:["200","201","210","211"],kanden:["102"],breaker:["300","301"],other:["104"]};
 function Difference({row:r,daysAfter}:{row:TableRecord;daysAfter:number}) {
@@ -57,13 +58,13 @@ export function Details({rows: base, kintoneBase, onClose,title="収支の明細
     <dt>入出金情報</dt><dd>{r.recon_bank?.length ? r.recon_bank.map(b => <p key={b.mf_transaction_id}>{b.date} / {money(Math.abs(b.value))} / {b.bank_name} / {b.content}</p>) : r.mf_date ? `${r.mf_date} / ${money(r.mf_amount)} / ${r.mf_bank} / ${r.mf_content}` : "記録なし"}</dd>
     </dl><div className={styles.detailLinks}>{kintoneBase && !r.kintone_record_id.startsWith("agent-") && <a href={kintoneLink(kintoneBase,r.kintone_record_id)} target="_blank" rel="noopener noreferrer">Kintoneレコード</a>}{driveLink(r.drive_link) && <a href={driveLink(r.drive_link)!} target="_blank" rel="noopener noreferrer">Googleドライブ明細</a>}</div></article>)}</Modal>;
 }
-export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],bank=[],admin=false,daysAfter=7}: {daysAfter?:number;admin?:boolean;rows:TableRecord[];userId:string;today:string;kintoneBase:string;agents?:AgentDetail[];bank?:Bank[]}) {
+export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],bank=[],admin=false,daysAfter=7,ichiReport}: {ichiReport?:ReportResult;daysAfter?:number;admin?:boolean;rows:TableRecord[];userId:string;today:string;kintoneBase:string;agents?:AgentDetail[];bank?:Bank[]}) {
   const initialSearch=useInitialSearch();
   const [savedTab,setSavedTab,tabReady]=useStoredView<BusinessTab>('bud-bb-tab:'+userId,'broadband',raw=>businessTabs.some(([key])=>key===raw)?raw as BusinessTab:'broadband',value=>value);
   const [urlTab,setUrlTab]=useUrlTab<BusinessTab>(savedTab,key=>businessTabs.some(([value])=>value===key));
   const tab=urlTab;
   const changeTab=(key:BusinessTab)=>{setSavedTab(key);setUrlTab(key);};
-  const hasTable=tab!=="nhk" && tab!=="ses";
+  const hasTable=tab!=="nhk" && tab!=="ses" && tab!=="ichi";
   const filteredRows=tab==="broadband" ? rows : rows.filter(r=>businessCodes[tab]?.includes(r.business.slice(0,3)));
   const [detailTitle,setDetailTitle]=useState('収支の明細'),[showDifferences,setShowDifferences]=useState(true);
   const [settings,setSettings]=useState(false), [viewers,setViewers]=useState<string[]>([]), [employees,setEmployees]=useState<ViewerEmployee[]>([]);
@@ -123,10 +124,11 @@ export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],
   // 行の無い欄は空にする（0 円を並べない）。小計・総合計の行は色を付けない（色は取引先の行だけ）
   const cell=(records:TableRecord[], label:string, toned=true,title="収支の明細") => records.length ? <button aria-label={`${label} ${money(total(records))}の明細`} className={toned ? styles[cellTone(records)] : undefined} disabled={sorting} onClick={() => {if(!sorting) {setDetailTitle(title);setShowDifferences(toned && cellTone(records)==="red");setReference(null);setSelected(records);}}}>{money(total(records))}</button> : null;
   return <div className={styles.pageShell} style={{visibility:tabReady && detailsReady && orderReady?"visible":"hidden"}}><header data-page-search-heading className={pageSearchStyles.heading}><SystemBreadcrumb root={{label:"Bud",href:"/bud/dashboard"}} items={[{label:"損益管理",href:"/bud/profit"},{label:"事業の収支"}]} /><div className="garden-help-heading"><h1>事業の収支</h1><HelpButton /></div></header>
-    <UpdatedStampRow><UpdatedStamp label="Kintone" date={rows.map(r=>r.updated_at).sort().at(-1)} busy={busy} refreshLabel="収支を更新" onRefresh={async()=>{setBusy(true);setMessage("確認中です");try {const response=await fetch("/api/bud/broadband/refresh",{method:"POST"});const result=await response.json();if(!response.ok) throw new Error(result.error);setMessage(result.message ?? "");router.refresh();}catch {setMessage("収支を更新できませんでした。時間をおいてもう一度お試しください。");}finally {setBusy(false);}}} /></UpdatedStampRow>
+    {tab!=="ichi" && <UpdatedStampRow><UpdatedStamp label="Kintone" date={rows.map(r=>r.updated_at).sort().at(-1)} busy={busy} refreshLabel="収支を更新" onRefresh={async()=>{setBusy(true);setMessage("確認中です");try {const response=await fetch("/api/bud/broadband/refresh",{method:"POST"});const result=await response.json();if(!response.ok) throw new Error(result.error);setMessage(result.message ?? "");router.refresh();}catch {setMessage("収支を更新できませんでした。時間をおいてもう一度お試しください。");}finally {setBusy(false);}}} /></UpdatedStampRow>}
     <div className={styles.tabRow}><SystemTabs actions={<>{hasTable && <TabActionButton icon="sort" label="並べ替え" pressed={sorting} onClick={()=>{if(savingViewers || loadingViewers)return;stop();setSorting(!sorting);setSelected(null);setSettings(false);}} />}{admin && <TabActionButton icon="settings" label="閲覧権限" pressed={settings} onClick={()=>{if(savingViewers || loadingViewers)return;if(settings)setSettings(false);else void openSettings();}} />}</>}>{businessTabs.map(([key,label])=><button key={key} role="tab" aria-selected={tab===key} id={`${key}-tab`} aria-controls={`${key}-panel`} onClick={()=>{if(tab===key)return;stop();setSorting(false);setSelected(null);setReference(null);changeTab(key);}}>{label}</button>)}</SystemTabs></div>
-    {settings && <section className={viewerStyles.settings} aria-label="事業の収支の閲覧権限"><h2>事業の収支の閲覧権限</h2><p>ここに入れた人は、事業の収支（すべての事業のタブ）を見られます</p>{loadingViewers ? <p role="status">読み込み中…</p> : viewersLoaded && <><h3>閲覧権限</h3><ViewerPicker employees={employees} value={viewers} onChange={setViewers} disabled={savingViewers} /></>}{viewerError && <p role="alert">{viewerError}</p>}<div className={viewerStyles.actions}><button disabled={!viewersLoaded || loadingViewers || savingViewers} onClick={()=>void saveViewers()}>{savingViewers ? "保存中…" : "保存"}</button><button disabled={savingViewers || loadingViewers} onClick={()=>setSettings(false)}>閉じる</button></div></section>}
-    {!settings && !hasTable && <section role="tabpanel" id={`${tab}-panel`} aria-labelledby={`${tab}-tab`} className={styles.preparing}><p>{businessTabs.find(([key])=>key===tab)?.[1]}の収支は、現在作成中です。</p></section>}
+    {settings && <section className={viewerStyles.settings} aria-label="事業の収支の閲覧権限"><h2>事業の収支の閲覧権限</h2><p>ここに入れた人は、事業の収支（Ichi光事業を含むすべての事業のタブ）を見られます</p>{loadingViewers ? <p role="status">読み込み中…</p> : viewersLoaded && <><h3>閲覧権限</h3><ViewerPicker employees={employees} value={viewers} onChange={setViewers} disabled={savingViewers} /></>}{viewerError && <p role="alert">{viewerError}</p>}<div className={viewerStyles.actions}><button disabled={!viewersLoaded || loadingViewers || savingViewers} onClick={()=>void saveViewers()}>{savingViewers ? "保存中…" : "保存"}</button><button disabled={savingViewers || loadingViewers} onClick={()=>setSettings(false)}>閉じる</button></div></section>}
+    {!settings && tab==="ichi" && <section role="tabpanel" id="ichi-panel" aria-labelledby="ichi-tab"><IchiReport initial={ichiReport ?? {snapshot:null,warning:true}} /></section>}
+    {!settings && tab!=="ichi" && !hasTable && <section role="tabpanel" id={`${tab}-panel`} aria-labelledby={`${tab}-tab`} className={styles.preparing}><p>{businessTabs.find(([key])=>key===tab)?.[1]}の収支は、現在作成中です。</p></section>}
     {!settings && hasTable && <>
     {sorting && <div className={styles.orderToolbar} aria-label="並び替えモード">{sortOptions.map(o=><button key={o.value} onClick={()=>persist(orderFromPivot(buildPivot(groupNtt(rows),allMonths,o.value as SortMode)))}>{o.value==="cash" ? "入金 → 支払いの順に戻す" : o.label+"にする"}</button>)}<button onClick={()=>{stop();setSorting(false);}}>終える</button></div>}
     <section role="tabpanel" id={`${tab}-panel`} aria-labelledby={`${tab}-tab`}><div className={styles.periodLegend}><BoxSelect label="期間" value={periods} options={periodOptions(rows,today)} onChange={value=>{setPeriods(value);setSelected(null);}} />
