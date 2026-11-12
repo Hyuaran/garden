@@ -44,14 +44,14 @@ describe("parseExportParams", () => {
     });
   });
 
-  it("allows exactly the circuits of WEB inbound in kintone 239 (133・164・165・166・185・186・193)", () => {
-    expect([...EXPORT_ALLOWED_CIRCUITS].sort((a, b) => a - b)).toEqual([133, 164, 165, 166, 185, 186, 193]);
-    expect(parseExportParams({ circuits: [164, 165, 166, 133, 186, 185, 193], ...RANGE }).circuits).toEqual([164, 165, 166, 133, 186, 185, 193]);
+  it("allows exactly the circuits of WEB inbound in kintone 239 (133・164・165・166・185・186・192)", () => {
+    expect([...EXPORT_ALLOWED_CIRCUITS].sort((a, b) => a - b)).toEqual([133, 164, 165, 166, 185, 186, 192]);
+    expect(parseExportParams({ circuits: [164, 165, 166, 133, 186, 185, 192], ...RANGE }).circuits).toEqual([164, 165, 166, 133, 186, 185, 192]);
     // 隣の番号は許可しない
     expect(() => parseExportParams({ circuits: [184], ...RANGE })).toThrow(/not allowed: 184/);
     expect(() => parseExportParams({ circuits: [187], ...RANGE })).toThrow(/not allowed: 187/);
-    expect(() => parseExportParams({ circuits: [192], ...RANGE })).toThrow(/not allowed: 192/);
-    expect(() => parseExportParams({ circuits: [194], ...RANGE })).toThrow(/not allowed: 194/);
+    expect(() => parseExportParams({ circuits: [191], ...RANGE })).toThrow(/not allowed: 191/);
+    expect(() => parseExportParams({ circuits: [193], ...RANGE })).toThrow(/not allowed: 193/);
   });
 
   it("rejects circuits that are not allowed, even mixed with allowed ones", () => {
