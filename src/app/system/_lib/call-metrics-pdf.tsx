@@ -210,16 +210,20 @@ function DataTable<T>({ columns, rows, groups }: { columns: Column<T>[]; rows: T
   const cellStyle = (base: typeof styles.th | typeof styles.td, column: { width: number; groupStart?: boolean }) => column.groupStart ? [base, styles.groupStart, { width: column.width }] : [base, { width: column.width }];
   return <View style={[styles.table, { width: tableWidth }]}>
     {groupCells ? <View fixed style={styles.row}>{groupCells.map((group) => <View key={group.label} style={cellStyle(styles.th, group)}><VectorText width={group.width - 1} height={22} bold align="center" color="#FFFFFF">{group.label}</VectorText></View>)}</View> : null}
-    <View fixed style={styles.row}>{columns.map((column, index) => <View key={column.label} style={[...cellStyle(styles.th, column), { backgroundColor: index % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={column.width - 1} height={22} bold align="center" color={COLORS.ink}>{column.label}</VectorText></View>)}</View>
+    <View fixed style={styles.row}>{columns.map((column, index) => <View key={column.label} style={cellStyle(styles.th, column)}><VectorText width={column.width - 1} height={22} bold align="center" color="#FFFFFF">{column.label}</VectorText></View>)}</View>
     {rows.length ? rows.map((row, rowIndex) => <View key={rowIndex} wrap={false} style={styles.row}>{columns.map((column, columnIndex) => {
       const emphasis = column.emphasized?.(row);
-      return <View key={column.label} style={[...cellStyle(styles.td, column), { backgroundColor: columnIndex % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={column.bold || emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
+      return <View key={column.label} style={[...cellStyle(styles.td, column), { backgroundColor: rowIndex % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={column.bold || emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
     })}</View>) : <View style={styles.row}><View style={[styles.td, { width: columns.reduce((sum, c) => sum + c.width, 0) }]}><VectorText width={columns.reduce((sum, c) => sum + c.width, 0)} align="left">対象データがありません</VectorText></View></View>}
   </View>;
 }
 
 // 申込みの列は「5（うち担当者未設定 1）」が 1 行に入る幅（東海林さん 2026-10-15）
-const lpSubtotalWidths = [150, 45, 45, 45, 45, 45, 65, 75, 180];
+const lpSubtotalWidths = (applicationTexts: string[]) => {
+  // 申込みの列は中身に合わせる（「5（うち担当者未設定 1）」があるときだけ広げる・2026-11-12）
+  const longest = Math.max(...applicationTexts.map((text) => text.length), 3);
+  return [150, 45, 45, 45, 45, 45, 65, 75, Math.max(55, Math.ceil(longest * 8.5) + 10)];
+};
 function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
   const rows = [...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => [
     row.bizName,
@@ -232,7 +236,7 @@ function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
     maybeTime(row.talkSeconds),
     row.unassignedApplications ? `${maybeNumber(row.applications)}（うち担当者未設定 ${row.unassignedApplications}）` : maybeNumber(row.applications),
   ]);
-  return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths} boldColumn={8}/>;
+  return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths(rows.map((row) => row[8]))} boldColumn={8} alignRightFrom={1}/>;
 }
 
 // 表A・表Bは縦に配置し、まとまりごとに改ページできるようにする。
@@ -254,11 +258,11 @@ function TreeTable({ headers, rows, widths }: { headers: string[]; rows: LpFunne
   const links = lpFunnelTreeLinks(rows);
   const firstRate = rows.findIndex((row) => row.kind === "rate");
   return <View wrap={false} style={[styles.table, { width: tableWidth }]}>
-    <View style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color={COLORS.ink}>{h}</VectorText></View>)}</View>
+    <View style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>
     {rows.map((row, i) => {
       const tree = row.kind === "node" || row.kind === "group";
       const level = tree ? row.level : 0;
-      const band = COLORS.card;
+      const band = i % 2 ? "#F1F5F9" : COLORS.card;
       const strong = row.kind === "rate" || (tree && level <= 1);
       const tone = row.kind === "note" ? COLORS.sub : COLORS.ink;
       return <View key={i} wrap={false} style={[styles.row, i === firstRate ? { borderTopWidth: 2, borderTopColor: COLORS.navy } : {}, { backgroundColor: band }]}>
@@ -266,7 +270,7 @@ function TreeTable({ headers, rows, widths }: { headers: string[]; rows: LpFunne
           {tree ? <TreeConnector link={links[i]} level={level}/> : null}
           <VectorText width={widths[0] - 5 - TREE_STEP * level} height={22} align="left" bold={strong} color={tone}>{row.label}</VectorText>
         </View>
-        {row.values.map((value, j) => <View key={j} style={[styles.td, { width: widths[j + 1], backgroundColor: (j + 1) % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[j + 1] - 1} height={22} align="right" bold={strong && row.kind !== "note"} color={tone}>{value}</VectorText></View>)}
+        {row.values.map((value, j) => <View key={j} style={[styles.td, { width: widths[j + 1], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[j + 1] - 1} height={22} align="right" bold={strong && row.kind !== "note"} color={tone}>{value}</VectorText></View>)}
       </View>;
     })}
   </View>;
@@ -288,9 +292,9 @@ function LpFunnelPart({ data }: { data: CallMetricsResponse }) {
   </>;
 }
 
-function SimpleTable({ headers, rows, widths, boldColumn }: { headers: string[]; rows: string[][]; widths: number[]; boldColumn?: number }) {
+function SimpleTable({ headers, rows, widths, boldColumn, alignRightFrom }: { headers: string[]; rows: string[][]; widths: number[]; boldColumn?: number; alignRightFrom?: number }) {
   const tableWidth = widths.reduce((sum, width) => sum + width, 0);
-  return <View style={[styles.table, { width: tableWidth }]}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color={COLORS.ink}>{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j], backgroundColor: j % 2 ? "#F1F5F9" : COLORS.card }]}><VectorParagraph width={widths[j] - 1} bold={j === boldColumn}>{cell}</VectorParagraph></View>)}</View>)}</View>;
+  return <View style={[styles.table, { width: tableWidth }]}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}>{alignRightFrom !== undefined && j >= alignRightFrom ? <VectorText width={widths[j] - 1} height={22} align="right" bold={j === boldColumn} color={COLORS.ink}>{cell}</VectorText> : <VectorParagraph width={widths[j] - 1} bold={j === boldColumn}>{cell}</VectorParagraph>}</View>)}</View>)}</View>;
 }
 
 function SectionTitle({ children }: { children: string }) { return <><VectorText width={400} height={24} fontSize={15} bold align="left" color={COLORS.navy}>{children}</VectorText><View style={styles.accent} /></>; }

@@ -28,11 +28,11 @@ describe("画面の表の共通規則", () => {
     }
   });
 
-  it("通常の表全体に縦の線と列交互の色があり、明暗の変数を持つ", () => {
+  it("通常の表全体に縦の線と行ごとの交互の色があり、明暗の変数を持つ", () => {
     expect(globalCss).toContain("@media screen");
-    expect(globalCss).toContain(":nth-child(even)");
-    // 列の色は背景色を上書きしない（強調行などの色を消さない）
-    expect(globalCss).toMatch(/:nth-child\(even\)\s*\{\s*background-image:\s*linear-gradient\(var\(--table-col-tint\)/);
+    // 行ごとに交互（列ごとではない・2026-11-12 東海林さん）。背景色は上書きしない（強調行などの色を消さない）
+    expect(globalCss).toMatch(/tbody > tr:nth-child\(even\) > :is\(th, td\)\s*\{\s*background-image:\s*linear-gradient\(var\(--table-col-tint\)/);
+    expect(globalCss).not.toMatch(/:is\(th, td\):nth-child\(even\)/);
     expect(globalCss).not.toMatch(/:nth-child\((?:even|odd)\)\s*\{\s*background-color/);
     expect(globalCss.match(/--table-col-tint:/g)?.length).toBe(3);
     expect(globalCss.match(/--table-grid-line:/g)?.length).toBe(3);

@@ -3652,8 +3652,8 @@ button[data-modal-action="danger"], [data-garden-modal="panel"] button[data-moda
   line-height: inherit;
 }
 
-/* 通常の画面の表を統一（2026-11-12・東海林さん：縦の線あり・列ごとに色を交互に・ライト／ダーク別の色）。
-   列の色は背景色を上書きせず、偶数列に薄い色を「重ねる」（background-image）。
+/* 通常の画面の表を統一（2026-11-12・東海林さん：縦の線あり・行ごとに白／グレーを交互に・ライト／ダーク別の色）。
+   行の色は背景色を上書きせず、偶数行に薄い色を「重ねる」（background-image）。
    強調行・合計行・固定列など、画面ごとに付けた背景色はそのまま残る。印刷時は対象外。
    独自の見た目を保つ表（TV 表示など）は class="garden-table-own" で外す。 */
 :root, [data-theme="light"] {
@@ -3684,7 +3684,7 @@ button[data-modal-action="danger"], [data-garden-modal="panel"] button[data-moda
   table:not(.garden-table-own) > :is(thead, tbody, tfoot) > tr > :is(th, td):last-child {
     border-right: 0 !important;
   }
-  table:not(.garden-table-own) > :is(tbody, tfoot) > tr > :is(th, td):nth-child(even) {
+  table:not(.garden-table-own) > tbody > tr:nth-child(even) > :is(th, td) {
     background-image: linear-gradient(var(--table-col-tint), var(--table-col-tint)) !important;
   }
 }
