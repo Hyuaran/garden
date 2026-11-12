@@ -131,13 +131,22 @@ export default function ProductPointsClient({
   const [error, setError] = useState(initialError);
   const change = <K extends keyof PointRow>(key: K, value: PointRow[K]) =>
     setDraft((current) => current && { ...current, [key]: value });
-  const visible = rows.filter(
-    (row) =>
-      channels.includes(row.channel) &&
-      categories.includes(row.category) &&
-      (showEnded ||
-        (row.start_date <= today && (!row.end_date || row.end_date >= today))),
-  );
+  // 既定の並び＝管理表の付与ポイントシートの順（sort_order）→ 白地・LP・アライアンス → 新しい期間が上
+  const channelOrder = Object.keys(CHANNELS);
+  const visible = rows
+    .filter(
+      (row) =>
+        channels.includes(row.channel) &&
+        categories.includes(row.category) &&
+        (showEnded ||
+          (row.start_date <= today && (!row.end_date || row.end_date >= today))),
+    )
+    .sort(
+      (a, b) =>
+        a.sort_order - b.sort_order ||
+        channelOrder.indexOf(a.channel) - channelOrder.indexOf(b.channel) ||
+        b.start_date.localeCompare(a.start_date),
+    );
   const updatedAt = rows.reduce(
     (latest, row) => (row.updated_at > latest ? row.updated_at : latest),
     "",
@@ -258,7 +267,7 @@ export default function ProductPointsClient({
         rowKey={(row) => row.id}
         searchText={(row) => [row.product, ...row.kintone_names].join(" ")}
         searchPlaceholder="商材・Kintone での表記"
-        defaultSort={{ id: "product", direction: "asc" }}
+        defaultSort={{ id: "sheet_order", direction: "asc" }}
         onRowClick={(row) => open(row)}
         rowClickable={() => !busy}
         emptyText="該当する付与ポイントはありません。"
