@@ -121,7 +121,7 @@ describe("call metrics PDF", () => {
     const firstPage = await pdf.getPage(1);
     const firstContent = await firstPage.getTextContent();
     const firstItems = firstContent.items.filter(item => "str" in item);
-    const webLeft = 28 + [85, 48, 48, 39, 43, 34, 37, 31, 37, 31, 40, 25, 25, 25, 25].reduce((a, b) => a + b, 0);
+    const webLeft = 28 + [80, 48, 48, 39, 52, 34, 37, 31, 37, 31, 48, 25, 25, 25, 25].reduce((a, b) => a + b, 0);
     for (const [name, expected] of [["WEB実績なし", ["-", "-", "-", "-"]], ["WEB申込あり", ["0", "0", "0:00:00", "1"]]] as const) {
       const nameItem = firstItems.find(item => item.str === name)!;
       const values = firstItems.filter(item => item.str.trim() && item.transform[4] >= webLeft && Math.abs(item.transform[5] - nameItem.transform[5]) < 0.1);

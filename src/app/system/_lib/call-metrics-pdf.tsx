@@ -118,25 +118,25 @@ const fmTone = (r: EmployeeCallMetricRow, value: number) => isUnregisteredRow(r)
 const employeeColumnGroups: ColumnGroup[] = [{ label: "テレマ", span: 15 }, { label: "WEBインバウンド（ランディングページ）", span: 4 }];
 
 const employeeColumns: Column<EmployeeCallMetricRow>[] = [
-  { label: "社員名", width: 85, value: (r) => r.employeeName, align: "left" },
+  { label: "社員名", width: 80, value: (r) => r.employeeName, align: "left" },
   { label: "稼働時間", width: 48, value: (r) => fm(r, formatWorkTime(r.workSeconds)) },
   { label: "通話時間", width: 48, value: (r) => maybeTime(r.talkSecondsOther) },
   { label: "コール数", width: 39, value: (r) => fm(r, r.callCount.toLocaleString("ja-JP")) },
-  { label: "コール数/h", width: 43, value: (r) => fm(r, formatCallsPerWorkHour(r.callCount, r.workSeconds)) },
+  { label: "コール数/h", width: 52, value: (r) => fm(r, formatCallsPerWorkHour(r.callCount, r.workSeconds)) },
   { label: "有効数", width: 34, value: (r) => fm(r, r.effectiveCount.toLocaleString("ja-JP")) },
   { label: "有効率", width: 37, value: (r) => fm(r, pct(r.effectiveRate)) },
   { label: "トス数", width: 31, value: (r) => fm(r, String(r.tossCount)), emphasized: (r) => fmTone(r, r.tossCount) },
   { label: "トス率", width: 37, value: (r) => fm(r, pct(r.callCount ? r.tossCount / r.callCount : 0)) },
   { label: "受注数", width: 31, value: (r) => fm(r, String(r.acquiredCount)), emphasized: (r) => fmTone(r, r.acquiredCount) },
-  { label: "前確OK数", width: 40, value: (r) => fm(r, String(r.orderCount)), emphasized: (r) => fmTone(r, r.orderCount) },
+  { label: "前確OK数", width: 48, value: (r) => fm(r, String(r.orderCount)), emphasized: (r) => fmTone(r, r.orderCount) },
   { label: "見込", width: 25, value: (r) => fm(r, String(r.prospectCount)) },
   { label: "担不", width: 25, value: (r) => fm(r, String(r.absentCount)) },
   { label: "留守", width: 25, value: (r) => fm(r, String(r.awayCount)) },
   { label: "無効", width: 25, value: (r) => fm(r, String(r.invalidCount)) },
   { label: "WEB応答", width: 40, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpAnswered) : "-", groupStart: true },
   { label: "WEB発信", width: 40, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpOutbound) : "-" },
-  { label: "WEB通話時間", width: 48, value: (r) => hasEmployeeWebActivity(r) ? maybeTime(r.lpTalkSeconds) : "-" },
-  { label: "WEB申込み", bold: true, width: 43, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpApplications) : "-" },
+  { label: "WEB通話時間", width: 60, value: (r) => hasEmployeeWebActivity(r) ? maybeTime(r.lpTalkSeconds) : "-" },
+  { label: "WEB申込み", bold: true, width: 52, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpApplications) : "-" },
 ];
 
 const listColumns: Column<CallMetricRow>[] = [
@@ -310,8 +310,7 @@ function SectionTitle({ children }: { children: string }) { return <><VectorText
 function DefinitionTitle({ children }: { children: string }) { return <VectorText width={650} height={20} fontSize={11} bold align="left" color={COLORS.navy}>{children}</VectorText>; }
 function ContinuationLabel({ label, marker }: { label: string; marker: string }) {
   return <>
-    <View fixed style={styles.continuationLabel}><VectorText width={735} height={16} fontSize={9} bold align="left" color={COLORS.navy}>{`${label}（続き）`}</VectorText></View>
-    <View fixed style={styles.continuationCover} render={({ subPageNumber }) => subPageNumber === 1 ? <View style={styles.continuationCoverFill}/> : null}/>
+    {/* 見える「〇〇（続き）」は置かない。上の余白を詰めたら見出しと重なったため（2026-11-12）。続きのページは列の見出しを再掲するので分かる */}
     <Text fixed style={styles.hiddenMarker} render={({ subPageNumber }) => subPageNumber > 1 ? `CONTINUATION_${marker}` : ""}/>
   </>;
 }
