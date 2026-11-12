@@ -72,6 +72,25 @@ describe("事務用入社手続きサーバー処理", () => {
     expect(rootUpdate.update).toHaveBeenCalledWith({ dependents_count: 0, commute_monthly_cap: 30000, commute_daily_allowance: 1060 });
   });
 
+  it("本人が口座番号まで入れていれば、給与の受取口座も従業員台帳へ写す", async () => {
+    const systemSave = chain({ error: null });
+    const systemRead = chain({ data: { employee_id: "EMP-1", bank_name: "テスト銀行", bank_code: "9999", branch_name: "テスト支店", branch_code: "999", account_type: "普通", account_number: "1234567", account_holder_kana: "テスト タロウ", status: "submitted" }, error: null });
+    const rootUpdate = chain({ error: null });
+    const userSupabase = {
+      from: vi.fn((table: string) => {
+        if (table === "system_onboarding") return userSupabase.from.mock.calls.filter(([name]) => name === "system_onboarding").length === 1 ? systemSave : systemRead;
+        return rootUpdate;
+      }),
+    };
+    const employeeQuery = chain({ data: [{ employee_id: "EMP-1", name: "テスト 太郎", hire_date: "2026-09-01", birthday: null, company_id: null }], error: null });
+    mocks.getSupabaseAdmin.mockReturnValue({ from: vi.fn(() => employeeQuery) });
+
+    // 口座は全権管理者（sensitive）だけが読める。全権管理者が反映したときだけ写る
+    await applyAdminOnboarding({ supabase: userSupabase, managerEmployeeId: "EMP-M", sensitive: true } as unknown as AdminContext, "EMP-1", {});
+
+    expect(rootUpdate.update).toHaveBeenCalledWith(expect.objectContaining({ bank_name: "テスト銀行", bank_code: "9999", branch_name: "テスト支店", branch_code: "999", account_type: "普通", account_number: "1234567", account_holder_kana: "テスト タロウ" }));
+  });
+
   it("乗り換えがある人は区間ごとの片道運賃合計の2倍を反映する", async () => {
     const systemSave = chain({ error: null });
     const systemRead = chain({ data: { employee_id: "EMP-1", commute_routes: [

@@ -193,6 +193,18 @@ export async function applyAdminOnboarding(context: AdminContext, employeeId: st
   if (cap != null) update.commute_monthly_cap = cap;
   const dailyAllowance = commuteDailyAllowance(record.values);
   if (dailyAllowance != null) update.commute_daily_allowance = dailyAllowance;
+  // 給与の受取口座も写す。本人が口座番号まで入れているときだけ（途中までの入力で台帳を空にしない・2026-11-12）
+  const values = record.values as Record<string, unknown>;
+  const accountNumber = String(values.account_number ?? "").trim();
+  if (accountNumber) {
+    update.bank_name = String(values.bank_name ?? "").trim();
+    update.bank_code = String(values.bank_code ?? "").trim();
+    update.branch_name = String(values.branch_name ?? "").trim();
+    update.branch_code = String(values.branch_code ?? "").trim();
+    update.account_type = String(values.account_type ?? "").trim();
+    update.account_number = accountNumber;
+    update.account_holder_kana = String(values.account_holder_kana ?? "").trim();
+  }
   if (!Object.keys(update).length) return;
   const { error } = await context.supabase.from("root_employees").update(update).eq("employee_id", employeeId);
   if (error) throw new OnboardingError("従業員台帳に反映できませんでした。時間をおいて、もう一度お試しください。", 503);
