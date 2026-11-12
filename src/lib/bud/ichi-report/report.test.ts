@@ -65,6 +65,15 @@ describe("最新の確認と保存", () => {
     expect(result.snapshot?.deployment_id).toBe("new");
     expect(store.save).toHaveBeenCalledTimes(1);
   });
+  it("実際の Vercel の返事（encoding なし・data だけ）でも読める", async () => {
+    const { store, request } = setup();
+    request.mockResolvedValueOnce(response({ deployments: [{ uid: "new" }] }))
+      .mockResolvedValueOnce(response([{ name: "src", children: [{ name: "data", children: [{ name: "report.html", uid: "file" }] }] }]))
+      .mockResolvedValueOnce(response({ data: Buffer.from(html).toString("base64") }));
+    const result = await readSnapshot(store, "test-token", false, request, now);
+    expect(result.warning).toBe(false);
+    expect(result.snapshot?.data).toEqual(data);
+  });
   it("接続障害時は最後の内容を残し、失敗の通知も10分間残す", async () => {
     const { store, request } = setup();
     request.mockRejectedValue(new Error("offline"));

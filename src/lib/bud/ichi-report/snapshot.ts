@@ -64,7 +64,8 @@ export async function readSnapshot(store: Store, token: string | undefined, forc
 
     const file = object(await get(`/v7/deployments/${encodeURIComponent(id)}/files/${encodeURIComponent(uid)}`));
 
-    if(file.encoding !== "base64" || typeof file.data !== "string") throw new Error("報告を読み込めませんでした");
+    // 実際の Vercel の返事は { data } だけで encoding が付かない（2026-11-12 本番で確認）。付いていれば base64 だけ受ける
+    if((file.encoding !== undefined && file.encoding !== "base64") || typeof file.data !== "string") throw new Error("報告を読み込めませんでした");
 
     const data = extractReport(Buffer.from(file.data, "base64").toString("utf8"));
 
