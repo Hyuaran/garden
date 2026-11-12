@@ -290,7 +290,7 @@ export function buildLineShiftBlocks(input: { rows: KotDailyRow[]; members: Shuk
         "お疲れ様です！！",
         `明日【${dateLabel}】は`,
         `【${shift}】の勤務シフトです。`,
-        "本日21時までに出勤確認の返信を必ず下さい。",
+        "本日までに出勤確認の返信を必ず下さい。",
       ].join("\n");
       // summary＝送る相手つきの一覧（まとめてコピー用）
       const summary = [shift, ...personLines, "", message].join("\n");

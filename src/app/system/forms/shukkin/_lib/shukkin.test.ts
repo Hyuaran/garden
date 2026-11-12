@@ -199,7 +199,7 @@ describe("shukkin text builder", () => {
     expect(blocks[0].message).toBe(`お疲れ様です！！
 明日【09/20(日)】は
 【10-21】の勤務シフトです。
-本日21時までに出勤確認の返信を必ず下さい。`);
+本日までに出勤確認の返信を必ず下さい。`);
     expect(blocks[0].recipients).toEqual(["1392 田中 実花", "1600 毛利 祐星"]);
     expect(blocks[0].summary).toBe(`10-21
 1392 田中 実花
@@ -208,7 +208,7 @@ describe("shukkin text builder", () => {
 お疲れ様です！！
 明日【09/20(日)】は
 【10-21】の勤務シフトです。
-本日21時までに出勤確認の返信を必ず下さい。`);
+本日までに出勤確認の返信を必ず下さい。`);
     expect(blocks.map((block) => block.summary).join("\n")).not.toContain("萩尾");
     expect(blocks.map((block) => block.summary).join("\n")).not.toContain("上田");
   });
