@@ -76,7 +76,7 @@ function VectorParagraph({ children, width, fontSize = 7.5, bold = false, color 
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "NotoSansJP", paddingTop: 54, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
+  page: { fontFamily: "NotoSansJP", paddingTop: 54, paddingBottom: 32, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
   header: { position: "absolute", top: 20, left: 28, right: 28, paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: COLORS.teal, flexDirection: "row", justifyContent: "space-between" },
   headerTitle: { color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   headerPeriod: { color: COLORS.sub, fontSize: 8 },
