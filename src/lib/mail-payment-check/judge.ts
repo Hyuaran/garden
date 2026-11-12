@@ -1,6 +1,6 @@
 /**
  * メール 1 通ずつを「予約（Kintone）・保存（Drive）」と突き合わせて判定する。
- * 要対応＝期日の 3 営業日前を過ぎたのに予約か保存が無い（直るまで毎日知らせる）
+ * 要対応＝期日の 3 営業日前を過ぎたのに予約か保存が無い（直るまで毎日知らせる）。SES の業者は予約があれば保存待ちでよい
  * 人の確認＝業者マスタに無い／実績が足りない業者／期日が決まらない／件名だけでは分からない（新着だけ・1 回）
  * 期日前＝まだ登録前で普通の状態（数だけ）
  */
@@ -161,6 +161,9 @@ export async function judgeMails(input: {
 
     if (reserved && saved) {
       items.push({ ...judged, kind: "ok", reason: "予約・保存とも確認できました" });
+    } else if (reserved && vendor.driveRoot === "ses") {
+      // SES は金さんが支払いのあとに 08_SES事業部 へ保存する（9 月分は期日 10/10・保存 10/13）。予約があれば保存待ちで知らせない（2026-11-12 東海林さん）
+      items.push({ ...judged, kind: "ok", reason: "予約を確認できました（保存は SES 事業部が後日）" });
     } else if (!vendor.confirmed || !dueDate) {
       if (isNew) {
         const why = !vendor.confirmed ? "まだ実績が少ない業者です" : "期日が請求書を見ないと決まりません";

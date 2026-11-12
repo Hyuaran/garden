@@ -98,3 +98,18 @@ describe("judgeMails", () => {
     expect(counts.invoiceRelated).toBe(0);
   });
 });
+
+describe("SES の業者（金さんが支払いのあとに保存）", () => {
+  const cool = mail({ sender: "info@cooljpn.co.jp", subject: "2026年10月度ご請求書", receivedAt: "2026-11-06T01:41:03Z" });
+  it("予約があれば保存がまだでも要対応にしない", async () => {
+    const result = await judgeMails({ mails: [cool], today: "2026-11-12", newSince: "2026-11-11T00:00:00Z", lookups: {
+      reservations: async () => [{ id: "1849", dueDate: "2026-11-10", amount: null }],
+      savedFiles: async () => [],
+    } });
+    expect(result.items[0]).toMatchObject({ kind: "ok", vendor: "クールジャパン" });
+  });
+  it("予約が無ければ要対応", async () => {
+    const result = await judgeMails({ mails: [cool], today: "2026-11-12", newSince: "2026-11-11T00:00:00Z", lookups: lookups(false, false) });
+    expect(result.items[0]).toMatchObject({ kind: "action" });
+  });
+});
