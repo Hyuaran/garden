@@ -57,4 +57,15 @@ describe("本文v3の集計", () => {
     expect(text.indexOf("■電気お申込み受付窓口")).toBeLessThan(text.indexOf("■フレッツ"));
     expect(text.split("■").slice(1).join("■")).not.toContain("受注率：");
   });
+  it("商材名区分2 で表に無いときは「商材区分2（マスタ）」で探す（タイプなしの au光プラス）", () => {
+    const rec = (fields: Record<string, string>) => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, { value: v }]));
+    const orders = reportOrders([
+      rec({ 受注日: date, 事業名: "自社", B_リスト名: "", 商材名区分2: "au光プラス", m_product: "au光プラス タイプ3", 商材ステータス: "" }),
+      rec({ 受注日: date, 事業名: "自社", B_リスト名: "", 商材名区分2: "au光プラス", m_product: "", 商材ステータス: "" }),
+    ] as never, date);
+    const row = (product: string, total: number) => ({ id: product, product, channel: "hakuchi", category: "kaisen", report_group: "au", start_date: date, end_date: null, total_points: total, toss_points: 0.2, closer_points: total - 0.2, unit_price: null, has_option: null, kintone_names: [], sort_order: 0, note: null, updated_at: date, updated_by: null });
+    const result = reportPoints(orders, [row("au光プラス タイプ3", 2.0)] as never);
+    expect(result.text).toContain("合計件数：2.0P");
+    expect(result.warnings.join("")).toContain("au光プラス 1件");
+  });
 });

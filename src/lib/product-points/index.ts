@@ -40,6 +40,8 @@ export type Order = {
   productName: string;
   orderDate: string;
   channel: Channel | null;
+  // 顧客一覧の「商材区分2（マスタ）」。商材名で表に無いときだけ使う
+  masterProduct?: string;
 };
 export const normalizeProduct = (name: string) =>
   name.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();

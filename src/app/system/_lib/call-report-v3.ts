@@ -59,7 +59,9 @@ export function reportOrders(records: KintoneRecord[], date: string, credit = fa
     const hasChannelField = ["事業名", "文字列__1行__14", "B_リスト名", "リスト名"].some(k => k in r);
     const channel = credit && !hasChannelField ? "hakuchi" : resolveChannel({ 事業名: business || (credit && list ? "自社" : ""), リスト名: list });
     if (!channel) return [];
-    return [{ productName: credit ? text(r, "ドロップダウン_12") || text(r, "商材名区分2") : text(r, "商材名区分2"), orderDate, channel }];
+    // 顧客一覧は「商材区分2（マスタ）」（m_product）も持つ。商材名区分2 で表に無いとき（例：タイプなしの「au光プラス」）だけ使う
+    const masterProduct = credit ? "" : text(r, "m_product");
+    return [{ productName: credit ? text(r, "ドロップダウン_12") || text(r, "商材名区分2") : text(r, "商材名区分2") || masterProduct, masterProduct, orderDate, channel }];
   });
 }
 export function reportPoints(orders: Order[], rows: PointRow[]) {
@@ -69,7 +71,7 @@ export function reportPoints(orders: Order[], rows: PointRow[]) {
     let subtotal = 0;
     const groups = new Map<string, number>();
     for (const order of orders.filter(o => o.channel === channel)) {
-      const row = pointFor(rows, order);
+      const row = pointFor(rows, order) ?? (order.masterProduct ? pointFor(rows, { ...order, productName: order.masterProduct }) : null);
       if (!row) { missing.set(order.productName, (missing.get(order.productName) ?? 0) + 1); continue; }
       subtotal = roundPoints(subtotal + row.total_points);
       groups.set(row.report_group, roundPoints((groups.get(row.report_group) ?? 0) + row.total_points));
