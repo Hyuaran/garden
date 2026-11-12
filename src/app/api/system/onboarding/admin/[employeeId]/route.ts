@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { OnboardingError } from "@/app/system/onboarding/_lib/onboarding.server";
-import { applyAdminOnboarding, onboardingAdminContext, readAdminOnboardingDetail, readMyNumberForAdmin, saveAdminOnboarding, saveAdminOnboardingEmail, saveAdminOnboardingHouseholder } from "@/app/system/onboarding/_lib/onboarding-admin.server";
+import { saveAdminOnboardingDependent, applyAdminOnboarding, onboardingAdminContext, readAdminOnboardingDetail, readMyNumberForAdmin, saveAdminOnboarding, saveAdminOnboardingEmail, saveAdminOnboardingHouseholder } from "@/app/system/onboarding/_lib/onboarding-admin.server";
 import { createAndSaveFuyouPdf } from "@/app/system/onboarding/_lib/onboarding-fuyou.server";
 import { safeFuyouErrorMessage } from "@/app/system/onboarding/_lib/fuyou-pdf";
 import { createAndSaveRenrakuhyo } from "@/app/system/onboarding/_lib/renrakuhyo.server";
@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ emp
     if (text.length > 50_000) throw new OnboardingError("入力内容が多すぎます。内容を確認してください。", 400);
     let body;
     try { body = JSON.parse(text); } catch { throw new OnboardingError("入力内容を読み取れませんでした。", 400); }
-    if (!body || !["save", "apply", "fuyou", "renrakuhyo", "myNumber", "email", "householder"].includes(body.action)) throw new OnboardingError("保存方法を確認してください。", 400);
+    if (!body || !["save", "apply", "fuyou", "renrakuhyo", "myNumber", "dependent", "email", "householder"].includes(body.action)) throw new OnboardingError("保存方法を確認してください。", 400);
     action = body.action;
     if (action === "renrakuhyo") {
       const saved = await createAndSaveRenrakuhyo(context, employeeId);
@@ -47,6 +47,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ emp
     if (action === "myNumber") {
       const result = await readMyNumberForAdmin(context, employeeId, body.target);
       return NextResponse.json({ ok: true, myNumber: result.myNumber }, { headers });
+    }
+    if (action === "dependent") {
+      const result = await saveAdminOnboardingDependent(context, employeeId, body);
+      revalidatePath(`/system/onboarding/admin/${employeeId}`);
+      return NextResponse.json({ ok: true, ...result }, { headers });
     }
     if (action === "email") {
       const result = await saveAdminOnboardingEmail(context, employeeId, body);

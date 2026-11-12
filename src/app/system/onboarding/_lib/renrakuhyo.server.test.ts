@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ readDetail: vi.fn(), buildExcel: vi.fn(), buil
 vi.mock("./onboarding-admin.server", () => ({ readAdminOnboardingDetailForFuyou: mocks.readDetail }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => ({ storage: { from: () => ({ download: mocks.adminDownload }) } }) }));
 import { createAndSaveRenrakuhyo } from "./renrakuhyo.server";
-import { emptyInput } from "./onboarding";
+import { emptyDependent, emptyInput } from "./onboarding";
 import { emptyAdminInput } from "./onboarding-admin";
 
 function query(data: unknown, error: unknown = null) {
@@ -40,6 +40,7 @@ describe("入社連絡表の生成保存", () => {
       admin,
       adminUpdatedAt: null,
     });
+    values.dependents = [{ ...emptyDependent(), name: "家族", annual_income: "100", occupation: "変更前", my_number: "" }];
     const c = context();
     const result = await createAndSaveRenrakuhyo(c as never, "EMP-1", { buildExcel: mocks.buildExcel, buildPdf: mocks.buildPdf, saveFiles: mocks.saveFiles });
 
@@ -56,6 +57,14 @@ describe("入社連絡表の生成保存", () => {
       pdf: { filename: "01【提出用ヨシダヒナ】TLCC様入社連絡表.pdf", content: Buffer.from("pdf") },
     }, "1_吉田ひな");
     expect(result.folderLabel).toBe("経理部 ／ 30_入社連絡票");
+    values.dependents[0] = { ...values.dependents[0], annual_income: "1200000", occupation: "学生", my_number: "123456789018" };
+    await createAndSaveRenrakuhyo(c as never, "EMP-1", { buildExcel: mocks.buildExcel, buildPdf: mocks.buildPdf, saveFiles: mocks.saveFiles });
+    expect(mocks.readDetail).toHaveBeenCalledTimes(2);
+    for (const build of [mocks.buildExcel, mocks.buildPdf]) {
+      expect(build.mock.lastCall?.[1]).toMatchObject({ dependent1_income: "1,200,000", dependent1_occupation: "学生" });
+      expect(build.mock.lastCall?.[1].dependent1_mynumber).toContain("1234-5678-9018");
+    }
+
   });
 
   it("責任者コンテキストで読めない社員や法人ではファイル保存しない", async () => {

@@ -19,10 +19,12 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
   let notStarted: Awaited<ReturnType<typeof readNotStartedEmployee>> = null;
   let message = "";
   let canWrite = false;
+  let sensitive = false;
   let wages: MinimumWage[] = [];
   try {
     const context = await onboardingAdminContext(true);
     canWrite = context.canWrite ?? false;
+    sensitive = context.sensitive ?? false;
     record = await readAdminOnboardingDetail(context, employeeId);
     wages = await listMinimumWages();
     if (!record) notStarted = await readNotStartedEmployee(employeeId);
@@ -41,6 +43,6 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
       : notStarted ? <main className={styles.panel} role="status"><h2>未着手</h2><p>本人はまだ入社手続きを始めていません。本人に案内するか、［代行入力する］から入力してください。</p></main>
-      : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} wages={wages} /></main> : null}
+      : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} sensitive={sensitive} wages={wages} /></main> : null}
   </div>;
 }

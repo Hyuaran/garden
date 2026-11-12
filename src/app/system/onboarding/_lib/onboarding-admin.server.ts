@@ -1,6 +1,7 @@
 import "server-only";
 import { isMyNumberViewer, logMyNumberAccess } from '@/lib/my-number/access.server';
-import { decryptMyNumber, type EncryptedMyNumber } from '@/lib/my-number/crypto.server';
+import { encryptMyNumber, decryptMyNumber, type EncryptedMyNumber } from '@/lib/my-number/crypto.server';
+import { validMyNumber } from "@/lib/my-number/validation";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -48,7 +49,8 @@ function maskDependentMyNumbers(value: unknown) {
   return value.map(item => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return item;
     const row = item as Record<string, unknown>;
-    return { ...row, my_number: maskMyNumber(String(row.my_number ?? "")) };
+    const secret = row.my_number_secret as EncryptedMyNumber | undefined;
+    return { ...row, my_number: maskMyNumber(String(row.my_number || (secret?.my_number_last4 ? `••••••••${secret.my_number_last4}` : ""))) };
   });
 }
 
@@ -238,4 +240,38 @@ export async function readMyNumberForAdmin(context: AdminContext, employeeId: st
 
 export function missingAdminRecord(employeeId: string) {
   return initialAdminRecord(employeeId);
+}
+
+/** 行ロック下で対象の欄だけを更新する。 */
+export async function saveAdminOnboardingDependent(context: AdminContext, employeeId: string, input: unknown) {
+  if (context.canWrite === false) throw new OnboardingError("修正する権限がありません。", 403);
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new OnboardingError("入力内容を確認してください。", 400);
+  const body = input as Record<string, unknown>;
+  const index = body.index;
+  if (typeof index !== "number" || !Number.isInteger(index) || index < 0 || index >= 30) throw new OnboardingError("扶養家族を確認してください。", 400);
+  let changes: Record<string, unknown>;
+  let maskedNumber = "";
+  if (body.field === "my_number") {
+    if (!context.sensitive) throw new OnboardingError("全権管理者だけが入力できます。", 403);
+    if (!validMyNumber(body.value)) throw new OnboardingError("正しい12桁のマイナンバーを入力してください。", 400);
+    let secret;
+    try { secret = encryptMyNumber(body.value); } catch { throw new OnboardingError("現在は番号を保存できません。", 503); }
+    changes = { my_number: "", my_number_secret: secret };
+    maskedNumber = `••••••••${secret.my_number_last4}`;
+  } else if (body.field === "annual_income" || body.field === "occupation") {
+    if (typeof body.value !== "string" || body.value.length > 2000) throw new OnboardingError("入力内容を確認してください。", 400);
+    let value = body.value.trim();
+    if (body.field === "annual_income") {
+      if (!/^(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)$/.test(value)) throw new OnboardingError("年間収入は0以上の整数で入力してください。", 400);
+      value = value.replace(/,/g, "");
+      if (!Number.isSafeInteger(Number(value))) throw new OnboardingError("年間収入の金額を確認してください。", 400);
+    }
+    changes = { [body.field]: value };
+  } else throw new OnboardingError("修正する項目を確認してください。", 400);
+  const { error } = await context.supabase.rpc("save_admin_onboarding_dependent", {
+    p_employee_id: employeeId, p_actor: context.managerEmployeeId, p_index: index,
+    p_changes: changes, p_overwrite: body.overwrite === true,
+  });
+  if (error) throw new OnboardingError(error.code === "23505" ? "すでに番号が入っています。上書きを確認してください。" : "保存できませんでした。ページを開き直してお試しください。", error.code === "23505" ? 409 : 503);
+  return { index, field: body.field, value: body.field === "my_number" ? maskedNumber : changes[body.field] };
 }

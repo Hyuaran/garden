@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { minimumWageAt, hourlyEquivalent, type MinimumWage } from "@/lib/minimum-wages";
+import DependentAdminField from "../../_components/DependentAdminField";
 import OnboardingReview from "../../_components/OnboardingReview";
 import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthlyForSalaryKind, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, formatDeclaredCommutePassMonthly, isHourlySalaryKind, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
 import { formatWarnings, HOUSEHOLDER_RELATION_OPTIONS } from "../../_lib/onboarding";
@@ -14,7 +15,7 @@ function emptyAllowance(): AdminAllowance {
   return { name: "", amount: "" };
 }
 
-export default function OnboardingAdminDetailClient({ record, canWrite = true, wages = [] }: { record: AdminOnboardingRecord; canWrite?: boolean; wages?: MinimumWage[] }) {
+export default function OnboardingAdminDetailClient({ record, canWrite = true, sensitive = false, wages = [] }: { record: AdminOnboardingRecord; canWrite?: boolean; sensitive?: boolean; wages?: MinimumWage[] }) {
   const router = useRouter();
   const [reviewValues, setReviewValues] = useState(record.values);
   const [admin, setAdmin] = useState<AdminInput>(() => ({
@@ -48,7 +49,7 @@ export default function OnboardingAdminDetailClient({ record, canWrite = true, w
   const [confirmRenrakuhyo, setConfirmRenrakuhyo] = useState(false);
   const [revealedMyNumbers, setRevealedMyNumbers] = useState<Record<string, string>>({});
   const [myNumberBusy, setMyNumberBusy] = useState<Record<string, boolean>>({});
-  const missing = missingOnboardingItems(record.values, record.employee.employment_type);
+  const missing = missingOnboardingItems(reviewValues, record.employee.employment_type);
   const fuyouManualNotice = fuyouManualAdditionNotice(reviewValues);
   const renrakuhyoManualNotice = renrakuhyoManualAdditionNotice(reviewValues);
   const isHourly = isHourlySalaryKind(admin.salary_kind);
@@ -296,14 +297,20 @@ export default function OnboardingAdminDetailClient({ record, canWrite = true, w
   return <fieldset disabled={!canWrite} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}><div className={styles.detailStack}>
     <section className={styles.adminSection}>
       <h2>本人が入れた内容</h2>
-      <OnboardingReview values={reviewValues} slots={{ email: <span className={styles.emailReviewValue}>
+      <OnboardingReview values={reviewValues} dependentSlot={(index, field, value) => canWrite && (field === "annual_income" || field === "occupation" || (field === "my_number" && sensitive)) ? <DependentAdminField
+        employeeId={record.employee.employee_id} index={index} field={field} value={reviewValues.dependents[index][field]}
+        onSaved={saved => {
+          hideMyNumber("dependent", index);
+          setReviewValues(previous => ({ ...previous, dependents: previous.dependents.map((person, i) => i === index ? { ...person, [field]: saved } : person) }));
+          router.refresh();
+        }} display={value} /> : value} slots={{ email: <span className={styles.emailReviewValue}>
         {emailEditing ? <>
           <input aria-label="メールアドレス" value={emailDraft} maxLength={2000} disabled={emailBusy} onChange={event => { setEmailDraft(event.target.value); setEmailNotice(""); setEmailError(""); }} />
           <button type="button" disabled={emailBusy} onClick={() => void saveEmail()}>保存</button>
           <button type="button" disabled={emailBusy} onClick={cancelEmailEdit}>やめる</button>
         </> : <>
           {reviewValues.email ? <span>{reviewValues.email}</span> : <span className={styles.empty}>未入力</span>}
-          <button type="button" onClick={editEmail}>修正</button>
+          {canWrite && <button type="button" onClick={editEmail}>修正</button>}
         </>}
         <span className={styles.hint}>事務が入れられます</span>
         {formatWarnings({ ...reviewValues, email: emailDraft }).email ? <span className={styles.warning}>{formatWarnings({ ...reviewValues, email: emailDraft }).email}</span> : null}
@@ -316,7 +323,7 @@ export default function OnboardingAdminDetailClient({ record, canWrite = true, w
           <button type="button" aria-label="世帯主の氏名の修正をやめる" disabled={householderNameBusy} onClick={cancelHouseholderNameEdit}>やめる</button>
         </> : <>
           {reviewValues.householder_name ? <span>{reviewValues.householder_name}</span> : <span className={styles.empty}>未入力</span>}
-          <button type="button" aria-label="世帯主の氏名を修正" onClick={editHouseholderName}>修正</button>
+          {canWrite && <button type="button" aria-label="世帯主の氏名を修正" onClick={editHouseholderName}>修正</button>}
         </>}
         <span className={styles.hint}>事務が入れられます</span>
         {householderNameNotice ? <span role="status" className={styles.saveStatus}>{householderNameNotice}</span> : null}
@@ -331,7 +338,7 @@ export default function OnboardingAdminDetailClient({ record, canWrite = true, w
           <button type="button" aria-label="世帯主との続柄の修正をやめる" disabled={householderRelationBusy} onClick={cancelHouseholderRelationEdit}>やめる</button>
         </> : <>
           {reviewValues.householder_relation ? <span>{reviewValues.householder_relation}</span> : <span className={styles.empty}>未入力</span>}
-          <button type="button" aria-label="世帯主との続柄を修正" onClick={editHouseholderRelation}>修正</button>
+          {canWrite && <button type="button" aria-label="世帯主との続柄を修正" onClick={editHouseholderRelation}>修正</button>}
         </>}
         <span className={styles.hint}>事務が入れられます</span>
         {householderRelationNotice ? <span role="status" className={styles.saveStatus}>{householderRelationNotice}</span> : null}

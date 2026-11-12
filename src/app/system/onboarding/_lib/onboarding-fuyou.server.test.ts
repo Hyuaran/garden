@@ -5,7 +5,7 @@ vi.mock("./onboarding-admin.server", () => ({ readAdminOnboardingDetailForFuyou:
 // 用紙は管理者側の接続で読むため、そちらを差し替える。
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => ({ storage: { from: () => ({ download: mocks.adminDownload }) } }) }));
 import { createAndSaveFuyouPdf } from "./onboarding-fuyou.server";
-import { emptyInput } from "./onboarding";
+import { emptyDependent, emptyInput } from "./onboarding";
 
 function query(data: unknown, error: unknown = null) {
   return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data, error }) };
@@ -43,6 +43,7 @@ describe("扶養控除申告書の生成保存", () => {
       admin: {},
       adminUpdatedAt: null,
     });
+    values.dependents = [{ ...emptyDependent(), name: "家族", annual_income: "100", occupation: "変更前", my_number: "" }];
     const c = context();
     const result = await createAndSaveFuyouPdf(c as never, "EMP-1", { buildPdf: mocks.buildPdf, savePdf: mocks.savePdf });
 
@@ -58,6 +59,11 @@ describe("扶養控除申告書の生成保存", () => {
     });
     expect(mocks.savePdf).toHaveBeenCalledWith("【扶養控除申告書】上田基人_令和8年分_給与所得者の扶養控除等(異動)申告書.pdf", Buffer.from("pdf"));
     expect(result.filename).toBe("saved.pdf");
+    values.dependents[0] = { ...values.dependents[0], annual_income: "1200000", occupation: "学生", my_number: "123456789018" };
+    await createAndSaveFuyouPdf(c as never, "EMP-1", { buildPdf: mocks.buildPdf, savePdf: mocks.savePdf });
+    expect(mocks.readDetail).toHaveBeenCalledTimes(2);
+    expect(mocks.buildPdf.mock.lastCall?.[1].values.dependents[0]).toMatchObject({ annual_income: "1200000", occupation: "学生", my_number: "123456789018" });
+
   });
 
   it("所属法人が無い場合はPDFもDrive保存も行わない", async () => {
