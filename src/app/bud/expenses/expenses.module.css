@@ -25,7 +25,7 @@
 .pageShell :global(.bud-corp-switch) { background:transparent; border:0; border-radius:0; padding:0; gap:6px; max-width:100%; }
 .pageShell :global(.bud-corp-tab) { font:inherit; font-size:13px; border:1px solid var(--line); border-radius:6px; padding:7px 12px; color:var(--sub); background:var(--card); box-shadow:none; }
 .pageShell :global(.bud-corp-tab.active) { color:var(--teal-d); border-color:var(--teal); background:var(--card); box-shadow:none; }
-.pageShell table { min-width:max-content; width:100%; border-collapse:collapse; }
+.pageShell table { min-width:max-content; width:100%; border-collapse:separate; border-spacing:0; }
 .pageShell th { text-align:center!important; color:var(--heading); background:var(--bg); }
 .pageShell :is(th,td) { white-space:nowrap; }
 .pageShell :global(.exp-table-amount) { text-align:right; font-variant-numeric:tabular-nums; }

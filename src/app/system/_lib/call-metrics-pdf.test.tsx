@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { callMetricCountTone, callMetricsPdfFilename, measureVectorTextLayout, renderCallMetricsPdf } from "./call-metrics-pdf";
+import { formatPdfSnapshot, lpFunnelPdfWidths, PDF_CONTENT_WIDTH, callMetricCountTone, callMetricsPdfFilename, measureVectorTextLayout, renderCallMetricsPdf } from "./call-metrics-pdf";
 import type { CallMetricsResponse, EmployeeCallMetricRow } from "./call-metrics";
 import { funnelFixture } from "./lp-funnel-view.test";
 
@@ -47,6 +47,12 @@ async function extractPages(bytes: Uint8Array) {
 }
 
 describe("call metrics PDF", () => {
+  it("集計日時を日本時間の分まで表示し、列幅がページ内に収まる", () => {
+    expect(formatPdfSnapshot(new Date("2026-11-12T06:07:00Z"))).toBe("2026/11/12(木) 15:07 時点");
+    for (const count of [2, 4, 12]) {
+      expect(lpFunnelPdfWidths(count).reduce((sum, width) => sum + width, 1)).toBeLessThanOrEqual(PDF_CONTENT_WIDTH + 0.001);
+    }
+  });
   it("uses the standard note mark instead of a star", () => {
     const source = readFileSync(path.join(process.cwd(), "src", "app", "system", "_lib", "call-metrics-pdf.tsx"), "utf8");
     expect(source).toContain("※ 休憩の時間帯が変わったときは");
@@ -63,9 +69,10 @@ describe("call metrics PDF", () => {
   });
 
   it("flows long employee data across pages before list and definition sections", async () => {
-    const buffer = await renderCallMetricsPdf(fixture);
+    const buffer = await renderCallMetricsPdf(fixture, { generatedAt: new Date("2026-11-12T06:07:00Z") });
     const pages = await extractPages(new Uint8Array(buffer));
     expect(pages.length).toBeGreaterThan(3);
+    expect(pages.every(text => text.includes("2026/11/12(木) 15:07 時点"))).toBe(true);
     const employeePage = pages.findIndex((text) => text.includes("SECTION_EMPLOYEE"));
     const webInboundPage = pages.findIndex((text) => text.includes("SECTION_WEB_INBOUND"));
     const listPage = pages.findIndex((text) => text.includes("SECTION_LIST"));
@@ -93,16 +100,54 @@ describe("call metrics PDF", () => {
     }
   }, 180_000);
 
-  it("WEBインバウンドの表A・表B を文字として 1 ページに描く（階層つき・2026-10-15）", async () => {
-    const buffer = await renderCallMetricsPdf({ ...fixture, lpFunnel: funnelFixture });
+  it("WEBインバウンドの表A・表Bを縦に描き、必要なら改ページする", async () => {
+    const emptyWeb = { ...employee(1), employeeName: "WEB実績なし", lpAnswered: 0, lpOutbound: 0, lpTalkSeconds: 0, lpApplications: 0 };
+    const activeWeb = { ...emptyWeb, employeeName: "WEB申込あり", lpApplications: 1 };
+    const buffer = await renderCallMetricsPdf({ ...fixture, employeeMetrics: [emptyWeb, activeWeb], lpFunnel: funnelFixture });
+    const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
+    const firstPage = await pdf.getPage(1);
+    const firstContent = await firstPage.getTextContent();
+    const firstItems = firstContent.items.filter(item => "str" in item);
+    const webLeft = 28 + [92, 58, 58, 43, 46, 39, 42, 37, 41, 39, 46, 34, 34, 34, 34].reduce((a, b) => a + b, 0);
+    for (const [name, expected] of [["WEB実績なし", ["-", "-", "-", "-"]], ["WEB申込あり", ["0", "0", "0:00:00", "1"]]] as const) {
+      const nameItem = firstItems.find(item => item.str === name)!;
+      const values = firstItems.filter(item => item.str.trim() && item.transform[4] >= webLeft && Math.abs(item.transform[5] - nameItem.transform[5]) < 0.1);
+      expect(values.map(item => item.str)).toEqual(expected);
+      await firstPage.getOperatorList();
+      const applicationFont = firstPage.commonObjs.get(values.at(-1)!.fontName);
+      expect(applicationFont.name).toContain("Bold");
+    }
+    const titles: { label: string; page: number; y: number }[] = [];
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const page = await pdf.getPage(n);
+      const content = await page.getTextContent();
+      const items = content.items.filter(item => "str" in item);
+      for (const item of items) {
+        if (item.str.startsWith("表A") || item.str.startsWith("表B")) titles.push({ label: item.str, page: n, y: item.transform[5] });
+      }
+      if (items.some(item => item.str.startsWith("表A") || item.str.startsWith("表B"))) {
+        for (const item of items.filter(item => item.width > 0)) {
+          expect(item.transform[4]).toBeGreaterThanOrEqual(27);
+          expect(item.transform[4] + item.width).toBeLessThanOrEqual(page.view[2] - 27);
+        }
+      }
+    }
+    expect(titles).toHaveLength(2);
+    expect(titles[1].page > titles[0].page || titles[1].y < titles[0].y - 440).toBe(true);
+    if (process.env.WRITE_CALL_METRICS_PDF === "1") {
+      const outputDir = path.join(process.cwd(), "output", "pdf");
+      mkdirSync(outputDir, { recursive: true });
+      writeFileSync(path.join(outputDir, "call-metrics-522-web.pdf"), buffer);
+    }
     const pages = await extractPages(new Uint8Array(buffer));
     const web = pages.findIndex((text) => text.includes("SECTION_WEB_INBOUND"));
     const list = pages.findIndex((text) => text.includes("SECTION_LIST"));
-    expect(list).toBe(web + 1);
+    expect(list).toBeGreaterThan(web);
+    const webText = pages.slice(web, list).join(" ");
     for (const label of ["表A", "表B", "総数（入電＋フォーム）", "折り返していない", "指定どおり（繋がった・繋がらない）", "判定待ち", "番号不備", "初回応答率（応答できた ÷ 入電）", "どうやって話せたか", "Kintone記録なし", "有効受注率"]) {
-      expect(pages[web]).toContain(label);
+      expect(webText).toContain(label);
     }
-    expect(pages[web]).not.toContain("うち");
+    expect(webText).not.toContain("うち");
   }, 180_000);
 
   it("flows expanded definitions naturally and labels continuation pages", async () => {

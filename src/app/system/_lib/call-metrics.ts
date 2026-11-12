@@ -266,3 +266,11 @@ export function normalizeCallMetricsRpc(
     })),
   };
 }
+
+/** 値は変更せず、従業員の WEB 実績がないときだけ表示を省く。 */
+export function hasEmployeeWebActivity(row: Pick<EmployeeCallMetricRow, "lpAnswered" | "lpOutbound" | "lpTalkSeconds" | "lpApplications">) {
+  return [row.lpAnswered, row.lpOutbound, row.lpTalkSeconds, row.lpApplications]
+    .some(value => (value ?? 0) > 0);
+}
+
+export const EMPLOYEE_WEB_DISPLAY_NOTE = "従業員ごとのWEB応答・発信・通話時間・申込みがすべて0の場合は、4項目とも「-」で表示します。1項目でも実績があれば0も表示します。合計・小計の数値は変わりません。";

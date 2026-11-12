@@ -122,3 +122,21 @@ describe("CallMetricsClient", () => {
     expect(fetch).toHaveBeenLastCalledWith(expect.stringContaining("employeeName=%E7%A4%BE%E5%93%A1A"), { cache: "no-store" });
   });
 });
+
+it("WEB実績が全部0なら4つとも省き、申込みだけあれば0も表示する。小計は変えない", async () => {
+  const rows = [
+    { ...response.employeeMetrics[0], employeeName: "実績なし", talkSecondsOther: 6727, lpAnswered: 0, lpOutbound: 0, lpTalkSeconds: 0, lpApplications: 0 },
+    { ...response.employeeMetrics[0], employeeName: "申込みあり", lpAnswered: 0, lpOutbound: 0, lpTalkSeconds: 0, lpApplications: 1 },
+  ];
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...response, employeeMetrics: rows, lp: { notes: [], businesses: [{ bizCode: "b", bizName: "小計確認", applications: 0 }] } }) }));
+  render(<CallMetricsClient/>);
+  const empty = (await screen.findByText("実績なし")).closest("tr")!;
+  const active = screen.getByText("申込みあり").closest("tr")!;
+  expect(within(empty).getAllByRole("cell").slice(-4).map(cell => cell.textContent)).toEqual(["-", "-", "-", "-"]);
+  const activeCells = within(active).getAllByRole("cell");
+  expect(activeCells.slice(-4).map(cell => cell.textContent)).toEqual(["0", "0", "0:00:00", "1"]);
+  expect(activeCells.at(-1)).toHaveStyle({ fontWeight: "700" });
+  const subtotal = screen.getByText("小計確認").closest("tr")!;
+  expect(within(subtotal).getAllByRole("cell").at(-1)).toHaveTextContent("0");
+  expect(within(subtotal).getAllByRole("cell").at(-1)).toHaveStyle({ fontWeight: "700" });
+});

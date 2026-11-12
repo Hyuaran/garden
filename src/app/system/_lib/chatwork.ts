@@ -1,3 +1,7 @@
+function callReportRoomId() {
+  return process.env.CHATWORK_ROOM_KYOUYU_ID || process.env.CHATWORK_DEV_ROOM_ID;
+}
+
 const CHATWORK_API_BASE = "https://api.chatwork.com/v2";
 
 export class CallReportChatworkError extends Error {
@@ -9,9 +13,9 @@ export class CallReportChatworkError extends Error {
 
 export async function sendCallReportMessage(text: string, fetchImpl: typeof fetch = fetch) {
   const token = process.env.CHATWORK_API_TOKEN;
-  // CHATWORK_ROOM_KYOUYU_ID（本番＝HRグループ【共有】）があればそれを使い、
+  // CHATWORK_ROOM_KYOUYU_ID（配信先）があればそれを使い、
   // 無ければ CHATWORK_DEV_ROOM_ID（開発ルーム・テスト用）へフォールバック。
-  const roomId = process.env.CHATWORK_ROOM_KYOUYU_ID || process.env.CHATWORK_DEV_ROOM_ID;
+  const roomId = callReportRoomId();
   if (!token || !roomId) throw new Error("Chatwork配信ルーム設定が不足しています");
 
   const form = new URLSearchParams({ body: text });
@@ -117,7 +121,7 @@ export async function sendCallReportWithAttachment(
   fetchImpl: typeof fetch = fetch,
 ) {
   const token = process.env.CHATWORK_API_TOKEN;
-  const roomId = process.env.CHATWORK_ROOM_KYOUYU_ID || process.env.CHATWORK_DEV_ROOM_ID;
+  const roomId = callReportRoomId();
   if (!token || !roomId) throw new Error("Chatwork配信ルーム設定が不足しています");
 
   const form = new FormData();

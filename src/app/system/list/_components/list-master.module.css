@@ -1497,7 +1497,7 @@
 /* 項目名｜説明 の 2 列。項目名は折り返さず、説明だけ折り返す */
 .helpTipTable {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse:separate; border-spacing:0;
 }
 
 .helpTipTable th,
@@ -1717,7 +1717,7 @@
 
 .tableWrap table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse:separate; border-spacing:0;
   min-width: 840px;
   color: var(--ink);
   font-size: 13px;

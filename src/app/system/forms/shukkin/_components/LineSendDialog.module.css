@@ -3,7 +3,7 @@
 .dialog h2{margin:0 0 12px;color:#10233f;font-size:22px;line-height:1.45;text-wrap:balance}
 .destination,.sentAt,.quota{margin:0 0 12px;color:#5a6b80;font-size:14px;font-weight:800;line-height:1.7}
 .error,.danger{margin:0 0 14px;color:#b42318;font-size:14px;font-weight:800;line-height:1.7}
-.table{width:100%;margin:0 0 14px;border-collapse:collapse;font-size:13px;line-height:1.65}
+.table{width:100%;margin:0 0 14px;border-collapse:separate; border-spacing:0;font-size:13px;line-height:1.65}
 .table th,.table td{padding:8px;border:1px solid #e3eaf3;vertical-align:top;text-align:left}
 .table th{background:#fbfcfe;color:#10233f;white-space:nowrap}
 .names{max-width:220px;color:#17212e}

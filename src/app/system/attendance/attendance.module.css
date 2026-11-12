@@ -120,6 +120,6 @@
   .dialog { align-self: end; margin-bottom: 10px; }
 }
 
-.punchTable { width: 100%; border-collapse: collapse; }
+.punchTable { width: 100%; border-collapse:separate; border-spacing:0; }
 .punchTable th { text-align: center; }
 .punchTable td { text-align: center; padding: 8px 4px; }

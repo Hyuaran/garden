@@ -41,7 +41,7 @@
 .amount { display:block; font-size:clamp(20px,1.8vw,28px); font-variant-numeric:tabular-nums; margin:10px 0; }
 .manual { font-size:18px; margin:10px 0 0; font-weight:700; }
 .tableWrap { max-width:100%; overflow:auto; border:1px solid var(--line); border-radius:22px; background:var(--card); }
-.tableWrap table { width:100%; min-width:max-content; border-collapse:collapse; }
+.tableWrap table { width:100%; min-width:max-content; border-collapse:separate; border-spacing:0; }
 .tableWrap th,.tableWrap td { padding:14px 18px; border-bottom:1px solid var(--line); white-space:nowrap; text-align:left; }
 .tableWrap th { text-align:center; background:var(--navy); color:#fff; }
 .tableWrap td:nth-child(3) { white-space:normal; min-width:260px; max-width:600px; }

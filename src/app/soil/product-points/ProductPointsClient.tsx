@@ -258,7 +258,7 @@ export default function ProductPointsClient({
             checked={showEnded}
             onChange={(event) => setShowEnded(event.target.checked)}
           />{" "}
-          終わった期間も出す
+          終了期間も表示
         </label>
       </div>
       <ResultMessage>{error}</ResultMessage>

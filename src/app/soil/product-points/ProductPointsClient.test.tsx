@@ -92,7 +92,7 @@ it("期間切り替えは先に2行を表示し、失敗したら元へ戻す", 
     row.updated_at,
     true,
   );
-  fireEvent.click(screen.getByLabelText("終わった期間も出す"));
+  fireEvent.click(screen.getByLabelText("終了期間も表示"));
   expect(screen.getByTestId("rows").children).toHaveLength(2);
   finish({ error: "保存に失敗しました。" });
   await waitFor(() =>

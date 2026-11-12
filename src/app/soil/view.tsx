@@ -1,6 +1,5 @@
 import Link from "next/link";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
-import UpdatedStamp from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { SystemViewHeading, SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { RootMenuIcon } from "@/app/root/_components/RootMenuIcon";
 import { visibleSoilMenus } from "./_constants/menus";
@@ -12,7 +11,6 @@ export default function SoilHome({ viewAccess }: { viewAccess: Record<string, bo
       <SystemBreadcrumb root={{ label: "Soil", href: "/soil" }} />
       <SystemViewHeading><h1>Soil</h1><SystemViewButton /></SystemViewHeading>
       <p className={styles.description}>Garden の各機能が共通で使うデータの台帳。</p>
-      <UpdatedStamp label="メニュー" emptyText="更新日時の記録なし" />
       <div className={styles.cards}>
         {visibleSoilMenus(viewAccess).map(menu => (
           <Link key={menu.slug} href={`/soil/${menu.slug}`} className={styles.card}>

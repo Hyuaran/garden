@@ -41,7 +41,7 @@
 .empty { color:#6b7280; }.saveStatus { min-height:26px; color:var(--sub); }
 .tableWrap { width:100%; overflow-x:auto; }
 .adminTopActions { display:flex; justify-content:flex-end; margin-bottom:14px; }
-.adminTable { width:100%; min-width:620px; border-collapse:collapse; }
+.adminTable { width:100%; min-width:620px; border-collapse:separate; border-spacing:0; }
 .adminTable th,.adminTable td { padding:12px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
 .adminTable th { color:var(--sub); font-size:13px; font-weight:700; }
 .adminTable tbody tr:hover { background:rgba(11,126,122,.08); }

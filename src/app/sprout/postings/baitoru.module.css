@@ -15,7 +15,7 @@
 .panel > form > fieldset > button[type=submit], .card > fieldset > .save { background: var(--teal); border-color: var(--teal); color: #fff; }
 .panel > form > fieldset > button:disabled, .panel > form > fieldset > span > button:disabled, .card > fieldset > button:disabled, .action:disabled { opacity: .5; cursor: default; }
 .history { overflow-x: auto; margin-bottom: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
-.history table { border-collapse: collapse; width: 100%; font-size: 13px; color: var(--ink); }
+.history table { border-collapse:separate; border-spacing:0; width: 100%; font-size: 13px; color: var(--ink); }
 .history th { text-align: center; color: var(--sub); font-weight: 600; }
 .history th, .history td { padding: 12px; border-bottom: 1px solid var(--line); min-width: 70px; white-space: pre-line; }
 .history td { text-align: left; }

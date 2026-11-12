@@ -46,7 +46,7 @@ export default function DisplayClient({ initialData }: { initialData: DisplayDat
   return <main className={styles.shell}>
     <section className={styles.board} aria-label="ディスプレイ用成績">
       <div className="garden-help-heading"><h1>{data.title}</h1><HelpButton /></div><SystemTabs />
-      <table className={styles.scoreTable}>
+      <table className={`${styles.scoreTable} garden-table-own`}>
         <thead>
           <tr>
             <th aria-label="項目"></th>

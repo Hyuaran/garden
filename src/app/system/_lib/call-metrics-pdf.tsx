@@ -3,10 +3,10 @@ import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "@r
 import type { DocumentProps } from "@react-pdf/renderer";
 import { openSync } from "fontkit";
 import type { CallMetricsResponse, EmployeeCallMetricRow, CallMetricRow } from "./call-metrics";
-import { formatCallsPerWorkHour, formatWorkTime } from "./call-metrics";
+import { hasEmployeeWebActivity, EMPLOYEE_WEB_DISPLAY_NOTE, formatCallsPerWorkHour, formatWorkTime } from "./call-metrics";
 import { LP_FUNNEL_DEFINITIONS, LP_FUNNEL_LEAD_NOTE, lpFunnelCalcNotes, lpFunnelHeaders, lpFunnelTableA, lpFunnelTableB, lpFunnelTreeLinks, type LpFunnelTreeLink, type LpFunnelViewRow } from "./lp-funnel-view";
 
-const COLORS = { bg: "#F4F5F7", card: "#FFFFFF", line: "#E3EAF3", navy: "#10233F", teal: "#0EA5A0", ink: "#17212E", sub: "#5A6B80", zero: "#98A4B3", red: "#E5484D" } as const;
+const COLORS = { bg: "#F4F5F7", card: "#FFFFFF", line: "#E3EAF3", navy: "#10233F", teal: "#0EA5A0", ink: "#17212E", sub: "#5A6B80", zero: "#5A6B80", red: "#E5484D" } as const;
 type VectorFont = ReturnType<typeof openSync>;
 let regularFont: VectorFont | null = null;
 let boldFont: VectorFont | null = null;
@@ -76,7 +76,7 @@ function VectorParagraph({ children, width, fontSize = 7.5, bold = false, color 
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "NotoSansJP", paddingTop: 66, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
+  page: { fontFamily: "NotoSansJP", paddingTop: 90, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
   header: { position: "absolute", top: 20, left: 28, right: 28, paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: COLORS.teal, flexDirection: "row", justifyContent: "space-between" },
   headerTitle: { color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   headerPeriod: { color: COLORS.sub, fontSize: 8 },
@@ -99,12 +99,12 @@ const styles = StyleSheet.create({
   hiddenMarker: { position: "absolute", opacity: 0, fontSize: 1 },
   // 高さは VectorText が返す実寸（fontSize + 3 + 4）以上にすること（足りないと見出しがずれる）。
   // ヘッダーの区切り線は y=45〜46。cover はそれより下から始めること（線を塗りつぶさないため）。
-  continuationLabel: { position: "absolute", top: 47, left: 28, right: 28, height: 16 },
-  continuationCover: { position: "absolute", top: 46, left: 27, right: 27, height: 18 },
+  continuationLabel: { position: "absolute", top: 70, left: 28, right: 28, height: 16 },
+  continuationCover: { position: "absolute", top: 69, left: 27, right: 27, height: 18 },
   continuationCoverFill: { width: 737, height: 18, backgroundColor: COLORS.bg },
 });
 
-type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null; groupStart?: boolean };
+type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null; groupStart?: boolean; bold?: boolean };
 type ColumnGroup = { label: string; span: number };
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const maybeNumber = (value: number | null | undefined) => value == null ? "-" : value.toLocaleString("ja-JP");
@@ -132,10 +132,10 @@ const employeeColumns: Column<EmployeeCallMetricRow>[] = [
   { label: "担不", width: 34, value: (r) => fm(r, String(r.absentCount)) },
   { label: "留守", width: 34, value: (r) => fm(r, String(r.awayCount)) },
   { label: "無効", width: 34, value: (r) => fm(r, String(r.invalidCount)) },
-  { label: "WEB応答", width: 44, value: (r) => maybeNumber(r.lpAnswered), groupStart: true },
-  { label: "WEB発信", width: 44, value: (r) => maybeNumber(r.lpOutbound) },
-  { label: "WEB通話時間", width: 58, value: (r) => maybeTime(r.lpTalkSeconds) },
-  { label: "WEB申込み", width: 44, value: (r) => maybeNumber(r.lpApplications) },
+  { label: "WEB応答", width: 44, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpAnswered) : "-", groupStart: true },
+  { label: "WEB発信", width: 44, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpOutbound) : "-" },
+  { label: "WEB通話時間", width: 58, value: (r) => hasEmployeeWebActivity(r) ? maybeTime(r.lpTalkSeconds) : "-" },
+  { label: "WEB申込み", bold: true, width: 44, value: (r) => hasEmployeeWebActivity(r) ? maybeNumber(r.lpApplications) : "-" },
 ];
 
 const listColumns: Column<CallMetricRow>[] = [
@@ -166,7 +166,7 @@ const DEFINITIONS = [
   ["リスト絞り込み時の稼働時間", "リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。"],
   ["Excel集計表との差", "※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。"],
   ["リスト数・回転数・リスト受注率", "リストデータ取込後に対応"],
-  ["通話時間と WEBインバウンド（ランディングページ）", "INNOVERA の通話秒数、ランディングページの回線の応答・発信・通話時間、kintone の申込み件数を表示します。取得できない値は「-」です。"],
+  ["通話時間と WEBインバウンド（ランディングページ）", "INNOVERA の通話秒数、ランディングページの回線の応答・発信・通話時間、kintone の申込み件数を表示します。取得できない値は「-」です。" + EMPLOYEE_WEB_DISPLAY_NOTE],
 ];
 
 // ヘッダ帯の「INNOVERA 最終取込 HH:MM」（JST）。20 分以上前なら赤字で「INNOVERA 取込停止中（最終 HH:MM）」（§7.2）
@@ -184,14 +184,15 @@ export function innoveraHeaderText(data: CallMetricsResponse) {
   return data.innovera.stopped ? { text: `INNOVERA 取込停止中（最終 ${time}）`, stopped: true } : { text: `INNOVERA 最終取込 ${time}`, stopped: false };
 }
 
-function Chrome({ data }: { data: CallMetricsResponse }) {
+function Chrome({ data, generatedAt }: { data: CallMetricsResponse; generatedAt: Date }) {
   const period = `対象期間 ${data.from}〜${data.to}`;
   const innovera = innoveraHeaderText(data);
   const header = <>
     <VectorText width={350} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
-    <View style={{ flexDirection: "row", height: 18 }}>
-      <VectorText width={250} height={18} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText>
-      {innovera ? <VectorText width={220} height={18} fontSize={8} align="right" bold={innovera.stopped} color={innovera.stopped ? COLORS.red : COLORS.sub}>{innovera.text}</VectorText> : null}
+    <View style={{ height: 30 }}>
+      <VectorText width={470} height={12} fontSize={8} align="right">{formatPdfSnapshot(generatedAt)}</VectorText>
+      <VectorText width={250} height={12} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText>
+      {innovera ? <VectorText width={220} height={12} fontSize={8} align="right" bold={innovera.stopped} color={innovera.stopped ? COLORS.red : COLORS.sub}>{innovera.text}</VectorText> : null}
     </View>
   </>;
   // ヘッダーは fixed の 1 つだけ（2 つ重ねると、文字にした 2026-10-15 からコピーでタイトルが 2 回出るため）
@@ -209,16 +210,16 @@ function DataTable<T>({ columns, rows, groups }: { columns: Column<T>[]; rows: T
   const cellStyle = (base: typeof styles.th | typeof styles.td, column: { width: number; groupStart?: boolean }) => column.groupStart ? [base, styles.groupStart, { width: column.width }] : [base, { width: column.width }];
   return <View style={[styles.table, { width: tableWidth }]}>
     {groupCells ? <View fixed style={styles.row}>{groupCells.map((group) => <View key={group.label} style={cellStyle(styles.th, group)}><VectorText width={group.width - 1} height={22} bold align="center" color="#FFFFFF">{group.label}</VectorText></View>)}</View> : null}
-    <View fixed style={styles.row}>{columns.map((column) => <View key={column.label} style={cellStyle(styles.th, column)}><VectorText width={column.width - 1} height={22} bold align="center" color="#FFFFFF">{column.label}</VectorText></View>)}</View>
-    {rows.length ? rows.map((row, rowIndex) => <View key={rowIndex} wrap={false} style={styles.row}>{columns.map((column) => {
+    <View fixed style={styles.row}>{columns.map((column, index) => <View key={column.label} style={[...cellStyle(styles.th, column), { backgroundColor: index % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={column.width - 1} height={22} bold align="center" color={COLORS.ink}>{column.label}</VectorText></View>)}</View>
+    {rows.length ? rows.map((row, rowIndex) => <View key={rowIndex} wrap={false} style={styles.row}>{columns.map((column, columnIndex) => {
       const emphasis = column.emphasized?.(row);
-      return <View key={column.label} style={cellStyle(styles.td, column)}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
+      return <View key={column.label} style={[...cellStyle(styles.td, column), { backgroundColor: columnIndex % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={column.bold || emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
     })}</View>) : <View style={styles.row}><View style={[styles.td, { width: columns.reduce((sum, c) => sum + c.width, 0) }]}><VectorText width={columns.reduce((sum, c) => sum + c.width, 0)} align="left">対象データがありません</VectorText></View></View>}
   </View>;
 }
 
 // 申込みの列は「5（うち担当者未設定 1）」が 1 行に入る幅（東海林さん 2026-10-15）
-const lpSubtotalWidths = [220, 60, 60, 60, 60, 60, 80, 80, 200];
+const lpSubtotalWidths = [150, 45, 45, 45, 45, 45, 65, 75, 180];
 function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
   const rows = [...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => [
     row.bizName,
@@ -231,10 +232,10 @@ function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
     maybeTime(row.talkSeconds),
     row.unassignedApplications ? `${maybeNumber(row.applications)}（うち担当者未設定 ${row.unassignedApplications}）` : maybeNumber(row.applications),
   ]);
-  return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths}/>;
+  return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths} boldColumn={8}/>;
 }
 
-// 第 2 部「WEBインバウンド（事業ごと）」＝表A「対応」と表B「結果」を左右に並べて 1 ページに（§5.6.5・2026-10-15）。
+// 表A・表Bは縦に配置し、まとまりごとに改ページできるようにする。
 // 親は太字＋帯、子は罫線でつなぐ（縦の線が行をまたいでつながる）。率は太い区切り線の下。列幅 pt＝指標名 262／事業ごと・合計 92
 const TREE_STEP = 13;
 const TREE_LINE = "#9AA8B8";
@@ -253,11 +254,11 @@ function TreeTable({ headers, rows, widths }: { headers: string[]; rows: LpFunne
   const links = lpFunnelTreeLinks(rows);
   const firstRate = rows.findIndex((row) => row.kind === "rate");
   return <View wrap={false} style={[styles.table, { width: tableWidth }]}>
-    <View style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>
+    <View style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color={COLORS.ink}>{h}</VectorText></View>)}</View>
     {rows.map((row, i) => {
       const tree = row.kind === "node" || row.kind === "group";
       const level = tree ? row.level : 0;
-      const band = tree && level === 0 ? "#E3F4F3" : tree && level === 1 ? "#F1F5FA" : COLORS.card;
+      const band = COLORS.card;
       const strong = row.kind === "rate" || (tree && level <= 1);
       const tone = row.kind === "note" ? COLORS.sub : COLORS.ink;
       return <View key={i} wrap={false} style={[styles.row, i === firstRate ? { borderTopWidth: 2, borderTopColor: COLORS.navy } : {}, { backgroundColor: band }]}>
@@ -265,7 +266,7 @@ function TreeTable({ headers, rows, widths }: { headers: string[]; rows: LpFunne
           {tree ? <TreeConnector link={links[i]} level={level}/> : null}
           <VectorText width={widths[0] - 5 - TREE_STEP * level} height={22} align="left" bold={strong} color={tone}>{row.label}</VectorText>
         </View>
-        {row.values.map((value, j) => <View key={j} style={[styles.td, { width: widths[j + 1] }]}><VectorText width={widths[j + 1] - 1} height={22} align="right" bold={strong && row.kind !== "note"} color={tone}>{value}</VectorText></View>)}
+        {row.values.map((value, j) => <View key={j} style={[styles.td, { width: widths[j + 1], backgroundColor: (j + 1) % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[j + 1] - 1} height={22} align="right" bold={strong && row.kind !== "note"} color={tone}>{value}</VectorText></View>)}
       </View>;
     })}
   </View>;
@@ -274,22 +275,22 @@ function LpFunnelPart({ data }: { data: CallMetricsResponse }) {
   const funnel = data.lpFunnel;
   if (!funnel) return <VectorParagraph width={870}>WEBインバウンドの対応と結果を取得できませんでした。</VectorParagraph>;
   const headers = lpFunnelHeaders(funnel);
-  const widths = [262, ...headers.slice(1).map(() => 92)];
+  const widths = lpFunnelPdfWidths(headers.length);
   const notes = lpFunnelCalcNotes(funnel);
   const noRecordTotal = funnel.businesses.reduce((sum, biz) => sum + (biz.noRecord ?? 0), 0);
   return <>
-    <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12 }}>
-      <View style={{ marginRight: 24 }}><DefinitionTitle>表A　対応</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableA(funnel)} widths={widths}/></View>
-      <View><DefinitionTitle>表B　結果</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableB(funnel)} widths={widths}/></View>
+    <View style={{ flexDirection: "column", alignItems: "flex-start", marginBottom: 12 }}>
+      <View wrap={false} style={{ marginBottom: 20 }}><DefinitionTitle>表A　対応</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableA(funnel)} widths={widths}/></View>
+      <View wrap={false}><DefinitionTitle>表B　結果</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableB(funnel)} widths={widths}/></View>
     </View>
-    <VectorParagraph width={1100}>{`${LP_FUNNEL_LEAD_NOTE}${noRecordTotal ? ` 記録なし ${noRecordTotal} 件の番号はポータルの「WEBインバウンド」タブで確かめてください。` : ""}`}</VectorParagraph>
-    {notes.map((note) => <VectorParagraph key={note} width={1100}>{note}</VectorParagraph>)}
+    <VectorParagraph width={PDF_CONTENT_WIDTH}>{`${LP_FUNNEL_LEAD_NOTE}${noRecordTotal ? ` 記録なし ${noRecordTotal} 件の番号はポータルの「WEBインバウンド」タブで確かめてください。` : ""}`}</VectorParagraph>
+    {notes.map((note) => <VectorParagraph key={note} width={PDF_CONTENT_WIDTH}>{note}</VectorParagraph>)}
   </>;
 }
 
-function SimpleTable({ headers, rows, widths }: { headers: string[]; rows: string[][]; widths: number[] }) {
+function SimpleTable({ headers, rows, widths, boldColumn }: { headers: string[]; rows: string[][]; widths: number[]; boldColumn?: number }) {
   const tableWidth = widths.reduce((sum, width) => sum + width, 0);
-  return <View style={[styles.table, { width: tableWidth }]}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j] }]}><VectorParagraph width={widths[j] - 1}>{cell}</VectorParagraph></View>)}</View>)}</View>;
+  return <View style={[styles.table, { width: tableWidth }]}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i], backgroundColor: i % 2 ? "#F1F5F9" : COLORS.card }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color={COLORS.ink}>{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j], backgroundColor: j % 2 ? "#F1F5F9" : COLORS.card }]}><VectorParagraph width={widths[j] - 1} bold={j === boldColumn}>{cell}</VectorParagraph></View>)}</View>)}</View>;
 }
 
 function SectionTitle({ children }: { children: string }) { return <><VectorText width={400} height={24} fontSize={15} bold align="left" color={COLORS.navy}>{children}</VectorText><View style={styles.accent} /></>; }
@@ -301,12 +302,12 @@ function ContinuationLabel({ label, marker }: { label: string; marker: string })
     <Text fixed style={styles.hiddenMarker} render={({ subPageNumber }) => subPageNumber > 1 ? `CONTINUATION_${marker}` : ""}/>
   </>;
 }
-export function CallMetricsPdfDocument({ data, definitionRows = DEFINITIONS }: { data: CallMetricsResponse; definitionRows?: string[][] }): React.ReactElement<DocumentProps> {
+export function CallMetricsPdfDocument({ data, definitionRows = DEFINITIONS, generatedAt = new Date() }: { data: CallMetricsResponse; definitionRows?: string[][]; generatedAt?: Date }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics} groups={employeeColumnGroups}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={870}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><LpFunnelPart data={data}/></Page>
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics} groups={employeeColumnGroups}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={870}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><LpFunnelPart data={data}/></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data} generatedAt={generatedAt}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
       <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={definitionRows} widths={[155, 580]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>休憩時間割</DefinitionTitle><SimpleTable headers={["回", "開始", "終了", "長さ"]} rows={BREAKS} widths={[100, 170, 170, 170]}/><VectorParagraph width={735}>※ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</VectorParagraph></View>
       <View style={styles.definitionBlock}><DefinitionTitle>コール履歴のフラグ名 → ポータル表示名</DefinitionTitle><SimpleTable headers={["コール履歴", "ポータル表示"]} rows={[["獲得", "受注数"], ["前確OK", "前確OK数"], ["トス", "トス数"]]} widths={[240, 370]}/></View>
@@ -322,7 +323,23 @@ export function callMetricsPdfFilename(now = new Date()) {
   return `テレマコール集計ポータル_${get("year")}${get("month")}${get("day")}_${get("hour")}00.pdf`;
 }
 
-export async function renderCallMetricsPdf(data: CallMetricsResponse, options: { definitionRows?: string[][] } = {}) {
+export async function renderCallMetricsPdf(data: CallMetricsResponse, options: { definitionRows?: string[][]; generatedAt?: Date } = {}) {
   registerPdfFont();
-  return renderToBuffer(<CallMetricsPdfDocument data={data} definitionRows={options.definitionRows}/>);
+  return renderToBuffer(<CallMetricsPdfDocument data={data} definitionRows={options.definitionRows} generatedAt={options.generatedAt}/>);
+}
+
+export const PDF_CONTENT_WIDTH = 1190.55 - 56;
+
+export function lpFunnelPdfWidths(columnCount: number) {
+  const labelWidth = 262;
+  return [labelWidth, ...Array.from({ length: columnCount - 1 }, () => (PDF_CONTENT_WIDTH - labelWidth - 1) / (columnCount - 1))];
+}
+
+export function formatPdfSnapshot(now: Date) {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+    weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value ?? "";
+  return `${get("year")}/${get("month")}/${get("day")}(${get("weekday")}) ${get("hour")}:${get("minute")} 時点`;
 }

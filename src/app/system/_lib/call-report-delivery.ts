@@ -22,7 +22,7 @@ export async function deliverCallReport(
 ) {
   const filename = callMetricsPdfFilename(now);
   try {
-    const pdf = await dependencies.renderPdf(metrics);
+    const pdf = await dependencies.renderPdf(metrics, { generatedAt: now });
     await dependencies.sendAttachment(text, pdf, filename);
     return { attached: true as const, filename };
   } catch (error) {

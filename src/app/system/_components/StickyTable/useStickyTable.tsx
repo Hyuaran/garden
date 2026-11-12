@@ -142,5 +142,5 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>, remountKey?: 
 export default function StickyTable(props: ComponentProps<"table">) {
   const viewport = useRef<HTMLElement | null>(null);
   useStickyTable(viewport);
-  return <table {...props} ref={node => { viewport.current = node?.parentElement ?? null; }} />;
+  return <table {...props} className={["garden-table", props.className].filter(Boolean).join(" ")} ref={node => { viewport.current = node?.parentElement ?? null; }} />;
 }

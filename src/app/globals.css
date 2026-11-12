@@ -3651,3 +3651,40 @@ button[data-modal-action="danger"], [data-garden-modal="panel"] button[data-moda
   font-weight: 400;
   line-height: inherit;
 }
+
+/* 通常の画面の表を統一（2026-11-12・東海林さん：縦の線あり・列ごとに色を交互に・ライト／ダーク別の色）。
+   列の色は背景色を上書きせず、偶数列に薄い色を「重ねる」（background-image）。
+   強調行・合計行・固定列など、画面ごとに付けた背景色はそのまま残る。印刷時は対象外。
+   独自の見た目を保つ表（TV 表示など）は class="garden-table-own" で外す。 */
+:root, [data-theme="light"] {
+  --table-grid-line: #d8e1ec;
+  --table-col-tint: rgba(16, 35, 63, 0.05);
+}
+.dark, [data-theme="dark"] {
+  --table-grid-line: #42546a;
+  --table-col-tint: rgba(255, 255, 255, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --table-grid-line: #42546a;
+    --table-col-tint: rgba(255, 255, 255, 0.06);
+  }
+}
+@media screen {
+  table:not(.garden-table-own) {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+  }
+  table:not(.garden-table-own) > :is(thead, tbody, tfoot) > tr > :is(th, td) {
+    border-top: 0 !important;
+    border-left: 0 !important;
+    border-bottom: 1px solid var(--table-grid-line) !important;
+    border-right: 1px solid var(--table-grid-line) !important;
+  }
+  table:not(.garden-table-own) > :is(thead, tbody, tfoot) > tr > :is(th, td):last-child {
+    border-right: 0 !important;
+  }
+  table:not(.garden-table-own) > :is(tbody, tfoot) > tr > :is(th, td):nth-child(even) {
+    background-image: linear-gradient(var(--table-col-tint), var(--table-col-tint)) !important;
+  }
+}

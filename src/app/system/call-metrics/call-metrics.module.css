@@ -3,7 +3,7 @@
   --teal: #0ea5a0; --teal-d: #0b7e7a; --blue: #2563eb; --amber: #f59e0b; --red: #e5484d; --green: #16a36a;
   --bg: #f4f5f7; --card: #ffffff; --line: #e3eaf3;
   --shadow: 0 10px 30px rgba(16, 35, 63, .08); --shadow-s: 0 4px 14px rgba(16, 35, 63, .07); --r: 22px;
-  --val-strong: #17212e; --val-zero: #98a4b3;
+  --val-strong: #17212e; --val-zero: #5a6b80;
   font-family: "Meiryo", "メイリオ", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
   position: relative; width: 100%; min-width: 0; min-height: 100%; background: var(--bg);
 }
@@ -33,7 +33,7 @@
 .main th { background: var(--navy); color: #fff; text-align: center; }
 .main tbody tr:last-child td { border-bottom: 0; }
 .main td:first-child { text-align: left; }
-.stickyFirst th:first-child, .stickyFirst td:first-child { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 0 var(--line); }
+.stickyFirst th:first-child, .stickyFirst td:first-child { position: sticky; left: 0; z-index: 1;  }
 .stickyFirst th:first-child { z-index: 2; background: var(--navy); color: #fff; }
 .pending, .zeroValue { color: var(--val-zero) !important; }
 .strongValue { color: var(--val-strong) !important; font-weight: 700; }
