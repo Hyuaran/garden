@@ -27,6 +27,8 @@ describe("本文v3の集計", () => {
     expect(kotReportHours(raw, date, people, codes)).toBe(15);
     expect(kotReportHours([], date, people, codes)).toBe(0);
     expect(kotReportHours([{ date, dailySchedules: [scheduled("0", "10:00", "11:30")] }], date, people, codes)).toBe(2);
+    // 休憩の予定が無い人は startEndBreakSchedule の欄そのものが無い（実物）→ 休憩 0 分で数える
+    expect(kotReportHours([{ date, dailySchedules: [{ date, employeeKey: "0", clockInSchedule: date + "T10:00+09:00", clockOutSchedule: date + "T17:00+09:00" }] }], date, people, codes)).toBe(7);
     expect(() => kotReportHours([{ date, dailySchedules: [scheduled("0", "bad")] }], date, people, codes)).toThrow();
     expect(reportEmployeeCount([metric("宮永　ひかり", 0, 0), metric("小泉 翔", 0, 0), metric("上田 太郎", 0, 0), metric("無所属 太郎", 0, 0)], people)).toBe(2);
     expect(() => kotReportHours(raw, "2026-11-11", people, codes)).toThrow();

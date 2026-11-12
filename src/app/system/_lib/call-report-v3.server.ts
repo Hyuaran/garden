@@ -28,8 +28,10 @@ export function kotReportHours(raw: unknown, date: string, employees: ReportEmpl
       if (!code || !targets.has(code) || seen.has(row.employeeKey)) continue;
       seen.add(row.employeeKey);
       if (row.clockInSchedule == null || row.clockInSchedule === "" || row.clockOutSchedule == null || row.clockOutSchedule === "") continue;
-      if (!Array.isArray(row.startEndBreakSchedule)) throw new Error("KOT予定時間の形式不正");
-      const breaks = row.startEndBreakSchedule.reduce((sum: number, rest: { start?: unknown; end?: unknown } | null) => {
+      // 休憩の予定が無い人は、KING OF TIME の答えに startEndBreakSchedule の欄そのものが無い（2026-11-13 実物で確認）→ 休憩 0 分
+      const restSchedule = row.startEndBreakSchedule ?? [];
+      if (!Array.isArray(restSchedule)) throw new Error("KOT予定時間の形式不正");
+      const breaks = restSchedule.reduce((sum: number, rest: { start?: unknown; end?: unknown } | null) => {
         if (!rest) throw new Error("KOT予定時間の形式不正");
         return sum + duration(rest.start, rest.end);
       }, 0);
