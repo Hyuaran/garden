@@ -1,4 +1,7 @@
-function callReportRoomId() {
+// target="dev" はテスト送信（mode: "test"）。本番の送り先に関係なく開発ルームへ送る（2026-11-12 東海林さん「テストは全て開発ルームで」）
+export type CallReportRoomTarget = "live" | "dev";
+function callReportRoomId(target: CallReportRoomTarget = "live") {
+  if (target === "dev") return process.env.CHATWORK_DEV_ROOM_ID;
   return process.env.CHATWORK_ROOM_KYOUYU_ID || process.env.CHATWORK_DEV_ROOM_ID;
 }
 
@@ -11,11 +14,11 @@ export class CallReportChatworkError extends Error {
   }
 }
 
-export async function sendCallReportMessage(text: string, fetchImpl: typeof fetch = fetch) {
+export async function sendCallReportMessage(text: string, fetchImpl: typeof fetch = fetch, target: CallReportRoomTarget = "live") {
   const token = process.env.CHATWORK_API_TOKEN;
   // CHATWORK_ROOM_KYOUYU_ID（配信先）があればそれを使い、
   // 無ければ CHATWORK_DEV_ROOM_ID（開発ルーム・テスト用）へフォールバック。
-  const roomId = callReportRoomId();
+  const roomId = callReportRoomId(target);
   if (!token || !roomId) throw new Error("Chatwork配信ルーム設定が不足しています");
 
   const form = new URLSearchParams({ body: text });
@@ -119,9 +122,10 @@ export async function sendCallReportWithAttachment(
   pdf: Uint8Array,
   filename: string,
   fetchImpl: typeof fetch = fetch,
+  target: CallReportRoomTarget = "live",
 ) {
   const token = process.env.CHATWORK_API_TOKEN;
-  const roomId = callReportRoomId();
+  const roomId = callReportRoomId(target);
   if (!token || !roomId) throw new Error("Chatwork配信ルーム設定が不足しています");
 
   const form = new FormData();

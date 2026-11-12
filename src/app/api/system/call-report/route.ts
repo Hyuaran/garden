@@ -47,8 +47,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "リクエストが不正です" }, { status: 400 });
   }
   const input = body as { mode?: unknown; date?: unknown };
-  if (input.mode !== "preview" && input.mode !== "send") {
-    return NextResponse.json({ ok: false, error: "modeはpreviewまたはsendを指定してください" }, { status: 400 });
+  if (input.mode !== "preview" && input.mode !== "send" && input.mode !== "test") {
+    return NextResponse.json({ ok: false, error: "modeはpreview・send・testのどれかを指定してください" }, { status: 400 });
   }
   let date: string;
   try { date = parseReportDate(input.date); }
@@ -99,7 +99,8 @@ export async function POST(request: Request) {
 
   const postStarted = performance.now();
   try {
-    await deliverCallReport(report.text, metrics);
+    // test＝本番と同じ文面・PDF を開発ルームへだけ送る
+    await deliverCallReport(report.text, metrics, now, undefined, input.mode === "test" ? "dev" : "live");
   } catch (error) {
     const postMs = Math.round(performance.now() - postStarted);
     const chatworkStatus = error instanceof CallReportChatworkError ? error.status : null;
