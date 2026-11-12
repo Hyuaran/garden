@@ -107,6 +107,7 @@ const deliveryEntries: PermissionEntry[] = SYSTEM_DELIVERIES.map((delivery) => (
 }));
 
 export const PERMISSION_ENTRIES: PermissionEntry[] = [
+  { key: "system-product-points-write", label: "付与ポイント表（変更）", group: "System", kind: "操作", allows: role => role === "super_admin", source: "src/app/system/product-points/server.ts:productPointsContext" },
   { key: "system-haken-write", label: "派遣管理（編集・書類発行）", group: "System", kind: "操作", allows: allowsMinRole("manager"), source: "src/lib/haken/server.ts:hakenContext" },
   { key: "root-mail-forwarding-write", label: "郵便の転送（編集）", group: "Root", kind: "操作", allows: role => role === "super_admin", source: "src/app/root/mail-forwarding/page.tsx（RLS でも全権管理者のみ）" },
 

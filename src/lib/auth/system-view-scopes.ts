@@ -24,6 +24,7 @@ export const SYSTEM_VIEW_SCOPES: SystemViewScope[] = [
   scope("call-metrics", "テレマ コール集計", staff), scope("innovera-calls", "INNOVERA履歴・録音"),
   scope("forms", "業務管理ツール"), scope("contracts", "契約書管理", manager),
   scope("haken", "派遣管理", manager),
+  scope("product-points", "付与ポイント表", manager),
   scope("sites", "コーポレートサイト", staff), scope("deliveries", "自動配信"),
   scope("kanri", "管理表ポータル", staff), scope("list", "リストマスタ", manager),
   ...([ ["input", "入力する"], ["auto", "自動で動いている"], ["host", "ホスト PC で動いている"], ["kintone", "Kintone に入れたしかけ"] ] as const).map(([key, label]) => scope("forms", label, staff, key)),

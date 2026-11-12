@@ -1,0 +1,64 @@
+.pageShell {
+  --bg: #f4f5f7;
+  --card: #fff;
+  --heading: #10233f;
+  --ink: #17212e;
+  --sub: #5a6b80;
+  --line: #e3eaf3;
+  --teal: #0ea5a0;
+  color: var(--ink);
+  font-family:
+    "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  min-width: 0;
+}
+.pageShell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg);
+}
+.pageShell h1 {
+  color: var(--heading);
+  font-size: 30px;
+  margin: 6px 0 14px;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+:global([data-theme="dark"]) .pageShell {
+  --bg: #0e1622;
+  --card: #16202e;
+  --heading: #e6edf6;
+  --ink: #e6edf6;
+  --sub: #a3b1c4;
+  --line: #26354a;
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .pageShell {
+    --bg: #0e1622;
+    --card: #16202e;
+    --heading: #e6edf6;
+    --ink: #e6edf6;
+    --sub: #a3b1c4;
+    --line: #26354a;
+  }
+}
+@media (max-width: 600px) {
+  .filters {
+    align-items: stretch;
+  }
+  .filters > * {
+    flex: 1 1 100%;
+  }
+}

@@ -1,0 +1,369 @@
+[
+  {
+    "product": "BIGLOBE光",
+    "category": "kaisen",
+    "report_group": "collab",
+    "total_points": 1.2,
+    "toss_points": 0.2,
+    "unit_price": 32000,
+    "has_option": "あり",
+    "kintone_names": [
+      "BIGLOBE光"
+    ],
+    "sort_order": 10
+  },
+  {
+    "product": "Docomo光",
+    "category": "kaisen",
+    "report_group": "collab",
+    "total_points": 1.3,
+    "toss_points": 0.2,
+    "unit_price": 61000,
+    "has_option": "なし",
+    "kintone_names": [
+      "Docomo光",
+      "docomo光"
+    ],
+    "sort_order": 20
+  },
+  {
+    "product": "AU光",
+    "category": "kaisen",
+    "report_group": "au",
+    "total_points": 1.6,
+    "toss_points": 0.2,
+    "unit_price": 83500,
+    "has_option": "あり",
+    "kintone_names": [
+      "AU光",
+      "au光　Sonet",
+      "au光 Sonet",
+      "au光　BIGLOBE",
+      "au光 BIGLOBE",
+      "au光"
+    ],
+    "sort_order": 30
+  },
+  {
+    "product": "JUST光",
+    "category": "kaisen",
+    "report_group": "collab",
+    "total_points": 1,
+    "toss_points": 0.2,
+    "unit_price": 0,
+    "has_option": null,
+    "kintone_names": [
+      "JUST光"
+    ],
+    "sort_order": 40
+  },
+  {
+    "product": "Ichi光",
+    "category": "kaisen",
+    "report_group": "collab",
+    "total_points": 1.2,
+    "toss_points": 0.2,
+    "unit_price": 0,
+    "has_option": null,
+    "kintone_names": [
+      "Ichi光"
+    ],
+    "sort_order": 50
+  },
+  {
+    "product": "NURO光",
+    "category": "kaisen",
+    "report_group": "nuro",
+    "total_points": 1.4,
+    "toss_points": 0.2,
+    "unit_price": 86000,
+    "has_option": "なし",
+    "kintone_names": [
+      "NURO光"
+    ],
+    "sort_order": 60
+  },
+  {
+    "product": "So-net光",
+    "category": "kaisen",
+    "report_group": "collab",
+    "total_points": 1,
+    "toss_points": 0.2,
+    "unit_price": 65750,
+    "has_option": "あり",
+    "kintone_names": [
+      "So-net光"
+    ],
+    "sort_order": 70
+  },
+  {
+    "product": "Softbank光",
+    "category": "kaisen",
+    "report_group": "collab",
+    "total_points": 1,
+    "toss_points": 0.2,
+    "unit_price": 30000,
+    "has_option": null,
+    "kintone_names": [
+      "Softbank光",
+      "Sofbank光"
+    ],
+    "sort_order": 80
+  },
+  {
+    "product": "さすがネット",
+    "category": "kaisen",
+    "report_group": "other",
+    "total_points": 0.2,
+    "toss_points": 0.2,
+    "unit_price": 42000,
+    "has_option": null,
+    "kintone_names": [
+      "さすがネット",
+      "さすガねっと"
+    ],
+    "sort_order": 90
+  },
+  {
+    "product": "SoftbankAir レンタル",
+    "category": "kaisen",
+    "report_group": "other",
+    "total_points": 0.2,
+    "toss_points": 0.2,
+    "unit_price": 12000,
+    "has_option": null,
+    "kintone_names": [
+      "SoftbankAir レンタル",
+      "SoftbankAir　レンタル"
+    ],
+    "sort_order": 100
+  },
+  {
+    "product": "SoftbankAir 割賦",
+    "category": "kaisen",
+    "report_group": "other",
+    "total_points": 1,
+    "toss_points": 0.2,
+    "unit_price": 52000,
+    "has_option": null,
+    "kintone_names": [
+      "SoftbankAir 割賦",
+      "SoftbankAir　割賦"
+    ],
+    "sort_order": 110
+  },
+  {
+    "product": "au光プラス タイプ1",
+    "category": "kaisen",
+    "report_group": "au",
+    "total_points": 1.6,
+    "toss_points": 0.2,
+    "unit_price": 52500,
+    "has_option": null,
+    "kintone_names": [
+      "au光プラス タイプ1",
+      "au光プラス　タイプ1"
+    ],
+    "sort_order": 120
+  },
+  {
+    "product": "au光プラス タイプ3",
+    "category": "kaisen",
+    "report_group": "au",
+    "total_points": 1.2,
+    "toss_points": 0.2,
+    "unit_price": 39000,
+    "has_option": null,
+    "kintone_names": [
+      "au光プラス タイプ3",
+      "au光プラス　タイプ3"
+    ],
+    "sort_order": 130
+  },
+  {
+    "product": "JCB Biz ONE",
+    "category": "credit",
+    "report_group": "credit",
+    "total_points": 0.4,
+    "toss_points": 0.4,
+    "unit_price": 20000,
+    "has_option": null,
+    "kintone_names": [
+      "JCB Biz ONE",
+      "JCB　Biz　ONE"
+    ],
+    "sort_order": 140
+  },
+  {
+    "product": "三井住友カード（NL）",
+    "category": "credit",
+    "report_group": "credit",
+    "total_points": 0.1,
+    "toss_points": 0.1,
+    "unit_price": 6000,
+    "has_option": null,
+    "kintone_names": [
+      "三井住友カード（NL）"
+    ],
+    "sort_order": 150
+  },
+  {
+    "product": "三井住友ビジネスオーナーズ（SMCCAV）",
+    "category": "credit",
+    "report_group": "credit",
+    "total_points": 0.3,
+    "toss_points": 0.3,
+    "unit_price": 17500,
+    "has_option": null,
+    "kintone_names": [
+      "三井住友ビジネスオーナーズ（SMCCAV）"
+    ],
+    "sort_order": 160
+  },
+  {
+    "product": "セゾン（発行のみ）",
+    "category": "credit",
+    "report_group": "credit",
+    "total_points": 0.4,
+    "toss_points": 0.4,
+    "unit_price": 28000,
+    "has_option": null,
+    "kintone_names": [
+      "セゾン（発行のみ）"
+    ],
+    "sort_order": 170
+  },
+  {
+    "product": "ライフカードビジネスライト",
+    "category": "credit",
+    "report_group": "credit",
+    "total_points": 0.3,
+    "toss_points": 0.3,
+    "unit_price": 12500,
+    "has_option": null,
+    "kintone_names": [
+      "ライフカードビジネスライト",
+      "ライフカード"
+    ],
+    "sort_order": 180
+  },
+  {
+    "product": "三菱UFJニコス",
+    "category": "credit",
+    "report_group": "credit",
+    "total_points": 0.3,
+    "toss_points": 0.3,
+    "unit_price": 16000,
+    "has_option": null,
+    "kintone_names": [
+      "三菱UFJニコス"
+    ],
+    "sort_order": 190
+  },
+  {
+    "product": "ACマスター",
+    "category": "credit",
+    "report_group": "credit",
+    "total_points": 0.4,
+    "toss_points": 0.4,
+    "unit_price": 25000,
+    "has_option": null,
+    "kintone_names": [
+      "ACマスター",
+      "ACマスターカード"
+    ],
+    "sort_order": 200
+  },
+  {
+    "product": "ドコモでんき",
+    "category": "denki",
+    "report_group": "denki",
+    "total_points": 0.3,
+    "toss_points": 0.3,
+    "unit_price": 14000,
+    "has_option": null,
+    "kintone_names": [
+      "ドコモでんき"
+    ],
+    "sort_order": 210
+  },
+  {
+    "product": "大阪ガス電気セット",
+    "category": "denki",
+    "report_group": "denki",
+    "total_points": 0.2,
+    "toss_points": 0.2,
+    "unit_price": 5000,
+    "has_option": null,
+    "kintone_names": [
+      "大阪ガス電気セット"
+    ],
+    "sort_order": 220
+  },
+  {
+    "product": "オクトパスエナジー",
+    "category": "denki",
+    "report_group": "denki",
+    "total_points": 0.2,
+    "toss_points": 0.2,
+    "unit_price": 7000,
+    "has_option": null,
+    "kintone_names": [
+      "オクトパスエナジー"
+    ],
+    "sort_order": 230
+  },
+  {
+    "product": "エバーグリーン電気　GPプラン",
+    "category": "denki",
+    "report_group": "denki",
+    "total_points": 0.4,
+    "toss_points": 0.4,
+    "unit_price": 32000,
+    "has_option": null,
+    "kintone_names": [
+      "エバーグリーン電気　GPプラン",
+      "エバーグリーン電気 GPプラン"
+    ],
+    "sort_order": 240
+  },
+  {
+    "product": "エネワン電気",
+    "category": "denki",
+    "report_group": "denki",
+    "total_points": 0.2,
+    "toss_points": 0.2,
+    "unit_price": 5000,
+    "has_option": null,
+    "kintone_names": [
+      "エネワン電気"
+    ],
+    "sort_order": 250
+  },
+  {
+    "product": "アースインフィニティ",
+    "category": "denki",
+    "report_group": "denki",
+    "total_points": 0.4,
+    "toss_points": 0.4,
+    "unit_price": 18000,
+    "has_option": null,
+    "kintone_names": [
+      "アースインフィニティ"
+    ],
+    "sort_order": 260
+  },
+  {
+    "product": "プライム電気(JAPAN電力)",
+    "category": "denki",
+    "report_group": "denki",
+    "total_points": 0.4,
+    "toss_points": 0.4,
+    "unit_price": 30600,
+    "has_option": null,
+    "kintone_names": [
+      "プライム電気(JAPAN電力)"
+    ],
+    "sort_order": 270
+  }
+]

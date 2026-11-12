@@ -114,6 +114,7 @@ const MANUAL_PATHS: Record<string, string[]> = {
     "/system/manuals"
   ],
   "system/haken": ["/system/haken"],
+  "system/product-points": ["/system/product-points"],
   "system/contracts": [
     "/system/contracts"
   ],
@@ -179,6 +180,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "transfer-duplicate-check", "業務管理ツール（振込依頼の二重払い防止チェック）", "振込依頼を保存するときに出る二重払い・添付間違いの確認の意味と対処、「実績期間」欄の入れ方。"),
   manual("system", "manuals-screen", "マニュアル画面", "マニュアルの読み方と、全権の人が資料を差し替える・新しい機能の資料を載せる手順。"),
   manual("system", "haken", "派遣管理", "受け入れた人の台帳、派遣会社、書類の発行と期限の確認。"),
+  manual("system", "product-points", "付与ポイント表", "商材・獲得方法ごとの付与ポイント（合計・トス・クローザー）と期間の見方、ポイントが変わるときの登録のしかた。"),
   manual("system", "contracts", "契約書管理", "上位店との契約書の登録と、パートナー配布用ひな形の作り方。"),
   manual("system", "sites", "コーポレートサイト", "グループ各社の会社HPと商品ページの一覧。稼働状態・問い合わせの配線・旧サーバー契約の見方と、一覧の更新のしかた。"),
   manual("system", "toss", "関電トスポータル", "関西電力のトスアップの受け付けと、Kintone への連携。"),
