@@ -1,3 +1,4 @@
+import { SOIL_VIEW_SCOPES } from "./soil-view-scopes";
 import { LEAF_FOREST_VIEW_SCOPES } from "./leaf-forest-view-scopes";
 import { BLOOM_TREE_VIEW_SCOPES } from "./bloom-tree-view-scopes";
 import { SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
@@ -9,7 +10,7 @@ import type { GardenRole } from "@/app/root/_constants/types";
 export type ViewPermission = { page_key: string; tab_key: string; roles: string[]; employee_ids: string[]; viewers_can_add: boolean; updated_by: string; updated_at: string };
 export type Viewer = { employeeId: string; role: GardenRole };
 export function permissionEntry(page: string, tab = "") {
-  const scopes = [...SYSTEM_VIEW_SCOPES, ...ROOT_VIEW_SCOPES, ...BUD_VIEW_SCOPES, ...SPROUT_RILL_VIEW_SCOPES, ...LEAF_FOREST_VIEW_SCOPES, ...BLOOM_TREE_VIEW_SCOPES];
+  const scopes = [...SOIL_VIEW_SCOPES, ...SYSTEM_VIEW_SCOPES, ...ROOT_VIEW_SCOPES, ...BUD_VIEW_SCOPES, ...SPROUT_RILL_VIEW_SCOPES, ...LEAF_FOREST_VIEW_SCOPES, ...BLOOM_TREE_VIEW_SCOPES];
   const scope = scopes.find(entry => entry.pageKey === page && entry.tabKey === tab);
   if (scope) return { pageKey: page, tabKey: tab,
     label: tab ? `${scopes.find(entry => entry.pageKey === page && !entry.tabKey)?.label}：${scope.label}` : scope.label,
@@ -20,7 +21,11 @@ export function permissionEntry(page: string, tab = "") {
 }
 export function effectivePermission(rows: ViewPermission[], page: string, tab = "") {
   return rows.find(row => row.page_key === page && row.tab_key === tab)
-    ?? rows.find(row => row.page_key === page && row.tab_key === "");
+    ?? rows.find(row => row.page_key === page && row.tab_key === "")
+    // 新しい設定がなければ旧 System の設定を引き継ぐ。
+    ?? (page === "soil-product-points"
+      ? rows.find(row => row.page_key === "system-product-points" && row.tab_key === "")
+      : undefined);
 }
 export function resolveCanView(rows: ViewPermission[], page: string, tab: string, viewer: Viewer, defaultAllowed?: boolean) {
   if (page === "system-manuals" && (tab === "operation" || tab === "")) return true;

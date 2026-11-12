@@ -1,3 +1,4 @@
+import { SOIL_VIEW_SCOPES } from "./soil-view-scopes";
 import { SPROUT_RILL_VIEW_SCOPES } from "./sprout-rill-view-scopes";
 import { BUD_VIEW_SCOPES } from "./bud-view-scopes";
 import { ROOT_VIEW_SCOPES } from "./root-view-scopes";
@@ -39,7 +40,7 @@ export type PermissionEntry = {
   tabKey?: string;
   key: string;
   label: string;
-  group: "System" | "Root" | "Bud" | "API";
+  group: "System" | "Root" | "Bud" | "Soil" | "API";
   kind: "画面" | "タブ" | "操作" | "API";
   allows: (role: GardenRole) => boolean;
   source: string;
@@ -107,7 +108,7 @@ const deliveryEntries: PermissionEntry[] = SYSTEM_DELIVERIES.map((delivery) => (
 }));
 
 export const PERMISSION_ENTRIES: PermissionEntry[] = [
-  { key: "system-product-points-write", label: "付与ポイント表（変更）", group: "System", kind: "操作", allows: role => role === "super_admin", source: "src/app/system/product-points/server.ts:productPointsContext" },
+  { key: "system-product-points-write", label: "付与ポイント表（変更）", group: "System", kind: "操作", allows: role => role === "super_admin", source: "src/app/soil/product-points/server.ts:productPointsContext" },
   { key: "system-haken-write", label: "派遣管理（編集・書類発行）", group: "System", kind: "操作", allows: allowsMinRole("manager"), source: "src/lib/haken/server.ts:hakenContext" },
   { key: "root-mail-forwarding-write", label: "郵便の転送（編集）", group: "Root", kind: "操作", allows: role => role === "super_admin", source: "src/app/root/mail-forwarding/page.tsx（RLS でも全権管理者のみ）" },
 
@@ -126,6 +127,11 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     allows: () => true,
     source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SIDEBAR_HIDDEN_ROLES＋LIMITED_MENU_ITEMS",
   },
+  ...SOIL_VIEW_SCOPES.map((scope): PermissionEntry => ({
+    key: scope.pageKey + "-view", pageKey: scope.pageKey, tabKey: scope.tabKey,
+    label: scope.label, group: "Soil", kind: "画面",
+    allows: role => scope.defaultRoles.includes(role), source: "src/lib/auth/soil-view-scopes.ts",
+  })),
   ...systemMenuEntries,
   ...formEntries,
   ...deliveryEntries,
@@ -338,7 +344,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     label: scope.tabKey ? BUD_VIEW_SCOPES.find(page => page.pageKey === scope.pageKey && !page.tabKey)?.label + "：" + scope.label : scope.label,
     group: "Bud", kind: scope.tabKey ? "タブ" : "画面", allows: role => scope.defaultRoles.includes(role), source: "src/lib/auth/bud-view-scopes.ts（別途 bud_has_access 必須）",
   })),
-  ...SYSTEM_VIEW_SCOPES.map((scope): PermissionEntry => ({
+  ...SYSTEM_VIEW_SCOPES.filter(scope => scope.pageKey !== "system-product-points").map((scope): PermissionEntry => ({
     key: `${scope.pageKey}${scope.tabKey ? `-tab-${scope.tabKey}` : "-view"}`,
     pageKey: scope.pageKey, tabKey: scope.tabKey,
     label: scope.tabKey ? `${SYSTEM_VIEW_SCOPES.find(page => page.pageKey === scope.pageKey && !page.tabKey)?.label}：${scope.label}` : scope.label,

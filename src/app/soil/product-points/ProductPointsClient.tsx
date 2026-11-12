@@ -8,7 +8,7 @@ import DataTable, {
 } from "@/app/system/_components/DataTable/DataTable";
 import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
 import Modal from "@/app/system/_components/Modal/Modal";
-import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+import { SystemViewHeading, SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import {
   ActionButton,
   ActionRow,
@@ -232,9 +232,10 @@ export default function ProductPointsClient({
   return (
     <main className={`${formStyles.pageShell} ${styles.pageShell}`}>
       <header>
-        <SystemBreadcrumb items={[{ label: "付与ポイント表" }]} />
+        <SystemBreadcrumb root={{ label: "Soil", href: "/soil" }} items={[{ label: "付与ポイント表" }]} />
         <SystemViewHeading>
           <h1>付与ポイント表</h1>
+          <SystemViewButton />
         </SystemViewHeading>
         <UpdatedStamp label="" date={updatedAt} showSeconds />
       </header>

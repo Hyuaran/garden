@@ -1,0 +1,43 @@
+.pageShell {
+  min-width: 0;
+  color: var(--root-text);
+  font-family: "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+.pageShell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--root-bg);
+}
+.pageShell h1 {
+  color: var(--root-heading);
+  font-size: 30px;
+  margin: 6px 0 14px;
+}
+.description, .card p {
+  color: var(--root-text-muted);
+  line-height: 1.6;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.card {
+  display: block;
+  padding: 20px;
+  color: var(--root-text);
+  background: var(--root-bg-panel);
+  border: 1px solid var(--root-border);
+  border-radius: 8px;
+  text-decoration: none;
+}
+.card:hover, .card:focus-visible {
+  box-shadow: var(--root-shadow-small);
+  outline: 2px solid var(--root-primary);
+  outline-offset: 2px;
+}
+.card h2 { font-size: 16px; }
+.card p { font-size: 12px; }

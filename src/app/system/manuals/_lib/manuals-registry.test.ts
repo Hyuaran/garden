@@ -11,7 +11,7 @@ import {
 
 describe("manuals registry", () => {
   it("defines the initial manual modules and documents", () => {
-    expect(SYSTEM_MANUALS).toHaveLength(35); // 2026-10-30 Garden全体の検索 を追加
+    expect(SYSTEM_MANUALS).toHaveLength(37); // 派遣管理・付与ポイント表を含む
     expect(findManual("system", "kot-attendance")).toMatchObject({
       moduleSlug: "system",
       slug: "kot-attendance",
@@ -41,7 +41,7 @@ describe("manuals registry", () => {
   it("hides manuals and modules with no readable document", () => {
     expect(getVisibleManuals("cs")).toHaveLength(SYSTEM_MANUALS.length);
     expect(getManualModules("staff").map((module) => [module.slug, module.count])).toEqual([
-      ["system", 31],
+      ["system", 33],
       ["bud", 3],
       ["root", 1],
     ]);
@@ -88,4 +88,8 @@ it("matches the longest route including query tabs, without prefix collisions", 
 });
 it.each(["toss", "closer", "cs", "outsource"] as const)("allows operation for %s while keeping privileged docs hidden", role => {
  expect(getVisibleManualDocs(SYSTEM_MANUALS[0], role).map(doc => doc.key)).toEqual(["operation"]);
+});
+
+it("付与ポイント表の使い方をSoilから開ける", () => {
+  expect(findManualForPath("/soil/product-points")?.slug).toBe("product-points");
 });

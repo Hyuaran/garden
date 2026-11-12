@@ -16,6 +16,7 @@ vi.mock("./actions", () => ({ savePoint: save }));
 vi.mock(
   "@/app/system/_components/ViewPermissionButton/SystemViewContext",
   () => ({
+    SystemViewButton: () => null,
     SystemViewHeading: ({ children }: { children: React.ReactNode }) => (
       <>{children}</>
     ),

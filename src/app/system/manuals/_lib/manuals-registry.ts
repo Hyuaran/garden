@@ -114,7 +114,7 @@ const MANUAL_PATHS: Record<string, string[]> = {
     "/system/manuals"
   ],
   "system/haken": ["/system/haken"],
-  "system/product-points": ["/system/product-points"],
+  "system/product-points": ["/soil/product-points"],
   "system/contracts": [
     "/system/contracts"
   ],
