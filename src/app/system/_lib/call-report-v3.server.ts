@@ -2,10 +2,12 @@ import "server-only";
 import { getAllRecords } from "@/lib/kintone/records";
 import { loadPoints } from "@/app/soil/product-points/server";
 import { creditApps, safeFetchCredit } from "../kanri/_lib/kanri-import.server";
-import { reportEmployeeCount, reportHoursFromMetrics, reportOrders, reportPoints, reportRanking, telemaEmployees, type ReportEmployee } from "./call-report-v3";
+import { reportEmployeeCount, reportOrders, reportPoints, reportRanking, telemaEmployees, type ReportEmployee } from "./call-report-v3";
 import type { CallMetricsResponse } from "./call-metrics";
 
-type DailyActual = { date?: string; employeeKey: string; employeeCode?: string; workMinutes?: number };
+import { fetchKotDailyWorkings, fetchKotEmployees, isKotUnavailable } from "@/app/root/_lib/kot-api";
+
+type DailyActual = { date?: string; employeeKey: string; totalWork?: number };
 export function kotReportHours(raw: unknown, date: string, employees: ReportEmployee[], codes: Map<string, string>) {
   const days = Array.isArray(raw) ? raw : [raw];
   const rows: DailyActual[] = days.flatMap(day => day && typeof day === "object" && "dailyWorkings" in day
@@ -16,10 +18,11 @@ export function kotReportHours(raw: unknown, date: string, employees: ReportEmpl
   if (!targets.size) throw new Error("テレマのKOTコードなし");
   let minutes = 0;
   for (const row of rows) {
-    const code = row.employeeCode ?? codes.get(row.employeeKey);
+    if (!row || typeof row.employeeKey !== "string") throw new Error("KOT実績の形式不正");
+    const code = codes.get(row.employeeKey);
     if (!code || !targets.has(code)) continue;
-    if (typeof row.workMinutes !== "number" || !Number.isFinite(row.workMinutes) || row.workMinutes < 0) throw new Error("KOT実績時間なし");
-    minutes += row.workMinutes;
+    if (typeof row.totalWork !== "number" || !Number.isFinite(row.totalWork) || row.totalWork < 0) throw new Error("KOT実績時間なし");
+    minutes += row.totalWork;
   }
   return Math.round(minutes / 60);
 }
@@ -27,7 +30,50 @@ export function kotReportHours(raw: unknown, date: string, employees: ReportEmpl
 type PointClient = Parameters<typeof loadPoints>[0];
 export async function loadCallReportV3(client: PointClient, metrics: CallMetricsResponse, employees: ReportEmployee[]): Promise<CallMetricsResponse> {
   const warnings: string[] = [];
-  const hours = reportHoursFromMetrics(metrics.employeeMetrics, employees);
+  let hours: number | null = null;
+  let failure = "KING OF TIME の取得に失敗";
+  try {
+    const now = new Date();
+    let daily: unknown;
+    let kotEmployees: unknown;
+    if (isKotUnavailable(now)) {
+      failure = "停止時間前の中継結果が不足または読み取り失敗";
+      const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const day = jst.toISOString().slice(0, 10);
+      const cutoff = day + (jst.getUTCHours() < 10 ? "T08:30:00+09:00" : "T17:30:00+09:00");
+      const read = async (path: string) => {
+        const { data, error } = await client.from("system_relay_jobs")
+          .select("result")
+          .eq("kind", "kot")
+          .eq("status", "done")
+          .eq("request->>path", path)
+          .gte("created_at", new Date(day + "T00:00:00+09:00").toISOString())
+          .lt("created_at", new Date(cutoff).toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error || !data) throw new Error("中継結果なし");
+        return data.result;
+      };
+      [daily, kotEmployees] = await Promise.all([
+        read(`/daily-workings/${metrics.from}`),
+        read(`/employees?date=${metrics.from}&includeResigner=true`),
+      ]);
+    } else {
+      [daily, kotEmployees] = await Promise.all([
+        fetchKotDailyWorkings(metrics.from),
+        fetchKotEmployees({ date: metrics.from, includeResigner: true }),
+      ]);
+    }
+    failure = "KING OF TIME の結果の形式または勤務時間が不正";
+    if (!Array.isArray(kotEmployees) || kotEmployees.some(e => !e || typeof e.key !== "string" || typeof e.code !== "string")) {
+      throw new Error("従業員一覧の形式不正");
+    }
+    const codes = new Map<string, string>(kotEmployees.map(e => [e.key, e.code]));
+    hours = kotReportHours(daily, metrics.from, employees, codes);
+  } catch {
+    console.warn(`[call-report-v3] 勤務時間を取得できませんでした: ${failure}`);
+  }
 
   let points = "\n\n【テレマ全体】\n合計件数：-";
   try {

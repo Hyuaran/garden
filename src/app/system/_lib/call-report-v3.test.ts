@@ -15,11 +15,15 @@ const record = (fields: Record<string, string>) => Object.fromEntries(Object.ent
 describe("本文v3の集計", () => {
   it("四チームのリーダーを含め、上田とチーム無しを時間と人数から除く", () => {
     expect(telemaEmployees(people)).toHaveLength(4);
-    const raw = { date, dailyWorkings: people.map((p, i) => ({ employeeCode: p.kot_employee_id, employeeKey: String(i), workMinutes: i < 4 ? 1633 : 9000 })) };
-    expect(kotReportHours(raw, date, people, new Map())).toBe(109);
+    const codes = new Map(people.map((p, i) => [String(i), p.kot_employee_id]));
+    const raw = { date, dailyWorkings: people.map((p, i) => ({ employeeKey: String(i), totalWork: i < 4 ? 1633 : 9000 })) };
+    expect(kotReportHours(raw, date, people, codes)).toBe(109);
+    expect(kotReportHours({ date, dailyWorkings: [{ employeeKey: "0", totalWork: 0 }] }, date, people, codes)).toBe(0);
+    expect(() => kotReportHours({ date, dailyWorkings: [{ employeeKey: "0", workMinutes: 60 }] }, date, people, codes)).toThrow();
+    expect(kotReportHours({ date, dailyWorkings: [{ employeeKey: "0", totalWork: 90 }, { employeeKey: "4" }] }, date, people, codes)).toBe(2);
     expect(reportEmployeeCount([metric("宮永　ひかり", 0, 0), metric("小泉 翔", 0, 0), metric("上田 太郎", 0, 0), metric("無所属 太郎", 0, 0)], people)).toBe(2);
-    expect(() => kotReportHours(raw, "2026-11-11", people, new Map())).toThrow();
-    expect(() => kotReportHours([{ date, employeeCode: "1", employeeKey: "1" }], date, people, new Map())).toThrow();
+    expect(() => kotReportHours(raw, "2026-11-11", people, codes)).toThrow();
+    expect(() => kotReportHours([{ date, employeeCode: "1", employeeKey: "1" }], date, people, codes)).toThrow();
   });
   it("獲得とトスを前確OKと独立して順位付けし、同数全員とゼロ非表示を扱う", () => {
     expect(reportRanking([metric("南薗 太郎", 2, 0), metric("宮永 ひかり", 2, 0), metric("宮本 桃華", 0, 4)])).toBe("\n\n当日獲得ランキング1位\nクローザー：2件 南薗さん・宮永さん\nトス：4件 宮本さん");

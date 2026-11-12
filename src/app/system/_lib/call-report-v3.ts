@@ -23,14 +23,6 @@ export const surname = (name: string) => name.trim().split(/[\s　]+/)[0];
 export function telemaEmployees(employees: ReportEmployee[]) {
   return employees.filter(e => teams.has(e.current_team ?? "") && !normalizedName(e.name).startsWith("上田"));
 }
-// 稼働時間（ｈ）＝テレマ 4 チームの人の、Garden に取り込み済みの KING OF TIME の当日の勤務時間の合計（画面の「稼働時間」と同じ元）。
-// 配信のたびに KING OF TIME を直接呼ぶと接続の制限で読めないため（2026-11-12 本番で確認）。0 なら null（「-」）
-export function reportHoursFromMetrics(rows: EmployeeCallMetricRow[], employees: ReportEmployee[]) {
-  const names = new Set(telemaEmployees(employees).flatMap(e => [normalizedName(e.name), normalizedName(e.filemaker_employee_name)]).filter(Boolean));
-  const seconds = rows.filter(r => names.has(normalizedName(r.employeeName))).reduce((sum, r) => sum + (r.workSeconds ?? 0), 0);
-  return seconds > 0 ? Math.round(seconds / 3600) : null;
-}
-
 export function reportEmployeeCount(rows: EmployeeCallMetricRow[], employees: ReportEmployee[]) {
   const names = new Set(rows.filter(r => r.callCount > 0).map(r => normalizedName(r.employeeName)));
   return telemaEmployees(employees).filter(e => names.has(normalizedName(e.name)) || names.has(normalizedName(e.filemaker_employee_name))).length;

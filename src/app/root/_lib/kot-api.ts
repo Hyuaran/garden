@@ -298,9 +298,14 @@ function buildMessage(status: number, body: KotApiError | string): string {
   return `KING OF TIME エラー (HTTP ${status})`;
 }
 
+export function isKotUnavailable(now = new Date()) {
+  const minutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 540) % 1440;
+  return minutes >= 510 && minutes < 600 || minutes >= 1050 && minutes < 1110;
+}
+
 export function assertKotAvailable(now = new Date()) {
   const minutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 540) % 1440;
-  if (minutes >= 510 && minutes < 600 || minutes >= 1050 && minutes < 1110)
+  if (isKotUnavailable(now))
     throw new Error("KING OF TIME が止まっている時間です（" + (minutes < 600 ? "10:00" : "18:30") + " 以降に使えます）");
 }
 export async function fetchKotHireOptions() {
