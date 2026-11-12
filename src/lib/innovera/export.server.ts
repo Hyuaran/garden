@@ -15,8 +15,9 @@ const PAGE_SIZE = 1000;
  * この入口で渡してよい回線（WEBインバウンド事業の回線だけ。ほかの事業の通話は渡さない）。
  *   許可外の回線の指定は 400 で断る。回線を足すときはここに足す（hikari-pro-lp は kintone 239 の回線表の回線を渡してくるので、239 に足したらこちらも）
  *   2026-10-23 の 239：ヒカリのプロ 164・165／電気開始受付センター 166・133／フレッツ光 186・185（準備中。稼働中にした晩に断らないよう先に許可）
+ *   2026-11-12：フレッツ光に 193（0120-546-147・Microsoft 広告用）を足す（239 に 11/10 に足した回線。稼働中にする前に許可）
  */
-export const EXPORT_ALLOWED_CIRCUITS: readonly number[] = [133, 164, 165, 166, 185, 186];
+export const EXPORT_ALLOWED_CIRCUITS: readonly number[] = [133, 164, 165, 166, 185, 186, 193];
 
 export type InnoveraExportParams = { circuits: number[]; from: string; to: string };
 
