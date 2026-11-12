@@ -83,8 +83,12 @@ describe("call metrics PDF", () => {
     expect(definitionPage).toBeGreaterThan(listPage + 1);
     expect(pages[listPage + 1]).toContain("CONTINUATION_LIST");
     expect(pages[listPage + 1]).toContain("リスト名");
-    expect(pages[1]).toContain("社員名");
-    expect(pages[1].replace(/\s/g, "")).toContain("WEB申込み");
+    // 従業員の表が次のページに続くときは、続きのページにも列の見出しを出す（余白を詰めて 1 ページに収まることもある）
+    const names = fixture.employeeMetrics.map(row => row.employeeName.split(/\s/)[0]);
+    for (const page of pages.slice(employeePage + 1, webInboundPage).filter(text => names.some(name => text.includes(name)))) {
+      expect(page).toContain("社員名");
+      expect(page.replace(/\s/g, "")).toContain("WEB申込み");
+    }
     const employeeLayout = measureVectorTextLayout(fixture.employeeMetrics[0].employeeName, 91, 7.5, false, true);
     const listLayout = measureVectorTextLayout(fixture.metrics[0].listName, 127, 7.5, false, true);
     expect(employeeLayout.lines.length).toBeGreaterThan(1);

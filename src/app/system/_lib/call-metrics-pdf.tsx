@@ -76,13 +76,14 @@ function VectorParagraph({ children, width, fontSize = 7.5, bold = false, color 
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "NotoSansJP", paddingTop: 90, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
+  page: { fontFamily: "NotoSansJP", paddingTop: 68, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
   header: { position: "absolute", top: 20, left: 28, right: 28, paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: COLORS.teal, flexDirection: "row", justifyContent: "space-between" },
   headerTitle: { color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   headerPeriod: { color: COLORS.sub, fontSize: 8 },
   footer: { position: "absolute", bottom: 17, left: 28, right: 28, color: COLORS.sub, fontSize: 7, textAlign: "right" },
   sectionTitle: { marginBottom: 8, color: COLORS.navy, fontSize: 15, fontWeight: 700 },
-  accent: { width: 32, height: 3, marginBottom: 12, backgroundColor: COLORS.teal },
+  // 見出しの下の緑の短い線は置かない（2026-11-12 東海林さん）。見出しと表の間だけあける
+  accent: { height: 0, marginBottom: 6 },
   table: { borderTopWidth: 1, borderLeftWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card },
   row: { flexDirection: "row", minHeight: 22 },
   th: { backgroundColor: COLORS.navy, color: "#FFFFFF", borderRightWidth: 1, borderBottomWidth: 1, borderColor: COLORS.line, textAlign: "right", fontWeight: 700 },
@@ -199,7 +200,7 @@ function Chrome({ data, generatedAt }: { data: CallMetricsResponse; generatedAt:
       <VectorText width={180} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
       <VectorText width={260} height={18} fontSize={11} bold align="left" color={COLORS.navy}>{target}</VectorText>
     </View>
-    <View style={{ height: 30 }}>
+    <View style={{ height: 18 }}>
       <VectorText width={330} height={12} fontSize={8} align="right">{formatPdfSnapshot(generatedAt)}</VectorText>
     </View>
   </>;
