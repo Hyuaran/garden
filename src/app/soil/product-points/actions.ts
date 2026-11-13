@@ -8,6 +8,15 @@ import {
 } from "@/lib/product-points";
 import { loadPoints, productPointsContext } from "./server";
 
+export async function refreshPoints() {
+  try {
+    const { db } = await productPointsContext();
+    return { rows: await loadPoints(db), checkedAt: new Date().toISOString() };
+  } catch {
+    return { error: "付与ポイント表を読み直せませんでした。もう一度お試しください。" };
+  }
+}
+
 export async function savePoint(
   row: PointRow,
   sourceId: string | null,

@@ -1,3 +1,4 @@
+import { gzipSync } from "node:zlib";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -66,6 +67,35 @@ describe("POST /api/system/call-ingest", () => {
   beforeEach(() => {
     mocks.verify.mockReset().mockReturnValue({ ok: true });
     mocks.getAdmin.mockReset();
+  });
+
+
+  it("accepts gzip JSON through the same ingest path", async () => {
+    const client = admin();
+    mocks.getAdmin.mockReturnValue(client);
+    const plain = await request([validRow]).text();
+    const response = await POST(new Request("http://localhost/api/system/call-ingest", {
+      method: "POST", headers: { "content-encoding": "gzip" }, body: new Uint8Array(gzipSync(plain)),
+    }));
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects corrupt gzip before database access", async () => {
+    const response = await POST(new Request("http://localhost/", {
+      method: "POST", headers: { "content-encoding": "gzip" }, body: "broken gzip",
+    }));
+    expect(response.status).toBe(400);
+    expect(mocks.getAdmin).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("rejects oversized decoded bodies (gzip=%s)", async (gzip) => {
+    const plain = ' '.repeat(20 * 1024 * 1024 + 1);
+    const response = await POST(new Request("http://localhost/", {
+      method: "POST", headers: gzip ? { "content-encoding": "gzip" } : {},
+      body: gzip ? new Uint8Array(gzipSync(plain)) : plain,
+    }));
+    expect(response.status).toBe(413);
+    expect(mocks.getAdmin).not.toHaveBeenCalled();
   });
 
   it("rejects unauthenticated requests before creating an admin client", async () => {

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -27,7 +27,27 @@ export default function HakenClient({
   admin: boolean;
   initialTab: string;
 }) {
-  const data = initialData;
+  const [data, setData] = useState(initialData);
+  const [checkedAt, setCheckedAt] = useState<string>();
+  const [refreshBusy, setRefreshBusy] = useState(false);
+  const refreshing = useRef(false);
+  async function refresh() {
+    if (refreshing.current) return;
+    refreshing.current = true;
+    setRefreshBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/system/haken", { cache: "no-store" });
+      if (!response.ok) throw new Error("派遣管理を読み直せませんでした");
+      setData(await response.json() as HakenData);
+      setCheckedAt(new Date().toISOString());
+    } catch {
+      setMessage("派遣管理を読み直せませんでした。もう一度お試しください。");
+    } finally {
+      refreshing.current = false;
+      setRefreshBusy(false);
+    }
+  }
   const router = useRouter();
   const [tab, setTab] = useState(initialTab);
   const [partyIds, setPartyIds] = useState([""]);
@@ -118,9 +138,11 @@ export default function HakenClient({
         <h1>派遣管理</h1>
         <UpdatedStamp
           label=""
-          hideRefresh
+          onRefresh={() => void refresh()}
+          busy={refreshBusy}
+          refreshLabel="派遣管理を読み直す"
           showSeconds
-          date={[...data.contracts, ...data.parties]
+          date={checkedAt ?? [...data.contracts, ...data.parties]
             .map((c) => c.updated_at)
             .sort()
             .at(-1)}

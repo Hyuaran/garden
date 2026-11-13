@@ -5,7 +5,7 @@ import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { InnoveraSyncDetail, InnoveraSyncLogRow, InnoveraSyncResult } from "@/lib/innovera/types";
@@ -102,15 +102,19 @@ export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Pr
   }, [lastResult, logs]);
   const appliedLogs = logs.filter((log) => log.applied);
 
+  const requesting = useRef(false);
+
   async function request(method: "GET" | "POST") {
+    if (requesting.current) return;
+    requesting.current = true;
     setLoading(method === "GET" ? "preview" : "apply");
     setError(null);
     try {
       const response = await fetch("/api/system/innovera-sync", { method });
       const body = await response.json() as InnoveraSyncResult;
-      if (body.lastCheckedAt) setCheckedAt(body.lastCheckedAt);
+      if (response.ok && body.ok) setCheckedAt(body.lastCheckedAt ?? new Date().toISOString());
       if (Array.isArray(body.latestLogs)) setLogs(body.latestLogs);
-      if (!body.ok) {
+      if (!response.ok || !body.ok) {
         setError(errorText(body.error));
       }
       if (method === "GET") {
@@ -122,6 +126,7 @@ export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Pr
     } catch {
       setError("通信に失敗しました");
     } finally {
+      requesting.current = false;
       setLoading(null);
     }
   }
@@ -134,7 +139,7 @@ export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Pr
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "INNOVERA番号の同期" }]} />
       <div className="garden-help-heading"><h1>INNOVERA番号の同期</h1><HelpButton /></div>
-      <UpdatedStampRow><UpdatedStamp label="INNOVERA番号" date={checkedAt ?? latest?.ranAt} emptyText="まだ反映履歴がありません" /></UpdatedStampRow>
+      <UpdatedStampRow><UpdatedStamp label="INNOVERA番号" date={checkedAt ?? latest?.ranAt} emptyText="まだ反映履歴がありません" onRefresh={() => void request("GET")} busy={loading !== null} refreshLabel="INNOVERA番号を読み直す" /></UpdatedStampRow>
     </header><SystemTabs />
 
     <section className={styles.lastBox} aria-label="最後の反映">

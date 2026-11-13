@@ -287,3 +287,60 @@ Describe "two-stage refresh" {
     (Get-AgentState).LastFullRefreshUtc | Should Be $null
   }
 }
+Describe "changed-only digest helpers" {
+  It "hashes fixed column order including null and delimiters" {
+    $columns = @('id', 'date', 'note')
+    $a = [ordered]@{ id = '1'; date = '2026-11-13'; note = $null }
+    $b = [ordered]@{ note = $null; date = '2026-11-13'; id = '1' }
+    (Get-CallRowDigest $a $columns) | Should Be (Get-CallRowDigest $b $columns)
+    $b.note = ''
+    (Get-CallRowDigest $a $columns) | Should Not Be (Get-CallRowDigest $b $columns)
+  }
+
+  It "skips the same row on the second read and sends changed or new rows" {
+    $row = [ordered]@{ id = '1'; note = 'first' }
+    $columns = @('id', 'note')
+    $digest = Get-CallRowDigest $row $columns
+    $state = @{ rows = @{} }
+    (Test-CallRowUnchanged $state '1' $digest $false) | Should Be $false
+    $state.rows['1'] = @{ digest = $digest; date = '2026-11-13' }
+    (Test-CallRowUnchanged $state '1' $digest $false) | Should Be $true
+    $row.note = 'changed'
+    (Test-CallRowUnchanged $state '1' (Get-CallRowDigest $row $columns) $false) | Should Be $false
+    (Test-CallRowUnchanged $state '2' $digest $false) | Should Be $false
+    (Test-CallRowUnchanged $state '1' $digest $true) | Should Be $false
+  }
+
+  It "forces once per JST day after the configured hour" {
+    (Test-CallFullResendDue '2026-11-12' ([datetime]'2026-11-12T17:59:00Z') 3) | Should Be $false
+    (Test-CallFullResendDue '2026-11-12' ([datetime]'2026-11-12T18:00:00Z') 3) | Should Be $true
+    (Test-CallFullResendDue '2026-11-13' ([datetime]'2026-11-13T10:00:00Z') 3) | Should Be $false
+    (Test-CallFullResendDue '2026-11-13' ([datetime]'2026-11-13T18:00:00Z') 3) | Should Be $true
+    (Test-CallFullResendDue '2026-11-12' ([datetime]'2026-11-12T18:00:00Z') 4) | Should Be $false
+  }
+
+  It "atomically saves digests, prunes old dates and reloads the resend day" {
+    $path = Join-Path $TestDrive 'digests.json'
+    $state = @{ rows = @{ old = @{ date = '2026-11-05'; digest = 'old' }; boundary = @{ date = '2026-11-06'; digest = 'keep' } }; last_full_resend_day = '2026-11-13' }
+    Save-CallDigestState $path $state ([datetime]'2026-11-06')
+    $loaded = Read-CallDigestState $path
+    $loaded.rows.ContainsKey('old') | Should Be $false
+    $loaded.rows['boundary'].digest | Should Be 'keep'
+    $loaded.last_full_resend_day | Should Be '2026-11-13'
+    $loaded.rows['boundary'].digest = 'updated'
+    Save-CallDigestState $path $loaded ([datetime]'2026-11-06')
+    (Read-CallDigestState $path).rows['boundary'].digest | Should Be 'updated'
+    @(Get-ChildItem $TestDrive -Filter '*.tmp').Count | Should Be 0
+  }
+
+  It "round trips gzip UTF8 bytes on Windows PowerShell" {
+    $bytes = [Text.Encoding]::UTF8.GetBytes('{"note":"日本語","rows":[1,2]}')
+    $compressed = Compress-IngestBody $bytes
+    ($compressed -is [byte[]]) | Should Be $true
+    $inputStream = New-Object IO.MemoryStream(,$compressed)
+    $gzip = New-Object IO.Compression.GZipStream($inputStream, [IO.Compression.CompressionMode]::Decompress)
+    $reader = New-Object IO.StreamReader($gzip, [Text.Encoding]::UTF8)
+    try { $reader.ReadToEnd() | Should Be ([Text.Encoding]::UTF8.GetString($bytes)) }
+    finally { $reader.Dispose(); $inputStream.Dispose() }
+  }
+}

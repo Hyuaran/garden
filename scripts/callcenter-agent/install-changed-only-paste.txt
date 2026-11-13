@@ -1,0 +1,134 @@
+﻿# Host only: run in an elevated Windows PowerShell 5.1 window.
+# First deploy the Garden API gzip support, then distribute the three new ps1
+# files to $Distribution. This file itself performs no downloads.
+# Rollback: paste this entire block again with $Rollback = $true and set
+# $BackupDirectory to the backup path printed by the successful/failed install.
+$Rollback = $false
+$BackupDirectory = ''
+$Distribution = 'C:\garden\a-bloom-008\scripts\callcenter-agent'
+& {
+  $ErrorActionPreference = 'Stop'
+  $names = @('CallCenterAgent.ps1', 'CallCenterAgent.Core.ps1', 'ShineigyoSnapshot.ps1')
+  function Get-ActionFile($Arguments, $Flag) {
+    $pattern = '(?i)(?:^|\s)-' + [regex]::Escape($Flag) + '\s+(?:"([^"]+)"|([^\s]+))'
+    $match = [regex]::Match($Arguments, $pattern)
+    if (-not $match.Success) { return $null }
+    if ($match.Groups[1].Success) { return $match.Groups[1].Value }
+    return $match.Groups[2].Value
+  }
+  $task = Get-ScheduledTask -TaskName 'GardenCallCenterAgent'
+  $agent = Get-ActionFile ([string]$task.Actions[0].Arguments) 'File'
+  if (-not $agent -or -not (Test-Path -LiteralPath $agent)) { throw 'Cannot locate installed agent from task action.' }
+  $target = Split-Path -Parent $agent
+  $configPath = Get-ActionFile ([string]$task.Actions[0].Arguments) 'ConfigPath'
+  if (-not $configPath) { $configPath = Join-Path $target 'config.json' }
+  $tasks = @($task)
+  $snapshot = Get-ScheduledTask -TaskName 'GardenShineigyoSnapshot' -ErrorAction SilentlyContinue
+  if ($snapshot) {
+    $snapshotFile = Get-ActionFile ([string]$snapshot.Actions[0].Arguments) 'File'
+    $snapshotConfig = Get-ActionFile ([string]$snapshot.Actions[0].Arguments) 'ConfigPath'
+    if (-not $snapshotConfig) { $snapshotConfig = Join-Path (Split-Path -Parent $snapshotFile) 'config.json' }
+    if ((Split-Path -Parent $snapshotFile) -ne $target -or $snapshotConfig -ne $configPath) { throw 'Snapshot uses a different directory/config; resolve paths before installing.' }
+    $tasks += $snapshot
+  }
+  if ($Rollback) {
+    if (-not $BackupDirectory) { throw 'Set BackupDirectory for rollback.' }
+    $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $BackupDirectory 'manifest.json') | ConvertFrom-Json
+    if ($manifest.target -ne $target -or $manifest.config -ne $configPath) { throw 'Backup belongs to a different installation.' }
+  } else {
+    foreach ($name in $names) {
+      $source = Join-Path $Distribution $name
+      $installed = Join-Path $target $name
+      if (-not (Test-Path -LiteralPath $source) -or -not (Test-Path -LiteralPath $installed)) { throw "Missing distribution/installed file: $name" }
+      if ([IO.Path]::GetFullPath($source) -eq [IO.Path]::GetFullPath($installed)) { throw 'Distribution and installation must be separate. Extract the new files into a staging folder and change Distribution.' }
+      $tokens = $null; $errors = $null
+      [void][Management.Automation.Language.Parser]::ParseFile($source, [ref]$tokens, [ref]$errors)
+      if ($errors.Count) { throw "Invalid PowerShell source: $name" }
+    }
+    $config = Get-Content -Raw -Encoding UTF8 -LiteralPath $configPath | ConvertFrom-Json
+    $BackupDirectory = Join-Path $target ('backup-changed-only-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $BackupDirectory | Out-Null
+    $manifest = @{ target = $target; config = $configPath; tasks = @($tasks | ForEach-Object { @{ name = $_.TaskName; enabled = [bool]$_.Settings.Enabled; running = ([string]$_.State -eq 'Running') } }) }
+    $manifest | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $BackupDirectory 'manifest.json')
+    foreach ($name in $names) { Copy-Item -LiteralPath (Join-Path $target $name) -Destination (Join-Path $BackupDirectory $name) }
+    Copy-Item -LiteralPath $configPath -Destination (Join-Path $BackupDirectory 'config.json')
+  }
+  Write-Host "Backup/rollback directory: $BackupDirectory"
+  # Snapshot process inventory before stopping the supervisors; include their children.
+  $processes = @(Get-CimInstance Win32_Process)
+  $ids = @($processes | Where-Object {
+    $_.ProcessId -ne $PID -and $_.Name -eq 'powershell.exe' -and $_.CommandLine -and
+    ($_.CommandLine.IndexOf((Join-Path $target 'CallCenterAgent.ps1'), [StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+     $_.CommandLine.IndexOf((Join-Path $target 'ShineigyoSnapshot.ps1'), [StringComparison]::OrdinalIgnoreCase) -ge 0)
+  } | ForEach-Object { [int]$_.ProcessId })
+  do {
+    $children = @($processes | Where-Object { $ids -contains [int]$_.ParentProcessId -and $ids -notcontains [int]$_.ProcessId } | ForEach-Object { [int]$_.ProcessId })
+    $ids += $children
+  } while ($children.Count)
+  foreach ($entry in $tasks) {
+    Disable-ScheduledTask -TaskName $entry.TaskName | Out-Null
+    Stop-ScheduledTask -TaskName $entry.TaskName
+  }
+  foreach ($processId in $ids) {
+    $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+    if ($process) { Stop-Process -InputObject $process -Force; Wait-Process -Id $processId -Timeout 30 -ErrorAction SilentlyContinue }
+  }
+  if (@($ids | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }).Count) { throw 'Agent processes remain. Leave tasks disabled and inspect before retrying.' }
+  $remaining = @(Get-CimInstance Win32_Process | Where-Object {
+    $_.ProcessId -ne $PID -and $_.Name -eq 'powershell.exe' -and $_.CommandLine -and
+    ($_.CommandLine.IndexOf((Join-Path $target 'CallCenterAgent.ps1'), [StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+     $_.CommandLine.IndexOf((Join-Path $target 'ShineigyoSnapshot.ps1'), [StringComparison]::OrdinalIgnoreCase) -ge 0)
+  })
+  if ($remaining.Count) { throw 'A new agent process appeared during shutdown. Leave tasks disabled and inspect before replacing files.' }
+  if ($Rollback) {
+    foreach ($name in $names) { Copy-Item -LiteralPath (Join-Path $BackupDirectory $name) -Destination (Join-Path $target $name) -Force }
+    Copy-Item -LiteralPath (Join-Path $BackupDirectory 'config.json') -Destination $configPath -Force
+    # row-digests.json is ignored by the previous scripts. Retain it for inspection.
+  } else {
+    foreach ($name in $names) { Copy-Item -LiteralPath (Join-Path $Distribution $name) -Destination (Join-Path $target $name) -Force }
+    foreach ($setting in @(@{ name = 'gzipRequestBody'; value = $true }, @{ name = 'fullResendHourJst'; value = 3 })) {
+      if (-not $config.PSObject.Properties[$setting.name]) { $config | Add-Member NoteProperty $setting.name $setting.value }
+    }
+    $config | ConvertTo-Json -Depth 20 | Set-Content -Encoding UTF8 -LiteralPath "$configPath.tmp"
+    Move-Item -LiteralPath "$configPath.tmp" -Destination $configPath -Force
+  }
+  $started = (Get-Date).ToUniversalTime()
+  foreach ($entry in $manifest.tasks) {
+    if ($entry.enabled) {
+      Enable-ScheduledTask -TaskName $entry.name | Out-Null
+      if ($entry.name -eq 'GardenCallCenterAgent' -or $entry.running) { Start-ScheduledTask -TaskName $entry.name }
+    }
+  }
+  if ($Rollback) { Write-Host 'Restored original scripts/config and task states.'; return }
+  if (-not ($manifest.tasks | Where-Object { $_.name -eq 'GardenCallCenterAgent' -and $_.enabled })) { throw 'Main task was disabled; enable/start it when ready, then inspect the log.' }
+  $logConfig = Get-Content -Raw -Encoding UTF8 -LiteralPath $configPath | ConvertFrom-Json
+  $deadline = (Get-Date).AddMinutes(30)
+  do {
+    $logs = @(Get-ChildItem -LiteralPath $logConfig.logDirectory -Filter 'agent-*.jsonl' | Sort-Object LastWriteTime -Descending | Select-Object -First 2)
+    foreach ($log in $logs) {
+      foreach ($line in @(Get-Content -LiteralPath $log.FullName -Encoding UTF8)) {
+        try { $entry = $line | ConvertFrom-Json } catch { continue }
+        if ($entry.message -eq 'sync completed' -and ([datetime]$entry.timestamp).ToUniversalTime() -ge $started -and $null -ne $entry.refresh_skipped_unchanged) {
+          if ($entry.status -ne 'success') { throw 'First completed sync is partial. Inspect logs; rollback is available.' }
+          Write-Host ('Verified sync: refresh_rows={0}, refresh_skipped_unchanged={1}, sent={2}' -f $entry.refresh_rows, $entry.refresh_skipped_unchanged, $entry.sent)
+          Write-Host 'First run may skip zero rows while creating digests. Check the next poll too.'
+          return
+        }
+      }
+    }
+    Start-Sleep -Seconds 5
+  } while ((Get-Date) -lt $deadline)
+  throw "No completed new sync within 30 minutes. Inspect logs or rollback from $BackupDirectory."
+}
+# 手動取り直し（530b）の事前準備。ここでは説明のみで、設定やDB操作を自動実行しません。
+# 前確ブリッジでマシン環境変数 SUPABASE_URL / SUPABASE_ANON_KEY を登録済みなら再設定不要。
+# 未登録なら管理者PowerShellで、実際のURL・anonキーに置き換えて登録してください。
+# [Environment]::SetEnvironmentVariable('SUPABASE_URL', '<Supabase URL>', 'Machine')
+# [Environment]::SetEnvironmentVariable('SUPABASE_ANON_KEY', '<anon key>', 'Machine')
+# 登録後はタスクが新しい環境を引き継ぐようホストを再起動してください。
+# CALL_INGEST_SECRET のSHA-256要約を system_callcenter_agent_auth(id='host-pc') に
+# 登録する作業、および 20261113000532_call_metrics_force_refresh.sql の適用は Claude に依頼。
+# 秘密そのものをSQL・ログ・このファイルに書かないでください。
+# config.json の transport は未設定または 'supabase'、forceCheckSeconds は既定10秒。
+# 未設定の環境では手動取り直しだけ無効になり、通常同期はそのまま続きます。
+

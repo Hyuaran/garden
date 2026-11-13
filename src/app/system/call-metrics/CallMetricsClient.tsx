@@ -7,7 +7,8 @@ import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
@@ -93,6 +94,9 @@ export default function CallMetricsClient() {
   const [data, setData] = useState<CallMetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const sync = useRef<{ id: string | null; deadline: number } | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const { allowedTab } = useSystemView();
   const [requestedTab, setActiveTab] = useUrlTab<"employees" | "lists" | "definitions" | "webinbound">("employees", key => ["employees", "lists", "definitions", "webinbound"].includes(key) && allowedTab(key));
   const activeTab = allowedTab(requestedTab) ? requestedTab : (["employees", "lists", "definitions", "webinbound"] as const).find(key => allowedTab(key));
@@ -113,6 +117,55 @@ export default function CallMetricsClient() {
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function requestRefresh() {
+    if (sync.current) return;
+    const pending = { id: null as string | null, deadline: Date.now() + 180_000 };
+    sync.current = pending;
+    setSyncBusy(true); setSyncError(null);
+    try {
+      const response = await fetch("/api/system/call-metrics/sync-request", { method: "POST", cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || !result.id) throw new Error(result.error || "更新要求に失敗しました");
+      if (sync.current === pending) pending.id = result.id;
+    } catch (cause) {
+      if (sync.current !== pending) return;
+      sync.current = null; setSyncBusy(false);
+      setSyncError(cause instanceof Error ? cause.message : "更新要求に失敗しました");
+    }
+  }
+
+  useEffect(() => {
+    if (!syncBusy) return;
+    const timeout = setTimeout(() => {
+      sync.current = null; setSyncBusy(false);
+      setSyncError("コール履歴の更新が時間切れになりました。少し待ってからもう一度押してください。");
+    }, 180_000);
+    return () => clearTimeout(timeout);
+  }, [syncBusy]);
+
+  usePolling(async () => {
+    const pending = sync.current;
+    if (!pending) return;
+    try {
+      if (Date.now() >= pending.deadline) throw new Error("コール履歴の更新が時間切れになりました。少し待ってからもう一度押してください。");
+      if (!pending.id) return;
+      const response = await fetch(`/api/system/call-metrics/sync-request?id=${encodeURIComponent(pending.id)}`, { cache: "no-store" });
+      const result = await response.json();
+      if (sync.current !== pending) return;
+      if (!response.ok) throw new Error(result.error || "更新状況の取得に失敗しました");
+      if (result.status === "failed") throw new Error("コール履歴の更新に失敗しました。少し待ってからもう一度押してください。");
+      if (result.status === "done") {
+        await load();
+        if (sync.current !== pending) return;
+        sync.current = null; setSyncBusy(false);
+      }
+    } catch (cause) {
+      if (sync.current !== pending) return;
+      sync.current = null; setSyncBusy(false);
+      setSyncError(cause instanceof Error ? cause.message : "更新状況の取得に失敗しました");
+    }
+  }, 3000, { enabled: syncBusy, immediate: false, pauseWhenHidden: false });
+
   const summary = data ? summarizeCallMetrics(data) : null;
   const totalCalls = summary?.totalCalls ?? 0;
   const emptyRate = totalCalls === 0;
@@ -123,7 +176,8 @@ export default function CallMetricsClient() {
       <header className={styles.header}>
         <div><SystemBreadcrumb items={[{ label: "テレマ コール集計" }]} /><SystemViewHeading  ><h1>テレマ コール集計</h1></SystemViewHeading></div>
       </header>
-      {data && <UpdatedStampRow><UpdatedStamp label="コール履歴" date={data.lastImportedAt} emptyText="データなし" /></UpdatedStampRow>}
+      {syncError && <p className={styles.error} role="alert">{syncError}</p>}
+      {data && <UpdatedStampRow><UpdatedStamp label="コール履歴" date={data.lastImportedAt} emptyText="データなし" onRefresh={() => void requestRefresh()} busy={syncBusy} refreshLabel="最新のコール履歴を取り直す" /></UpdatedStampRow>}
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void load(); }}>
         <label>開始日<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} required /></label>

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePolling } from "@/lib/hooks/usePolling";
 import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
@@ -1176,7 +1177,7 @@ function InternalBlockReleaseModal({
   );
 }
 
-export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
+export function ListMasterClient(_props: { canSyncCalls?: boolean } = {}) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [count, setCount] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
@@ -1447,7 +1448,84 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
+  const callRefresh = useRef<{ id: string; started: number } | null>(null);
+  const callRefreshing = useRef(false);
+  const [waitingForCalls, setWaitingForCalls] = useState(false);
+  const orderRefreshing = useRef(false);
+  const [orderSyncBusy, setOrderSyncBusy] = useState(false);
+
+  async function reloadSearch() {
+    if (searchedCondition) await runListSearch({ nextCondition: searchedCondition, refreshCount: true });
+  }
+
+  function finishCallRefresh(error?: unknown) {
+    callRefresh.current = null;
+    callRefreshing.current = false;
+    setWaitingForCalls(false);
+    setCallSyncBusy(false);
+    if (error) setMessage(error instanceof Error && error.name === "TimeoutError"
+      ? "コール履歴の取り直しが時間切れになりました。もう一度押してください。"
+      : error instanceof Error ? error.message : "コール履歴を取り直せませんでした");
+  }
+
+  async function checkCallRefresh() {
+    const job = callRefresh.current;
+    if (!job) return;
+    try {
+      if (Date.now() - job.started >= 180_000) throw new Error("コール履歴の取り直しが時間切れになりました。もう一度押してください。");
+      const response = await fetch("/api/system/call-metrics/sync-request?id=" + encodeURIComponent(job.id), { cache: "no-store", signal: AbortSignal.timeout(Math.max(1, 180_000 - (Date.now() - job.started))) });
+      const result = await readJson<{ status: string; error?: string }>(response);
+      if (result.status === "failed") throw new Error(result.error || "ホスト PC での取り直しに失敗しました");
+      if (result.status !== "done") return;
+      setWaitingForCalls(false);
+      await recountCalls();
+      await reloadSearch();
+      finishCallRefresh();
+    } catch (error) {
+      finishCallRefresh(error);
+    }
+  }
+
+  usePolling(checkCallRefresh, 3000, { enabled: waitingForCalls, immediate: false, pauseWhenHidden: false });
+
+  async function handleOrderSync() {
+    if (orderRefreshing.current) return;
+    orderRefreshing.current = true;
+    setOrderSyncBusy(true);
+    setMessage("");
+    try {
+      await readJson(await fetch("/api/soil/list/orders/sync", { method: "POST" }));
+      await loadOrderSyncState();
+      await reloadSearch();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "受注履歴を取り直せませんでした");
+    } finally {
+      orderRefreshing.current = false;
+      setOrderSyncBusy(false);
+    }
+  }
+
   async function handleCallSync() {
+    if (callRefreshing.current) return;
+    callRefreshing.current = true;
+    setCallSyncBusy(true);
+    setCallSyncMessage(null);
+    setMessage("");
+    try {
+      const started = Date.now();
+      const response = await fetch("/api/system/call-metrics/sync-request", { method: "POST", signal: AbortSignal.timeout(180_000) });
+      const result = await readJson<{ id: string; status: string; error?: string }>(response);
+      if (!result.id) throw new Error("更新要求の ID を取得できませんでした");
+      if (result.status === "failed") throw new Error(result.error || "ホスト PC での取り直しに失敗しました");
+      callRefresh.current = { id: result.id, started };
+      if (result.status === "done") await checkCallRefresh();
+      else setWaitingForCalls(true);
+    } catch (error) {
+      finishCallRefresh(error);
+    }
+  }
+
+  async function recountCalls() {
     setCallSyncBusy(true);
     setCallSyncMessage(null);
     try {
@@ -1457,9 +1535,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       // 結果はアイコンの右横に出す（下の黄色い帯には出さない）
       setCallSyncMessage({ text: `反映しました（対象 ${data.result.phones.toLocaleString("ja-JP")} 番号・${formatDateShort(data.result.syncedThrough ?? "")} まで）`, error: false });
     } catch (error) {
-      setCallSyncMessage({ text: error instanceof Error ? error.message : "反映できませんでした", error: true });
-    } finally {
-      setCallSyncBusy(false);
+      throw error;
     }
   }
 
@@ -2455,10 +2531,10 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         <SystemBreadcrumb items={[{ label: "リストマスタ" }]} />
         <SystemViewHeading  ><h1>リストマスタ</h1></SystemViewHeading>
         <UpdatedStampRow>
-          <UpdatedStamp label="コール履歴" date={callSyncState?.syncedThrough ? callSyncState.lastRunAt || callSyncState.syncedThrough : null} emptyText="2026/07/31(金)（FileMaker の書き出し）" busy={callSyncBusy} onRefresh={canSyncCalls ? handleCallSync : undefined} refreshLabel="コール履歴を反映する" title={callSyncBusy ? "反映しています…" : "コール履歴を反映する（最新の通話記録を取り込みます）"}>
+          <UpdatedStamp label="コール履歴" date={callSyncState?.syncedThrough ? callSyncState.lastRunAt || callSyncState.syncedThrough : null} emptyText="2026/07/31(金)（FileMaker の書き出し）" busy={callSyncBusy} onRefresh={handleCallSync} refreshLabel="コール履歴を反映する" title={callSyncBusy ? "反映しています…" : "コール履歴を反映する（最新の通話記録を取り込みます）"}>
           {callSyncMessage && <span className={callSyncMessage.error ? styles.callSyncError : styles.callSyncDone} role="status">{callSyncMessage.text}</span>}
-          <UpdatedStamp hideRefresh label="受注履歴" date={orderSyncState?.lastRunAt} emptyText="未反映" />
           </UpdatedStamp>
+          <UpdatedStamp onRefresh={handleOrderSync} busy={orderSyncBusy} refreshLabel="受注履歴を取り直す" label="受注履歴" date={orderSyncState?.lastRunAt} emptyText="未反映" />
         </UpdatedStampRow>
       </div>
 

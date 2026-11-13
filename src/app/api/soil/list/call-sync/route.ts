@@ -1,21 +1,14 @@
 import { canView, ViewPermissionError } from "@/lib/auth/view-permission.server";
-import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 
-import { createServerClient } from "@/app/_lib/supabase/server";
-import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
+import { isRoleAtLeast } from "@/app/root/_constants/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
-
-type AuthenticatedSoilListUser = {
-  id: string;
-  role: GardenRole;
-};
 
 type SyncStateRow = {
   synced_through: string | null;
@@ -58,37 +51,6 @@ function statePayload(row: SyncStateRow | null) {
   };
 }
 
-async function requireRoleAtLeast(minRole: GardenRole): Promise<
-  | { ok: true; user: AuthenticatedSoilListUser }
-  | { ok: false; response: NextResponse }
-> {
-  const supabase = await createServerClient();
-  const { data: auth } = await supabase.auth.getUser();
-  const userId = auth?.user?.id;
-  if (!userId) {
-    return { ok: false, response: NextResponse.json({ ok: false, error: "ログインが必要です" }, { status: 401 }) };
-  }
-
-  const admin = getSupabaseAdmin();
-  const { data: employee, error } = await admin
-    .from("root_employees")
-    .select("garden_role")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (error) {
-    return { ok: false, response: NextResponse.json({ ok: false, error: "権限を確認できませんでした" }, { status: 500 }) };
-  }
-
-  const role = (employee as { garden_role?: GardenRole | null } | null)?.garden_role;
-  if (!role || !isRoleAtLeast(role, minRole)) {
-    return { ok: false, response: NextResponse.json({ ok: false, error: "権限がありません" }, { status: 403 }) };
-  }
-
-  return { ok: true, user: { id: userId, role } };
-}
-
 async function loadState(db: RpcDb) {
   const { data, error } = await db
     .from("soil_list_call_sync_state")
@@ -128,13 +90,7 @@ export async function GET() {
 }
 
 export async function POST() {
-  for (const scopeTab of ["list"]) {
-    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
-    if (viewDenied) return viewDenied;
-  }
-
-  const auth = await requireRoleAtLeast("manager");
-  if (!auth.ok) return auth.response;
+  if (!await requireViewEmployee("system-list", "list", "manager")) return NextResponse.json({ ok: false }, { status: 403 });
 
   try {
     const db = getSupabaseAdmin() as unknown as RpcDb;

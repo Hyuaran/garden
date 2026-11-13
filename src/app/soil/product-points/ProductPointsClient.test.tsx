@@ -12,7 +12,8 @@ import seeds from "@/lib/product-points/initial-values.json";
 import ProductPointsClient from "./ProductPointsClient";
 
 const save = vi.hoisted(() => vi.fn());
-vi.mock("./actions", () => ({ savePoint: save }));
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("./actions", () => ({ savePoint: save, refreshPoints: refresh }));
 vi.mock(
   "@/app/system/_components/ViewPermissionButton/SystemViewContext",
   () => ({
@@ -53,6 +54,31 @@ const row = {
 afterEach(() => {
   cleanup();
   save.mockReset();
+  refresh.mockReset();
+});
+
+it("更新中は二重に呼ばず、取得した行と時刻を表示する", async () => {
+  let finish!: (value: unknown) => void;
+  refresh.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  render(<ProductPointsClient initialRows={[row]} canWrite={false} today="2026-11-12" />);
+  const button = screen.getByRole("button", { name: "付与ポイント表を読み直す" });
+  fireEvent.click(button);
+  expect(button).toBeDisabled();
+  fireEvent.click(button);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  finish({ rows: [{ ...row, product: "最新商材" }], checkedAt: "2026-11-13T01:02:03Z" });
+  expect(await screen.findByText(/最新商材/)).toBeInTheDocument();
+  await waitFor(() => expect(button).toBeEnabled());
+  expect(screen.getByText("最終更新：2026/11/13(金) 10:02:03")).toBeInTheDocument();
+});
+
+it("更新失敗を画面に出し、再度押せる", async () => {
+  refresh.mockRejectedValue(new Error("offline"));
+  render(<ProductPointsClient initialRows={[row]} canWrite={false} today="2026-11-12" />);
+  const button = screen.getByRole("button", { name: "付与ポイント表を読み直す" });
+  fireEvent.click(button);
+  expect(await screen.findByText(/付与ポイント表を読み直せませんでした/)).toBeInTheDocument();
+  expect(button).toBeEnabled();
 });
 
 it("閲覧者に追加・保存・期間切り替えを出さない", () => {

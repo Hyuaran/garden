@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import seeds from "@/lib/product-points/initial-values.json";
 import type { PointRow } from "@/lib/product-points";
-import { savePoint } from "./actions";
+import { refreshPoints, savePoint } from "./actions";
 
 const mocks = vi.hoisted(() => ({
   context: vi.fn(),
@@ -31,6 +31,19 @@ beforeEach(() => {
     employee: { userId: "actor" },
   });
   mocks.load.mockResolvedValue([row]);
+});
+
+it("更新は閲覧権限で読み直し、書き込まない", async () => {
+  const result = await refreshPoints();
+  expect(result.rows).toEqual([row]);
+  expect(result.checkedAt).toBeTruthy();
+  expect(mocks.context).toHaveBeenCalledWith();
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it("読み直しの権限エラーは画面用のエラーを返す", async () => {
+  mocks.context.mockRejectedValue(new Error("denied"));
+  expect((await refreshPoints()).error).toContain("読み直せませんでした");
+  expect(mocks.load).not.toHaveBeenCalled();
 });
 
 it("権限エラーのとき書き込みを呼ばない", async () => {

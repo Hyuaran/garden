@@ -1,0 +1,31 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import HakenClient from "./HakenClient";
+import type { HakenData } from "@/lib/haken/types";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
+vi.mock("./ExcelButton", () => ({ default: () => null }));
+const data: HakenData = { parties: [], offices: [], contracts: [], workers: [], documents: [], events: [], employees: [], companies: [] };
+afterEach(() => vi.unstubAllGlobals());
+it("読み直している間は押せず、成功時に時刻を更新する", async () => {
+  let finish!: (value: Response) => void;
+  const fetch = vi.fn(() => new Promise<Response>(resolve => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetch);
+  render(<HakenClient initialData={data} canWrite={false} admin={false} initialTab="workers" />);
+  const button = screen.getByRole("button", { name: "派遣管理を読み直す" });
+  fireEvent.click(button);
+  expect(button).toBeDisabled();
+  fireEvent.click(button);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledWith("/api/system/haken", { cache: "no-store" });
+  finish(Response.json(data));
+  await waitFor(() => expect(button).toBeEnabled());
+  expect(screen.queryByText("最終更新：未取得")).not.toBeInTheDocument();
+});
+it("失敗を上に知らせて再度押せる", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({}, { status: 500 })));
+  render(<HakenClient initialData={data} canWrite={false} admin={false} initialTab="workers" />);
+  const button = screen.getByRole("button", { name: "派遣管理を読み直す" });
+  fireEvent.click(button);
+  expect(await screen.findByRole("alert")).toHaveTextContent("派遣管理を読み直せませんでした");
+  expect(button).toBeEnabled();
+});

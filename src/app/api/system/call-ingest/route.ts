@@ -1,3 +1,5 @@
+import { createGunzip } from "node:zlib";
+import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 
 import { parseCallIngestBody, CallIngestValidationError } from "@/app/system/_lib/call-ingest";
@@ -8,14 +10,50 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+// Bound wire bytes and expanded bytes before parsing JSON.
+class BodyTooLargeError extends Error {}
+async function readIngestJson(request: Request): Promise<unknown> {
+  const limit = 20 * 1024 * 1024;
+  const chunks: Buffer[] = [];
+  let size = 0;
+  if (request.body) {
+    const reader = request.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > limit) { await reader.cancel(); throw new BodyTooLargeError("Body exceeds 20 MiB"); }
+        chunks.push(Buffer.from(value));
+      }
+    } finally { reader.releaseLock(); }
+  }
+  let bytes = Buffer.concat(chunks);
+  if (request.headers.get("content-encoding")?.trim().toLowerCase() === "gzip") {
+    const decoded: Buffer[] = [];
+    size = 0;
+    const stream = Readable.from([bytes]).pipe(createGunzip());
+    try {
+      for await (const chunk of stream) {
+        size += chunk.length;
+        if (size > limit) throw new BodyTooLargeError("Decoded body exceeds 20 MiB");
+        decoded.push(chunk);
+      }
+    } finally { stream.destroy(); }
+    bytes = Buffer.concat(decoded);
+  }
+  return JSON.parse(bytes.toString("utf8"));
+}
+
 export async function POST(request: Request) {
   const auth = verifyBearerRequest(request, "CALL_INGEST_SECRET");
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.reason }, { status: auth.status });
 
   let parsed: ReturnType<typeof parseCallIngestBody>;
   try {
-    parsed = parseCallIngestBody(await request.json());
+    parsed = parseCallIngestBody(await readIngestJson(request));
   } catch (error) {
+    if (error instanceof BodyTooLargeError) return NextResponse.json({ ok: false, error: error.message, error_code: "BODY_TOO_LARGE" }, { status: 413 });
     const message = error instanceof Error ? error.message : "Invalid request";
     const code = error instanceof CallIngestValidationError ? error.code : "INVALID_JSON";
     return NextResponse.json({ ok: false, error: message, error_code: code }, { status: 400 });

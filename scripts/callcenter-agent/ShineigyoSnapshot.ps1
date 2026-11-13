@@ -51,6 +51,10 @@ function Invoke-ShineigyoBatch([guid]$RunId, [int]$BatchIndex, [object[]]$Rows) 
   $payload = @{ runId = $RunId.ToString(); batchIndex = $BatchIndex; rows = [object[]]@($Rows) }
   $body = [Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json -Compress -Depth 8))
   $headers = @{ Authorization = "Bearer $env:CALL_INGEST_SECRET" }
+  if ($null -eq $config.gzipRequestBody -or [bool]$config.gzipRequestBody) {
+    $body = Compress-IngestBody $body
+    $headers['Content-Encoding'] = 'gzip'
+  }
   for ($attempt = 1; $attempt -le 4; $attempt++) {
     try {
       return Invoke-RestMethod -Method Post -Uri ([string]$config.shineigyoApiUrl) -Headers $headers -ContentType "application/json; charset=utf-8" -Body $body -TimeoutSec 300

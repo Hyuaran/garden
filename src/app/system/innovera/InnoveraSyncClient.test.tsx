@@ -22,11 +22,26 @@ const baseResult = {
 };
 
 describe("InnoveraSyncClient", () => {
+  it("refreshes by GET only, stays busy, and reports failures", async () => {
+    let finish!: (value: Response) => void;
+    const fetch = vi.fn(() => new Promise<Response>(resolve => { finish = resolve; }));
+    vi.stubGlobal("fetch", fetch);
+    render(<InnoveraSyncClient initialLogs={[]} />);
+    const button = screen.getByRole("button", { name: "INNOVERA番号を読み直す" });
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith("/api/system/innovera-sync", { method: "GET" });
+    finish(new Response(JSON.stringify({ ...baseResult, ok: false, error: "innovera_offline" }), { status: 503 }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("INNOVERA に接続できませんでした");
+    expect(button).toBeEnabled();
+  });
   it("shows the checked time and updates it after a comparison with no changes", async () => {
     vi.stubGlobal("fetch", vi.fn(() => response({ ...baseResult, lastCheckedAt: "2026-10-20T03:00:00Z", details: [] })));
     render(<InnoveraSyncClient initialLogs={[]} initialCheckedAt="2026-10-20T02:00:00Z" />);
     expect(screen.getByText("INNOVERA番号最終更新：2026/10/20(火) 11:00")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "自動で更新されます（手動の取り直しはできません）" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "INNOVERA番号を読み直す" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "いまの差分を見る" }));
     expect(await screen.findByText("INNOVERA番号最終更新：2026/10/20(火) 12:00")).toBeInTheDocument();
   });

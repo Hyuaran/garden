@@ -73,6 +73,8 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
       });
     }
     if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: options.uploads ?? [] });
+    if (url === "/api/system/call-metrics/sync-request" || url.startsWith("/api/system/call-metrics/sync-request?id=")) return json({ ok: true, id: "job-1", status: "done" });
+    if (url === "/api/soil/list/orders/sync") return json({ ok: true });
     if (url === "/api/soil/list/orders/status") {
       return json({ ok: true, state: { lastRunAt: "2026-09-11T21:30:00Z", records: 12666, orderRows: 19434, phoneUpdates: 9506, deletedRows: 0, elapsedMs: 1200, error: null } });
     }
@@ -459,10 +461,10 @@ describe("ListMasterClient call sync status", () => {
     expect(screen.getByText("受注履歴最終更新：2026/09/12(土) 06:30")).toBeInTheDocument();
   });
 
-  it("hides the sync button below manager", () => {
+  it("allows list viewers below manager to refresh", async () => {
     installFetch();
     render(<ListMasterClient canSyncCalls={false} />);
-    expect(screen.queryByRole("button", { name: "コール履歴を反映する" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "コール履歴を反映する" })).toBeEnabled();
   });
 
   it("updates the message after syncing calls", async () => {
@@ -474,6 +476,79 @@ describe("ListMasterClient call sync status", () => {
       expect(screen.getByText("反映しました（対象 38,335 番号・9/7 まで）")).toBeInTheDocument();
     });
     expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/call-sync", { method: "POST" });
+    const urls = fetchMock.mock.calls.map(call => String(call[0]));
+    expect(urls.indexOf("/api/system/call-metrics/sync-request")).toBeLessThan(urls.findIndex(url => url.includes("sync-request?id=")));
+    expect(urls.findIndex(url => url.includes("sync-request?id="))).toBeLessThan(fetchMock.mock.calls.findIndex(call => call[0] === "/api/soil/list/call-sync" && call[1]?.method === "POST"));
+  });
+
+  it("keeps call refresh busy until done, then stops polling", async () => {
+    const fetch = installFetch();
+    const original = fetch.getMockImplementation()!;
+    let done = false;
+    fetch.mockImplementation((input, init) => {
+      if (String(input).includes("/api/system/call-metrics/sync-request")) return Promise.resolve(Response.json({ ok: true, id: "job-1", status: done ? "done" : "queued" }));
+      return original(input, init);
+    });
+    render(<ListMasterClient />);
+    const button = await screen.findByRole("button", { name: "コール履歴を反映する" });
+    fireEvent.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(fetch.mock.calls.filter(call => call[0] === "/api/soil/list/call-sync" && call[1]?.method === "POST")).toHaveLength(0);
+    done = true;
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: 5000 });
+    expect(fetch.mock.calls.filter(call => call[0] === "/api/soil/list/call-sync" && call[1]?.method === "POST")).toHaveLength(1);
+  });
+
+  it("stops waiting after three minutes and reports the timeout", async () => {
+    const fetch = installFetch();
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation((input, init) => {
+      if (String(input).includes("/api/system/call-metrics/sync-request")) return Promise.resolve(Response.json({ ok: true, id: "job-1", status: "queued" }));
+      return original(input, init);
+    });
+    render(<ListMasterClient />);
+    const button = await screen.findByRole("button", { name: "コール履歴を反映する" });
+    fireEvent.click(button);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/system/call-metrics/sync-request", expect.objectContaining({ method: "POST" })));
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now + 180_001);
+    try {
+      expect(await screen.findByText(/コール履歴の取り直しが時間切れ/, {}, { timeout: 5000 })).toBeInTheDocument();
+      expect(button).toBeEnabled();
+      expect(fetch.mock.calls.filter(call => call[0] === "/api/soil/list/call-sync" && call[1]?.method === "POST")).toHaveLength(0);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it.each(["offline", "failed"])("shows call refresh %s errors above the list", async kind => {
+    const fetch = installFetch();
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation((input, init) => {
+      if (String(input).includes("/api/system/call-metrics/sync-request")) return Promise.resolve(Response.json({ ok: kind !== "offline", id: "job-1", status: "failed", error: "ホスト PC の取り直しに失敗しました" }, { status: kind === "offline" ? 503 : 200 }));
+      return original(input, init);
+    });
+    render(<ListMasterClient />);
+    const button = await screen.findByRole("button", { name: "コール履歴を反映する" });
+    fireEvent.click(button);
+    expect(await screen.findByText("ホスト PC の取り直しに失敗しました")).toBeInTheDocument();
+    expect(button).toBeEnabled();
+    expect(fetch.mock.calls.filter(call => call[0] === "/api/soil/list/call-sync" && call[1]?.method === "POST")).toHaveLength(0);
+  });
+
+  it("refreshes orders and reloads their status, reporting errors", async () => {
+    const fetch = installFetch();
+    render(<ListMasterClient />);
+    const button = await screen.findByRole("button", { name: "受注履歴を取り直す" });
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(fetch).toHaveBeenCalledWith("/api/soil/list/orders/sync", { method: "POST" });
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation((input, init) => String(input) === "/api/soil/list/orders/sync" ? Promise.resolve(Response.json({ ok: false, error: "少し待ってからもう一度押してください" }, { status: 429 })) : original(input, init));
+    fireEvent.click(button);
+    expect(await screen.findByText("少し待ってからもう一度押してください")).toBeInTheDocument();
+    expect(button).toBeEnabled();
   });
 });
 

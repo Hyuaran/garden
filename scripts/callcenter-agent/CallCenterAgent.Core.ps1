@@ -199,3 +199,91 @@ function Get-CallRefreshPlan {
     WindowDays = $(if ($full) { $FullDays } else { $RecentDays })
   }
 }
+function Compress-IngestBody {
+  param([byte[]]$Bytes)
+  $output = New-Object System.IO.MemoryStream
+  try {
+    $gzip = New-Object System.IO.Compression.GZipStream($output, [IO.Compression.CompressionMode]::Compress, $true)
+    try { $gzip.Write($Bytes, 0, $Bytes.Length) } finally { $gzip.Dispose() }
+    return ,$output.ToArray()
+  } finally { $output.Dispose() }
+}
+
+function Get-CallRowDigest {
+  param([System.Collections.IDictionary]$Row, [string[]]$Columns)
+  $values = @($Columns | ForEach-Object { ,$Row[$_] })
+  $canonical = ConvertTo-Json -InputObject @($Columns, $values) -Compress -Depth 8
+  $sha = [Security.Cryptography.SHA256]::Create()
+  try { return [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($canonical))).Replace('-', '').ToLowerInvariant() }
+  finally { $sha.Dispose() }
+}
+
+function Read-CallDigestState {
+  param([string]$Path)
+  $rows = @{}; $lastResend = $null
+  if (Test-Path -LiteralPath $Path) {
+    $saved = Get-Content -Raw -Encoding UTF8 -LiteralPath $Path | ConvertFrom-Json
+    foreach ($property in $saved.rows.PSObject.Properties) { $rows[$property.Name] = $property.Value }
+    $lastResend = $saved.last_full_resend_day
+  }
+  return @{ rows = $rows; last_full_resend_day = $lastResend }
+}
+
+function Save-CallDigestState {
+  param([string]$Path, [hashtable]$State, [datetime]$Cutoff)
+  foreach ($key in @($State.rows.Keys)) {
+    $date = ConvertTo-CallDate $State.rows[$key].date
+    if ($null -eq $date -or $date -lt $Cutoff.Date) { $State.rows.Remove($key) }
+  }
+  $temporary = "$Path.$([guid]::NewGuid()).tmp"
+  try {
+    $State | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 -LiteralPath $temporary
+    if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($temporary, $Path, "$temporary.bak"); Remove-Item -LiteralPath "$temporary.bak" }
+    else { [IO.File]::Move($temporary, $Path) }
+  } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary } }
+}
+
+function Test-CallFullResendDue {
+  param([AllowNull()][string]$LastDay, [datetime]$NowUtc, [int]$Hour = 3)
+  if ($Hour -lt 0 -or $Hour -gt 23) { throw 'fullResendHourJst must be between 0 and 23.' }
+  $jst = $NowUtc.ToUniversalTime().AddHours(9)
+  return $jst.Hour -ge $Hour -and $LastDay -ne $jst.ToString('yyyy-MM-dd')
+}
+
+function Test-CallRowUnchanged {
+  param([hashtable]$State, [string]$Key, [string]$Digest, [bool]$Force)
+  return -not $Force -and $Key -and $State.rows.ContainsKey($Key) -and $State.rows[$Key].digest -eq $Digest
+}
+
+function Test-CallForceRefreshEnabled {
+  param($Config)
+  # Manual requests always use direct Supabase RPC, never Garden/Vercel polling.
+  return ($null -eq $Config.transport -or $Config.transport -eq 'supabase') -and
+    -not [string]::IsNullOrWhiteSpace($env:SUPABASE_URL) -and
+    -not [string]::IsNullOrWhiteSpace($env:SUPABASE_ANON_KEY)
+}
+
+function Invoke-CallAgentRpc {
+  param([string]$Function, [hashtable]$Body)
+  $json = $Body | ConvertTo-Json -Compress
+  return Invoke-RestMethod -Method Post -Uri ($env:SUPABASE_URL.TrimEnd('/') + '/rest/v1/rpc/' + $Function) -Headers @{
+    apikey = $env:SUPABASE_ANON_KEY; Authorization = "Bearer $env:SUPABASE_ANON_KEY"
+  } -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($json)) -TimeoutSec 30
+}
+
+function Invoke-CallForceRefreshCycle {
+  param($Config, [scriptblock]$Refresh)
+  if (-not (Test-CallForceRefreshEnabled $Config)) { return $false }
+  $request = Invoke-CallAgentRpc 'system_callcenter_agent_take_request' @{
+    p_secret = $env:CALL_INGEST_SECRET; p_agent_version = 'call-force-refresh-1'
+  }
+  if ($null -eq $request) { return $false }
+  $ok = $false; $safeError = $null
+  try { & $Refresh | Out-Null; $ok = $true }
+  catch { $safeError = 'refresh_failed' }
+  $finished = Invoke-CallAgentRpc 'system_callcenter_agent_finish_request' @{
+    p_secret = $env:CALL_INGEST_SECRET; p_id = $request.id; p_ok = $ok; p_error = $safeError
+  }
+  if (-not $finished) { throw 'Force refresh request was no longer running.' }
+  return $true
+}

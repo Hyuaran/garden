@@ -35,7 +35,7 @@ import {
   validateRow,
   type PointRow,
 } from "@/lib/product-points";
-import { savePoint } from "./actions";
+import { refreshPoints, savePoint } from "./actions";
 import styles from "./product-points.module.css";
 
 const options = (values: Record<string, string>) =>
@@ -119,6 +119,9 @@ export default function ProductPointsClient({
   today: string;
   initialError?: string;
 }) {
+  const [checkedAt, setCheckedAt] = useState<string>();
+  const [refreshBusy, setRefreshBusy] = useState(false);
+  const refreshing = useRef(false);
   const [rows, setRows] = useState(initialRows);
   const [channels, setChannels] = useState(Object.keys(CHANNELS));
   const [categories, setCategories] = useState(Object.keys(CATEGORIES));
@@ -152,6 +155,24 @@ export default function ProductPointsClient({
     "",
   );
 
+  async function refresh() {
+    if (refreshing.current || saving.current) return;
+    refreshing.current = true;
+    setRefreshBusy(true);
+    setError("");
+    try {
+      const result = await refreshPoints();
+      if (!result.rows) throw new Error(result.error);
+      setRows(result.rows);
+      setCheckedAt(result.checkedAt);
+    } catch {
+      setError("付与ポイント表を読み直せませんでした。もう一度お試しください。");
+    } finally {
+      refreshing.current = false;
+      setRefreshBusy(false);
+    }
+  }
+
   function open(row?: PointRow) {
     if (saving.current) return;
     setSource(row ?? null);
@@ -160,7 +181,7 @@ export default function ProductPointsClient({
   }
 
   async function save() {
-    if (!draft || !canWrite || saving.current) return;
+    if (!draft || !canWrite || saving.current || refreshing.current) return;
     const next = {
       ...draft,
       id: split || !source ? crypto.randomUUID() : source.id,
@@ -237,7 +258,7 @@ export default function ProductPointsClient({
           <h1>付与ポイント表</h1>
           <SystemViewButton />
         </SystemViewHeading>
-        <UpdatedStamp label="" date={updatedAt} showSeconds />
+        <UpdatedStamp label="" date={checkedAt ?? updatedAt} showSeconds onRefresh={() => void refresh()} busy={refreshBusy} disabled={busy} refreshLabel="付与ポイント表を読み直す" />
       </header>
       <div className={styles.filters}>
         <BoxSelect

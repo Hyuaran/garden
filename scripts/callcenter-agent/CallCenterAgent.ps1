@@ -9,6 +9,7 @@ param(
   [switch]$ShowSchema,
   [switch]$CheckPrimaryKeyUniqueness,
   [switch]$Worker,
+  [switch]$ForceRefresh,
   [string]$HeartbeatPath
 )
 
@@ -94,6 +95,10 @@ function Invoke-IngestBatch([guid]$RunId, [int]$BatchIndex, [datetime]$From, [da
   $payload = @{ run_id = $RunId.ToString(); batch_index = $BatchIndex; range_from = $From.ToString("yyyy-MM-dd"); range_to = $To.ToString("yyyy-MM-dd"); rows = [object[]]@($Rows) }
   $body = [Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json -Compress -Depth 8))
   $headers = @{ Authorization = "Bearer $env:CALL_INGEST_SECRET" }
+  if ($null -eq $config.gzipRequestBody -or [bool]$config.gzipRequestBody) {
+    $body = Compress-IngestBody $body
+    $headers['Content-Encoding'] = 'gzip'
+  }
   for ($attempt = 1; $attempt -le 4; $attempt++) {
     try {
       return Invoke-RestMethod -Method Post -Uri ([string]$config.apiUrl) -Headers $headers -ContentType "application/json; charset=utf-8" -Body $body -TimeoutSec 300
@@ -117,8 +122,18 @@ if ($fullRefreshIntervalMinutes -lt 1) { throw 'fullRefreshIntervalMinutes must 
 function Invoke-SyncOnce {
   $runId = [guid]::NewGuid()
   $state = Get-AgentState; $stateDate = $state.Date; $statePrimaryKey = $state.PrimaryKey
+  $digestPath = Join-Path $stateDirectory 'row-digests.json'
+  $digests = Read-CallDigestState $digestPath
+  $pendingDigests = @{}
+  $resendHour = if ($null -ne $config.fullResendHourJst) { [int]$config.fullResendHourJst } else { 3 }
+  $nowUtc = (Get-Date).ToUniversalTime()
+  $resendDue = Test-CallFullResendDue $digests.last_full_resend_day $nowUtc $resendHour
   $queryMode = Get-IncrementalQueryMode $isExplicitRange $statePrimaryKey
   $refreshPlan = Get-CallRefreshPlan $state.LastFullRefreshUtc (Get-Date).ToUniversalTime() $refreshWindowDays $fullRefreshWindowDays $fullRefreshIntervalMinutes
+  if ($resendDue) { $refreshPlan = [pscustomobject]@{ Kind = 'full'; WindowDays = $fullRefreshWindowDays } }
+  if ($ForceRefresh) { $refreshPlan = [pscustomobject]@{ Kind = 'recent'; WindowDays = $refreshWindowDays } }
+  $forceFullResend = -not $ForceRefresh -and $resendDue -and $refreshPlan.Kind -eq 'full'
+  $forceSend = $ForceRefresh -or $forceFullResend
   $from = if ($hasExplicitStartDate) { $StartDate.Date } elseif ($stateDate) { $stateDate.AddDays(-[int]$config.overlapDays).Date } else { (Get-Date).Date.AddDays(-[int]$config.overlapDays) }
   $to = if ($hasExplicitEndDate) { $EndDate.Date } else { (Get-Date).Date }
   if ($from -gt $to) { throw "StartDate must be on or before EndDate." }
@@ -145,6 +160,7 @@ function Invoke-SyncOnce {
 
     $quotedColumns = ($columns | ForEach-Object { '"' + $_.Replace('"', '""') + '"' }) -join ","
     $ranges = @(Get-CallSyncRanges $from $to $isExplicitRange)
+    if ($ForceRefresh) { $ranges = @() }
     $workItems = @()
     foreach ($range in $ranges) {
       $nextDay = $range.To.AddDays(1).ToString("yyyy-MM-dd")
@@ -166,7 +182,7 @@ function Invoke-SyncOnce {
         TracksPrimaryKey = $false
       }
     }
-    $batchIndex = 0; $totalRows = 0; $totalSent = 0; $totalRefreshRows = 0; $totalRefreshSent = 0; $totalSkippedInvalidDate = 0; $hadPartial = $false; $maxCallDate = $null; $maxPrimaryKey = $null
+    $batchIndex = 0; $totalRows = 0; $totalSent = 0; $totalRefreshRows = 0; $totalRefreshSent = 0; $totalRefreshSkipped = 0; $totalSkippedInvalidDate = 0; $hadPartial = $false; $maxCallDate = $null; $maxPrimaryKey = $null
     $startedAt = Get-Date
 
     foreach ($workItem in $workItems) {
@@ -195,10 +211,19 @@ function Invoke-SyncOnce {
           }
           $rowPrimaryKey = ConvertTo-NormalizedPrimaryKey $row['主キー']
           if ($workItem.TracksPrimaryKey -and $rowPrimaryKey -and ($null -eq $maxPrimaryKey -or (Compare-NormalizedPrimaryKey $rowPrimaryKey $maxPrimaryKey) -gt 0)) { $maxPrimaryKey = $rowPrimaryKey }
-          [void]$batch.Add($row); $rangeRows++; $totalRows++
+          $rangeRows++; $totalRows++
           if ($workItem.Path -eq 'refresh') { $totalRefreshRows++ }
           if (-not $rangeMaxCallDate -or $rowDate -gt $rangeMaxCallDate) { $rangeMaxCallDate = $rowDate }
           if (-not $maxCallDate -or $rowDate -gt $maxCallDate) { $maxCallDate = $rowDate }
+
+          $digest = if (-not $isExplicitRange) { Get-CallRowDigest $row $columns } else { $null }
+          if ($workItem.Path -eq 'refresh' -and (Test-CallRowUnchanged $digests $rowPrimaryKey $digest $forceSend)) {
+            $totalRefreshSkipped++
+            if ($MaxRows -gt 0 -and $totalRows -ge $MaxRows) { break }
+            continue
+          }
+          [void]$batch.Add($row)
+          if ($rowPrimaryKey -and -not $isExplicitRange -and -not $DryRun -and $MaxRows -eq 0 -and $rowDate -ge (Get-Date).Date.AddDays(-$fullRefreshWindowDays)) { $pendingDigests[$rowPrimaryKey] = @{ digest = $digest; date = $rowDate.ToString('yyyy-MM-dd') } }
 
           if ($batch.Count -ge $batchSize -or ($MaxRows -gt 0 -and $totalRows -ge $MaxRows)) {
             $rowsInBatch = $batch.Count
@@ -247,6 +272,7 @@ function Invoke-SyncOnce {
     }
 
     $completedWithoutPartial = -not $hadPartial
+    if ($ForceRefresh -and ($hadPartial -or $totalSkippedInvalidDate -gt 0)) { throw 'Force refresh did not complete all rows.' }
     $shouldAdvanceDate = Test-ShouldAdvanceState $stateDate $maxCallDate $isExplicitRange $completedWithoutPartial
     $shouldAdvancePrimaryKey = Test-ShouldAdvancePrimaryKey $statePrimaryKey $maxPrimaryKey $completedWithoutPartial $isExplicitRange
     $saveFullRefresh = -not $isExplicitRange -and $refreshPlan.Kind -eq 'full' -and $completedWithoutPartial -and $MaxRows -eq 0
@@ -261,16 +287,23 @@ function Invoke-SyncOnce {
     } elseif (-not $DryRun -and $maxCallDate) {
       Write-AgentLog "info" "state unchanged" @{ run_id = $runId.ToString(); existing_date = $(if ($stateDate) { $stateDate.ToString("yyyy-MM-dd") } else { $null }); candidate_date = $maxCallDate.ToString("yyyy-MM-dd"); reason = $(if ($hadPartial) { "partial_run" } elseif ($isExplicitRange) { "candidate_not_newer" } else { "not_eligible" }) }
     }
+    if (-not $DryRun -and -not $isExplicitRange -and $MaxRows -eq 0 -and $completedWithoutPartial) {
+      foreach ($key in $pendingDigests.Keys) { $digests.rows[$key] = $pendingDigests[$key] }
+      if ($forceFullResend) { $digests.last_full_resend_day = $nowUtc.AddHours(9).ToString('yyyy-MM-dd') }
+      Save-CallDigestState $digestPath $digests ((Get-Date).Date.AddDays(-$fullRefreshWindowDays))
+    }
     $syncStatus = if ($hadPartial) { "partial" } else { "success" }
-    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; refresh_rows = $totalRefreshRows; refresh_sent = $totalRefreshSent; refresh_kind = $(if (-not $isExplicitRange) { $refreshPlan.Kind } else { $null }); refresh_window_days = $(if (-not $isExplicitRange) { $refreshPlan.WindowDays } else { 0 }); skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; query_mode = $queryMode; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); latest_primary_key = $maxPrimaryKey; state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
+    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; refresh_rows = $totalRefreshRows; refresh_skipped_unchanged = $totalRefreshSkipped; refresh_sent = $totalRefreshSent; refresh_kind = $(if (-not $isExplicitRange) { $refreshPlan.Kind } else { $null }); refresh_window_days = $(if (-not $isExplicitRange) { $refreshPlan.WindowDays } else { 0 }); skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; query_mode = $queryMode; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); latest_primary_key = $maxPrimaryKey; state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
   } finally { $connection.Dispose() }
 }
 
 function Invoke-WorkerProcess {
+  param([switch]$ForceRefresh)
   $heartbeat = Join-Path $stateDirectory ("heartbeat-{0}.json" -f [guid]::NewGuid())
   @{ updated_at = (Get-Date).ToUniversalTime().ToString('o'); phase = 'starting' } | ConvertTo-Json -Compress | Set-Content -LiteralPath $heartbeat -Encoding UTF8
   $exe = 'C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
   $args = @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"{0}"' -f $PSCommandPath),'-ConfigPath',('"{0}"' -f $ConfigPath),'-Worker','-Once','-HeartbeatPath',('"{0}"' -f $heartbeat))
+  if ($ForceRefresh) { $args += '-ForceRefresh' }
   if ($hasExplicitStartDate) { $args += @('-StartDate', $StartDate.ToString('yyyy-MM-dd')) }
   if ($hasExplicitEndDate) { $args += @('-EndDate', $EndDate.ToString('yyyy-MM-dd')) }
   if ($MaxRows) { $args += @('-MaxRows', [string]$MaxRows) }; if ($DryRun) { $args += '-DryRun' }; if ($ShowSchema) { $args += '-ShowSchema' }; if ($CheckPrimaryKeyUniqueness) { $args += '-CheckPrimaryKeyUniqueness' }
@@ -291,9 +324,21 @@ function Invoke-WorkerProcess {
 
 if ($Worker) { Update-Heartbeat 'starting' -Force; Invoke-SyncOnce; Update-Heartbeat 'completed' -Force; return }
 
+$forceEnabled = -not ($DryRun -or $isExplicitRange -or $ShowSchema -or $CheckPrimaryKeyUniqueness -or $MaxRows -gt 0) -and (Test-CallForceRefreshEnabled $config)
+$forceCheckSeconds = if ($config.forceCheckSeconds) { [Math]::Max([int]$config.forceCheckSeconds, 1) } else { 10 }
+if (-not $forceEnabled) { Write-AgentLog 'info' 'manual refresh disabled (Supabase configuration missing or diagnostic run)' }
+
 do {
   try { Invoke-WorkerProcess }
   catch { Write-AgentLog "error" "sync failed" @{ error_type = $_.Exception.GetType().Name }; if ($Once -or -not [bool]$config.runContinuously) { throw } }
   if ($Once -or -not [bool]$config.runContinuously) { break }
-  Start-Sleep -Seconds ([Math]::Max([int]$config.pollSeconds, 60))
+  $nextPoll = (Get-Date).ToUniversalTime().AddSeconds([Math]::Max([int]$config.pollSeconds, 60))
+  do {
+    if ($forceEnabled) {
+      try { Invoke-CallForceRefreshCycle $config { Invoke-WorkerProcess -ForceRefresh } | Out-Null }
+      catch { Write-AgentLog 'error' 'manual refresh check failed' @{ error_type = $_.Exception.GetType().Name } }
+    }
+    $remaining = ($nextPoll - (Get-Date).ToUniversalTime()).TotalSeconds
+    if ($remaining -gt 0) { Start-Sleep -Milliseconds ([int]([Math]::Min($forceCheckSeconds, $remaining) * 1000)) }
+  } while ((Get-Date).ToUniversalTime() -lt $nextPoll)
 } while ($true)

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CallMetricsClient from "./CallMetricsClient";
 import styles from "./call-metrics.module.css";
@@ -18,6 +18,50 @@ const longResponse = {
 };
 
 describe("CallMetricsClient", () => {
+  it("waits while busy, prevents another request, and reloads after completion", async () => {
+    let status = "running";
+    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () =>
+      url.includes("sync-request?") ? { status } : url.endsWith("sync-request") ? { id: "request-1" } : response }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CallMetricsClient />);
+    const button = await screen.findByRole("button", { name: "最新のコール履歴を取り直す" });
+    vi.useFakeTimers();
+    try {
+      await act(async () => { fireEvent.click(button); });
+      expect(button).toBeDisabled();
+      fireEvent.click(button);
+      await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+      expect(button).toBeDisabled();
+      status = "done";
+      await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+      expect(button).not.toBeDisabled();
+      expect(fetchMock.mock.calls.filter(([url]) => url.endsWith("sync-request"))).toHaveLength(1);
+      expect(fetchMock.mock.calls.filter(([url]) => url.startsWith("/api/system/call-metrics?"))).toHaveLength(2);
+      const count = fetchMock.mock.calls.length;
+      await act(async () => { await vi.advanceTimersByTimeAsync(9000); });
+      expect(fetchMock).toHaveBeenCalledTimes(count);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it.each(["failed", "timeout", "503"])("shows %s above the controls and releases busy", async outcome => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({
+      ok: !(outcome === "503" && url.endsWith("sync-request")),
+      json: async () => url.includes("sync-request?") ? { status: outcome === "failed" ? "failed" : "running" }
+        : url.endsWith("sync-request") ? { id: "request-1", error: "ホスト PC の係が止まっています。" } : response,
+    })));
+    render(<CallMetricsClient />);
+    const button = await screen.findByRole("button", { name: "最新のコール履歴を取り直す" });
+    vi.useFakeTimers();
+    try {
+      await act(async () => { fireEvent.click(button); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(outcome === "timeout" ? 180_000 : 3000); });
+      const alert = screen.getByRole("alert");
+      expect(alert.textContent).toContain(outcome === "timeout" ? "時間切れ" : outcome === "failed" ? "更新に失敗" : "係が止まっています");
+      expect(alert.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(button).not.toBeDisabled();
+    } finally { vi.useRealTimers(); }
+  });
+
   beforeEach(() => {
     window.history.replaceState(null, "", "/system/call-metrics");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => response }));
