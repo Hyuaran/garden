@@ -312,3 +312,7 @@ Invoke-Pester -Path .\scripts\callcenter-agent\tests -EnableExit
 
 既定では待機中の確認は最大約8,640回/日（86,400÷10、処理時間分は減少）で、Vercelへの確認呼び出しは0回です。通常ポールは最大約288回/日を維持し、手動要求ごとに読み返し1回とfinish RPC 1回が加わります。画面は押した後だけ3秒間隔、最大3分（GETは最大59回、完了時に集計読み直し1回、開始POST 1回）です。待機していない画面からの定期確認は0回です。cronは追加しません。
 
+
+## Supabase の URL・anon キーを config.json に置く（2026-11-13）
+
+マシン環境変数 `SUPABASE_URL`・`SUPABASE_ANON_KEY` が無いときは、config.json の `supabaseUrl`・`supabaseAnonKey` を使う（公開用の値。マシン環境変数を足すとホスト PC の再起動が要るため）。2026-11-13 にホスト PC へこの形で入れた（再起動なし）。

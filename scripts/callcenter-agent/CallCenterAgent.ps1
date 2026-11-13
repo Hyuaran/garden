@@ -23,6 +23,9 @@ if ([IntPtr]::Size -ne 4) {
 }
 if (-not (Test-Path -LiteralPath $ConfigPath)) { throw "Config not found: $ConfigPath" }
 $config = Get-Content -Raw -Encoding UTF8 -LiteralPath $ConfigPath | ConvertFrom-Json
+# 公開用の値（Supabase の URL・anon キー）は config.json にも置ける。マシン環境変数を足すとホスト PC の再起動が要るため（2026-11-13）
+if (-not $env:SUPABASE_URL -and $config.supabaseUrl) { $env:SUPABASE_URL = [string]$config.supabaseUrl }
+if (-not $env:SUPABASE_ANON_KEY -and $config.supabaseAnonKey) { $env:SUPABASE_ANON_KEY = [string]$config.supabaseAnonKey }
 if (-not $env:FM_CALL_HISTORY_PASSWORD) { throw "FM_CALL_HISTORY_PASSWORD is not configured." }
 if (-not $DryRun -and -not $env:CALL_INGEST_SECRET) { throw "CALL_INGEST_SECRET is not configured." }
 

@@ -10,6 +10,9 @@ if(-not $ConfigPath){$ConfigPath=Join-Path $PSScriptRoot 'config.json'}
 if ([IntPtr]::Size -ne 4) { throw 'FileMaker ODBC requires 32-bit PowerShell 5.1.' }
 if (-not (Test-Path -LiteralPath $ConfigPath)) { throw "Config not found: $ConfigPath" }
 $config=Get-Content -Raw -Encoding UTF8 -LiteralPath $ConfigPath | ConvertFrom-Json
+# 公開用の値（Supabase の URL・anon キー）は config.json にも置ける。マシン環境変数を足すとホスト PC の再起動が要るため（2026-11-13）
+if (-not $env:SUPABASE_URL -and $config.supabaseUrl) { $env:SUPABASE_URL = [string]$config.supabaseUrl }
+if (-not $env:SUPABASE_ANON_KEY -and $config.supabaseAnonKey) { $env:SUPABASE_ANON_KEY = [string]$config.supabaseAnonKey }
 if (-not $env:FM_ZENKAKU_PASSWORD) { throw 'FM_ZENKAKU_PASSWORD is not configured.' }
 if (-not $env:ZENKAKU_AGENT_SECRET) { throw 'ZENKAKU_AGENT_SECRET is not configured.' }
 New-Item -ItemType Directory -Force -Path ([string]$config.logDirectory) | Out-Null

@@ -54,3 +54,7 @@ FileMaker Proの「外部データソース管理」およびODBCスキーマ表
 ## ハング・失敗時
 
 親プロセスが各読取を子プロセスで実行し、60秒を超えると子を終了して `timeout` を返します。ODBCエラーは `fm_unreachable` を返し、親は3秒後の次依頼へ進みます。秘密や営業マスタ本文はログへ出しません。
+
+## Supabase の URL・anon キーを config.json に置く（2026-11-13）
+
+マシン環境変数 `SUPABASE_URL`・`SUPABASE_ANON_KEY` が無いときは、config.json の `supabaseUrl`・`supabaseAnonKey` を使う（公開用の値。マシン環境変数を足すとホスト PC の再起動が要るため）。2026-11-13 にホスト PC へこの形で入れた（再起動なし）。
