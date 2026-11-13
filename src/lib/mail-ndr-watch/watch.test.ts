@@ -92,3 +92,38 @@ it("detects the Exchange 配信不能 report with an empty body and infers SendA
   expect(makeAlertReal("keiri@hyuaran1.onmicrosoft.com", ndr, { ...original, from: { emailAddress: { address: "keiri@hyuaran1.onmicrosoft.com" } } }).kind).toBe("その他");
   expect(isNdrReal({ ...ndr, from: { emailAddress: { name: "Chatwork", address: "news@ns.chatwork.com" } }, subject: "お知らせ" })).toBe(false);
 });
+
+it("caps recovery reads at 24 hours and reports the cap", async () => {
+  const deps = setup({ started_at: "2026-10-19T00:00:00Z", last_run_at: "2026-10-20T00:00:00Z", outage: true, outage_notified: true });
+  vi.mocked(deps.collect).mockResolvedValue([]);
+  expect(await runWatch(deps, false, now)).toMatchObject({ ok: true, window_capped: true });
+  expect(vi.mocked(deps.collect).mock.calls[0].slice(0, 2)).toEqual(["2026-10-21T10:00:00.000Z", "2026-10-19T00:00:00Z"]);
+});
+it("bounds a stalled execution and aborts Graph before any later alert writes", async () => {
+  vi.useFakeTimers();
+  try {
+    const deps = setup();
+    let finish!: (alerts: typeof alert[]) => void;
+    vi.mocked(deps.collect).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    const result = runWatch(deps, false, now);
+    await vi.advanceTimersByTimeAsync(55_000);
+    expect(await result).toMatchObject({ ok: false });
+    expect(vi.mocked(deps.collect).mock.calls[0][2]?.aborted).toBe(true);
+    expect(deps.send).toHaveBeenCalledTimes(1);
+    finish([alert]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(deps.saveAlert).not.toHaveBeenCalled();
+    expect(deps.unlock).toHaveBeenCalledTimes(1);
+  } finally { vi.useRealTimers(); }
+});
+it("returns within 60 seconds even when outage storage stalls", async () => {
+  vi.useFakeTimers();
+  try {
+    const deps = setup();
+    vi.mocked(deps.collect).mockRejectedValue(new Error("timeout"));
+    vi.mocked(deps.saveState).mockImplementation(() => new Promise(() => {}));
+    const result = runWatch(deps, false, now);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await result).toMatchObject({ ok: false });
+  } finally { vi.useRealTimers(); }
+});

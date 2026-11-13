@@ -2,11 +2,12 @@
 import { isNdr, isNdrCandidate, makeAlert, plainText, type Message, type Alert } from "./parse";
 export const DEFAULT_MAILBOXES = "shoji@hyuaran1.onmicrosoft.com,keiri@hyuaran1.onmicrosoft.com,cs@hyuaran1.onmicrosoft.com";
 export function mailboxes() { return [...new Set((process.env.MAIL_NDR_WATCH_MAILBOXES ?? DEFAULT_MAILBOXES).split(",").map(s => s.trim()).filter(Boolean))]; }
-export async function collect(since: string, startedAt: string): Promise<Alert[]> {
-  const token = await getGraphToken();
+export async function collect(since: string, startedAt: string, signal?: AbortSignal): Promise<Alert[]> {
+  const options = { timeoutMs: 15_000, maxRetries: 1, signal };
+  const token = await getGraphToken(options);
   async function page<T>(url: string): Promise<{ value?: T[]; "@odata.nextLink"?: string }> {
     if (!url.startsWith("https://graph.microsoft.com/v1.0/")) throw new Error("Invalid Graph pagination URL");
-    const response = await graphFetch(url, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text", IdType="ImmutableId"' }, cache: "no-store" });
+    const response = await graphFetch(url, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text", IdType="ImmutableId"' }, cache: "no-store" }, options);
     if (!response.ok) throw new Error(`Graph read failed (${response.status})`);
     return response.json();
   }
@@ -21,7 +22,8 @@ export async function collect(since: string, startedAt: string): Promise<Alert[]
         if (!message.receivedDateTime || !(Date.parse(message.receivedDateTime) >= Date.parse(startedAt)) || !isNdrCandidate(message)) continue;
         // Exchange の「配信不能」は本文が空で、中身はメールの元データ（MIME）の report 部分にある（2026-10-22 実物）。元のメールの部分（message/rfc822）より前だけを使う
         if (!plainText(message.body?.content).trim()) {
-          const raw = await graphFetch(`${base}/${encodeURIComponent(message.id)}/$value`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+          const raw = await graphFetch(`${base}/${encodeURIComponent(message.id)}/$value`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }, options);
+          if (!raw.ok) throw new Error(`Graph read failed (${raw.status})`);
           if (raw.ok) { const mime = await raw.text(); const cut = mime.search(/Content-Type:\s*message\/rfc822/i); message.reportText = (cut >= 0 ? mime.slice(0, cut) : mime).slice(0, 20000); }
         }
         if (!isNdr(message)) continue;

@@ -29,7 +29,7 @@ type GraphMessage = {
   from?: { emailAddress?: { address?: string | null; name?: string | null } | null } | null;
 };
 
-export async function getGraphToken(): Promise<string> {
+export async function getGraphToken(options?: GraphFetchOptions): Promise<string> {
   const tenantId = process.env.MS_GRAPH_TENANT_ID;
   const clientId = process.env.MS_GRAPH_CLIENT_ID;
   const clientSecret = process.env.MS_GRAPH_CLIENT_SECRET;
@@ -43,7 +43,7 @@ export async function getGraphToken(): Promise<string> {
       scope: "https://graph.microsoft.com/.default",
     }),
     cache: "no-store",
-  });
+  }, options);
   const body = (await response.json()) as { access_token?: string; error?: string };
   if (!response.ok || !body.access_token) throw new Error(`Microsoft のサインインに失敗しました（${body.error ?? response.status}）`);
   return body.access_token;
@@ -114,16 +114,19 @@ export async function fetchMailboxMessages(sinceIso: string, mailboxes: string[]
   return { items: [...byId.values()], failedMailboxes };
 }
 /** 読み取り・トークン取得の一時的な失敗は最大3回再試行する。 */
-export async function graphFetch(url: string, init?: RequestInit): Promise<Response> {
+export type GraphFetchOptions = { timeoutMs?: number; maxRetries?: number; signal?: AbortSignal };
+export async function graphFetch(url: string, init?: RequestInit, options: GraphFetchOptions = {}): Promise<Response> {
   for (let retry = 0; ; retry++) {
     let response: Response;
-    try { response = await fetch(url, init); }
+    options.signal?.throwIfAborted();
+    const signals = [init?.signal, options.signal, options.timeoutMs === undefined ? undefined : AbortSignal.timeout(options.timeoutMs)].filter((s): s is AbortSignal => !!s);
+    try { response = await fetch(url, signals.length ? { ...init, signal: AbortSignal.any(signals) } : init); }
     catch (error) {
-      if (retry >= 3) throw error;
+      if (options.signal?.aborted || retry >= (options.maxRetries ?? 3)) throw error;
       await new Promise(resolve => setTimeout(resolve, 500 * 2 ** retry));
       continue;
     }
-    if ((response.status !== 429 && response.status < 500) || retry >= 3) return response;
+    if ((response.status !== 429 && response.status < 500) || retry >= (options.maxRetries ?? 3)) return response;
     const seconds = Number(response.headers.get("Retry-After"));
     await new Promise(resolve => setTimeout(resolve, Math.min(30000, seconds > 0 ? seconds * 1000 : 500 * 2 ** retry)));
   }
