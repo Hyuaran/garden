@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
   [string]$ConfigPath='', [switch]$Once,
   [switch]$Worker, [string]$RequestId, [string]$SalesId, [string]$Operation='check'
@@ -50,18 +50,22 @@ if($Worker){
   catch{try{Post-Failure $RequestId 'fm_unreachable' $Operation}catch{};exit 1}
 }
 
+$transport=Get-ZenkakuTransport $config
+Write-ZenkakuLog info ('agent started transport='+$transport) @{transport=$transport}
+$consecutiveFailures=0
 do {
   try {
-    $next=Invoke-ZenkakuApi 'Get' '/api/system/zenkaku-agent/next'
-    if($null -ne $next.request){
-      $started=Get-Date;Write-ZenkakuLog info 'request started' @{request_id=$next.request.id;sales_id=$next.request.salesId}
+    $request=Get-ZenkakuNext $config $env:ZENKAKU_AGENT_SECRET
+    $consecutiveFailures=0
+    if($null -ne $request){
+      $started=Get-Date;Write-ZenkakuLog info 'request started' @{request_id=$request.id;sales_id=$request.salesId}
       $exe="$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
-      $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-ConfigPath',$ConfigPath,'-Worker','-RequestId',$next.request.id,'-SalesId',$next.request.salesId,'-Operation',$next.request.operation)
+      $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-ConfigPath',$ConfigPath,'-Worker','-RequestId',$request.id,'-SalesId',$request.salesId,'-Operation',$request.operation)
       $process=Start-Process -FilePath $exe -ArgumentList $arguments -PassThru -WindowStyle Hidden
       while(-not $process.HasExited -and -not (Test-IsHeartbeatStalled $started.ToUniversalTime() (Get-Date).ToUniversalTime() 60)){Start-Sleep -Milliseconds 500;$process.Refresh()}
-      if(-not $process.HasExited){$process.Kill();Post-Failure $next.request.id 'timeout' $next.request.operation;Write-ZenkakuLog error 'request timed out' @{request_id=$next.request.id;sales_id=$next.request.salesId}}
-      else{Write-ZenkakuLog info 'request completed' @{request_id=$next.request.id;sales_id=$next.request.salesId;exit_code=$process.ExitCode;elapsed_seconds=[Math]::Round(((Get-Date)-$started).TotalSeconds,1)}}
+      if(-not $process.HasExited){$process.Kill();Post-Failure $request.id 'timeout' $request.operation;Write-ZenkakuLog error 'request timed out' @{request_id=$request.id;sales_id=$request.salesId}}
+      else{Write-ZenkakuLog info 'request completed' @{request_id=$request.id;sales_id=$request.salesId;exit_code=$process.ExitCode;elapsed_seconds=[Math]::Round(((Get-Date)-$started).TotalSeconds,1)}}
     }
-  } catch {Write-ZenkakuLog error 'poll failed' @{error_type=$_.Exception.GetType().Name};if($Once){throw}}
-  if($Once){break};Start-Sleep -Seconds ([Math]::Max([int]$config.pollSeconds,3))
+  } catch {$consecutiveFailures=[Math]::Min($consecutiveFailures+1,10);Write-ZenkakuLog error 'poll failed' @{error_type=$_.Exception.GetType().Name};if($Once){throw}}
+  if($Once){break};Start-Sleep -Seconds (Get-ZenkakuPollDelay ([int]$config.pollSeconds) $consecutiveFailures)
 } while($true)

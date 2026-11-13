@@ -1,5 +1,6 @@
 {
   "apiBaseUrl": "https://garden.example.com",
+  "transport": "garden",
   "pollSeconds": 3,
   "logDirectory": "C:\\ProgramData\\Garden\\ZenkakuAgent\\logs",
   "fmServer": "192.168.1.100",

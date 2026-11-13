@@ -1,0 +1,27 @@
+前確エージェントの DB 直接取得への切り替え（ホスト PC の管理者が実施）
+
+1. migration 適用と秘密の要約の DB 登録：Claude に依頼。
+2. 管理者 PowerShell で Stop-ScheduledTask -TaskName GardenZenkakuAgent。
+3. ZenkakuAgent.ps1 と ZenkakuAgent.Core.ps1 を同じ配置先へ置き換える。
+   config.json に "transport": "supabase" を追加する。
+   SUPABASE_URL・SUPABASE_ANON_KEY は既存の秘密と同様にマシン環境変数へ設定する。
+   設定値は貼る人が以下の入力欄へ入力する。キーを config やスクリプトに直書きしない。
+
+   $dbUrl = Read-Host 'SUPABASE_URL を入力'
+   $anonKey = Read-Host 'SUPABASE_ANON_KEY を入力'
+   [Environment]::SetEnvironmentVariable('SUPABASE_URL', $dbUrl, 'Machine')
+   [Environment]::SetEnvironmentVariable('SUPABASE_ANON_KEY', $anonKey, 'Machine')
+   Remove-Variable dbUrl, anonKey
+
+   ZENKAKU_AGENT_SECRET は今の値を維持する。
+   SYSTEM の起動環境に新しいマシン環境変数が反映されるよう、必要ならホストを再起動する。
+4. Start-ScheduledTask -TaskName GardenZenkakuAgent。
+5. ログの「agent started transport=supabase」と依頼の開始・完了を確認する。
+   poll failed が続く場合は環境変数の反映と Claude 側の登録を確認する。
+
+戻し方：タスクを停止し、config.json の transport を garden に変更してタスクを再開する。
+結果送信はどちらの設定でも既存の Garden API を使う。
+
+回数見積もり：3秒間隔は維持。24時間稼働で最大28,800回/日、12時間で14,400回/日。
+supabase 設定ではこの問い合わせが DB RPC へ移り、Garden の next 呼び出しは0回。
+失敗時の待機は6→12→24→30秒、取得成功で3秒へ戻る。新しい cron は追加しない。

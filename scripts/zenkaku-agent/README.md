@@ -41,6 +41,16 @@ order by imported_at desc;
 
 FileMaker Proの「外部データソース管理」およびODBCスキーマ表示で綴りを確認してください。列名を直す際はコードではなくconfigだけを変更します。
 
+## DB 直接取得への切り替え
+
+`install-db-direct-paste.txt` にホスト PC の切り替え手順と戻し方があります。
+`transport` は `supabase` または `garden`。未指定と example は互換性のため `garden` です。
+`supabase` ではマシン環境変数 `SUPABASE_URL`、`SUPABASE_ANON_KEY` と既存の
+`ZENKAKU_AGENT_SECRET` を使い、仕事取得だけを DB RPC に送ります。結果送信は Garden API のままです。
+秘密・キーを config、スクリプト、ログに書かないでください。
+取得失敗時は待機を6、12、24、最大30秒へ延ばし、成功（仕事なしを含む）で通常間隔へ戻します。
+3秒間隔の取得は24時間で最大28,800回/日（12時間で14,400回）。DB 直接取得時の Garden next 呼び出しは0回です。
+
 ## ハング・失敗時
 
 親プロセスが各読取を子プロセスで実行し、60秒を超えると子を終了して `timeout` を返します。ODBCエラーは `fm_unreachable` を返し、親は3秒後の次依頼へ進みます。秘密や営業マスタ本文はログへ出しません。
