@@ -65,14 +65,14 @@ describe("watch lifecycle", () => {
     expect(deps.send).toHaveBeenCalledTimes(1);
     vi.mocked(deps.collect).mockResolvedValue([]);
     await runWatch(deps, false, now); await runWatch(deps, false, now);
-    expect(vi.mocked(deps.send).mock.calls.map(c => String(c[0]).match(/\[title\](.+?)\[\/title\]/)?.[1])).toEqual(["メール送信失敗の見張りが止まっています", "メール送信失敗の見張りが復旧しました"]);
+    expect(vi.mocked(deps.send).mock.calls.map(c => String(c[0]).match(/\[title\](.+?)\[\/title\]/)?.[1])).toEqual(["メール送信失敗", "メール送信失敗が復旧しました"]);
   });
   it("retries failed Chatwork notifications on recovery and does not record an unsent NDR", async () => {
     const deps = setup(); vi.mocked(deps.send).mockRejectedValue(new Error("Chatwork unavailable"));
     await runWatch(deps, false, now); expect(deps.saveAlert).not.toHaveBeenCalled();
     vi.mocked(deps.send).mockResolvedValue(); vi.mocked(deps.collect).mockResolvedValue([]);
     await runWatch(deps, false, now);
-    expect(vi.mocked(deps.send).mock.calls.slice(-2).map(c => String(c[0]).match(/\[title\](.+?)\[\/title\]/)?.[1])).toEqual(["メール送信失敗の見張りが止まっています", "メール送信失敗の見張りが復旧しました"]);
+    expect(vi.mocked(deps.send).mock.calls.slice(-2).map(c => String(c[0]).match(/\[title\](.+?)\[\/title\]/)?.[1])).toEqual(["メール送信失敗", "メール送信失敗が復旧しました"]);
   });
   it("skips concurrent runs", async () => {
     const deps = setup(); vi.mocked(deps.lock).mockResolvedValue(false);
