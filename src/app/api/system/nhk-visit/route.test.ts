@@ -50,15 +50,17 @@ function adminMock() {
     employee_number: "1234",
     employee_name: "東海林 美琴",
   };
+  const insert = vi.fn((payload: Record<string, unknown>) => ({
+    select: () => ({
+      single: async () => ({ data: { ...inserted, ...payload }, error: null }),
+    }),
+  }));
   return {
+    insert,
     updates,
     client: {
       from: () => ({
-        insert: () => ({
-          select: () => ({
-            single: () => Promise.resolve({ data: inserted, error: null }),
-          }),
-        }),
+        insert,
         update: (payload: unknown) => {
           updates.push(payload);
           return { eq: () => Promise.resolve({ error: null }) };
@@ -110,6 +112,36 @@ describe("nhk visit route", () => {
     expect(body.error).toBe("時間を正しく入力してください");
   });
 
+  it.each([
+    { resumeResolved: -1 },
+    { resumeCollected: 1.5 },
+    { resumeResolved: "2" },
+    { resumeCollected: null },
+  ])("rejects invalid resume counts (%j)", async (invalidCounts) => {
+    const { POST } = await import("./route");
+    const response = await POST(postRequest({ ...validBody, ...invalidCounts }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.getSupabaseAdmin).not.toHaveBeenCalled();
+  });
+
+  it("saves resume counts and sends numeric Kintone fields outside the contract total", async () => {
+    const admin = adminMock();
+    mocks.getSupabaseAdmin.mockReturnValue(admin.client);
+    const { POST } = await import("./route");
+
+    const response = await POST(postRequest({ ...validBody, resumeResolved: 2, resumeCollected: 4 }));
+
+    expect(response.status).toBe(200);
+    expect(admin.insert).toHaveBeenCalledWith(expect.objectContaining({ resume_resolved: 2, resume_collected: 4 }));
+    expect((await response.json()).message).toContain("　■再開　解決2件、収納4口");
+    expect(mocks.createRecord).toHaveBeenCalledWith(241, expect.any(String), expect.objectContaining({
+      再開_解決: { value: 2 },
+      再開_収納: { value: 4 },
+      成約_合計: { value: 3 },
+    }));
+  });
+
   it("returns 200 and keeps the Garden row when Kintone fails", async () => {
     const admin = adminMock();
     mocks.getSupabaseAdmin.mockReturnValue(admin.client);
@@ -122,6 +154,8 @@ describe("nhk visit route", () => {
     expect(response.status).toBe(200);
     expect(body.kintoneStatus).toBe("pending");
     expect(body.message).toContain("【派遣先】NHK奈良");
+    expect(admin.insert).toHaveBeenCalledWith(expect.objectContaining({ resume_resolved: 0, resume_collected: 0 }));
+    expect(body.message).toContain("　■再開　解決0件、収納0口");
     expect(admin.updates[0]).toMatchObject({ kintone_error: "kintone_500" });
   });
 });

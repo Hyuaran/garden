@@ -8,6 +8,7 @@ import {
   NHK_VISIT_DESTINATIONS,
   NHK_VISIT_TASK_NAME,
   NHK_VISIT_TRANSPORT_FEES,
+  type NhkVisitCounts,
   type NhkVisitDestination,
   type NhkVisitTransportFee,
 } from "@/app/system/forms/nhk-visit/_lib/nhk-visit";
@@ -16,20 +17,16 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-type ValidInput = {
+type ValidInput = NhkVisitCounts & {
   visitDate: string;
   startTime: string;
   endTime: string;
   destination: NhkVisitDestination;
-  newGround: number;
-  newSatellite: number;
-  addressGround: number;
-  addressSatellite: number;
-  bankCredit: number;
   transportFee: NhkVisitTransportFee;
 };
 
-const countKeys = ["newGround", "newSatellite", "addressGround", "addressSatellite", "bankCredit"] as const;
+const resumeCountKeys = ["resumeResolved", "resumeCollected"] as const;
+const countKeys = ["newGround", "newSatellite", "addressGround", "addressSatellite", ...resumeCountKeys, "bankCredit"] as const;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -61,7 +58,11 @@ function validateBody(body: unknown): { input: ValidInput; error: null } | { inp
   if (!NHK_VISIT_TRANSPORT_FEES.includes(body.transportFee as NhkVisitTransportFee)) {
     return { input: null, error: "交通費を選んでください" };
   }
-  const counts = Object.fromEntries(countKeys.map((key) => [key, asNonNegativeInteger(body[key])]));
+  const counts = Object.fromEntries(countKeys.map((key) => {
+    const value = body[key];
+    const missingResumeCount = value === undefined && resumeCountKeys.some((resumeKey) => resumeKey === key);
+    return [key, asNonNegativeInteger(missingResumeCount ? 0 : value)];
+  }));
   if (Object.values(counts).some((value) => value === null)) {
     return { input: null, error: "件数は 0 以上の整数で入力してください" };
   }
@@ -75,6 +76,8 @@ function validateBody(body: unknown): { input: ValidInput; error: null } | { inp
       newSatellite: counts.newSatellite as number,
       addressGround: counts.addressGround as number,
       addressSatellite: counts.addressSatellite as number,
+      resumeResolved: counts.resumeResolved as number,
+      resumeCollected: counts.resumeCollected as number,
       bankCredit: counts.bankCredit as number,
       transportFee: body.transportFee as NhkVisitTransportFee,
     },
@@ -96,6 +99,8 @@ function kintoneRecord(input: ValidInput, inserted: { id: string; submitted_at: 
     住所変更_地上: { value: input.addressGround },
     住所変更_衛星: { value: input.addressSatellite },
     住所変更_計: { value: totals.addressTotal },
+    再開_解決: { value: input.resumeResolved },
+    再開_収納: { value: input.resumeCollected },
     口座クレ: { value: input.bankCredit },
     成約_合計: { value: totals.contractTotal },
     交通費: { value: input.transportFee },
@@ -144,13 +149,15 @@ export async function POST(request: Request) {
       new_satellite: input.newSatellite,
       address_ground: input.addressGround,
       address_satellite: input.addressSatellite,
+      resume_resolved: input.resumeResolved,
+      resume_collected: input.resumeCollected,
       bank_credit: input.bankCredit,
       transport_fee: input.transportFee,
       employee_number: String(staff.employee_number),
       employee_name: String(staff.name),
       submitted_by: staff.userId,
     })
-    .select("id,submitted_at,visit_date,start_time,end_time,destination,task_name,new_ground,new_satellite,address_ground,address_satellite,bank_credit,transport_fee,employee_number,employee_name")
+    .select("id,submitted_at,visit_date,start_time,end_time,destination,task_name,new_ground,new_satellite,address_ground,address_satellite,resume_resolved,resume_collected,bank_credit,transport_fee,employee_number,employee_name")
     .single();
 
   if (insertError || !inserted) {
@@ -167,6 +174,8 @@ export async function POST(request: Request) {
     newSatellite: Number(inserted.new_satellite),
     addressGround: Number(inserted.address_ground),
     addressSatellite: Number(inserted.address_satellite),
+    resumeResolved: Number(inserted.resume_resolved ?? 0),
+    resumeCollected: Number(inserted.resume_collected ?? 0),
     bankCredit: Number(inserted.bank_credit),
     transportFee: inserted.transport_fee as NhkVisitTransportFee,
   });
@@ -211,7 +220,7 @@ export async function GET(request: Request) {
   const since = addDays(today, -6);
   const { data, error } = await getSupabaseAdmin()
     .from("system_nhk_visit_report")
-    .select("id,visit_date,start_time,end_time,destination,task_name,new_ground,new_satellite,address_ground,address_satellite,bank_credit,transport_fee,submitted_at,kintone_record_id,kintone_synced_at,kintone_error")
+    .select("id,visit_date,start_time,end_time,destination,task_name,new_ground,new_satellite,address_ground,address_satellite,resume_resolved,resume_collected,bank_credit,transport_fee,submitted_at,kintone_record_id,kintone_synced_at,kintone_error")
     .eq("submitted_by", staff.userId)
     .gte("visit_date", since)
     .lte("visit_date", today)

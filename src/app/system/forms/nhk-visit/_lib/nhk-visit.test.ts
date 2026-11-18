@@ -7,6 +7,8 @@ const base = {
   endTime: "18:00",
   destination: "NHK奈良" as const,
   transportFee: "あり" as const,
+  resumeResolved: 0,
+  resumeCollected: 0,
 };
 
 describe("nhk visit helpers", () => {
@@ -26,6 +28,7 @@ describe("nhk visit helpers", () => {
       "【成約件数】",
       "　■新規　0件（地上0件、衛星0件）",
       "　■住所変更　0件（地上0件、衛星0件）",
+      "　■再開　解決0件、収納0口",
       "　■口座・クレ　0件",
       "【交通費】あり",
     ].join("\n"));
@@ -48,6 +51,7 @@ describe("nhk visit helpers", () => {
       "【成約件数】",
       "　■新規　2件（地上2件、衛星0件）",
       "　■住所変更　1件（地上1件、衛星0件）",
+      "　■再開　解決0件、収納0口",
       "　■口座・クレ　0件",
       "【交通費】なし",
     ].join("\n"));
@@ -60,6 +64,8 @@ describe("nhk visit helpers", () => {
       newSatellite: 1,
       addressGround: 2,
       addressSatellite: 3,
+      resumeResolved: 6,
+      resumeCollected: 7,
       bankCredit: 4,
     })).toBe([
       "【日付】2026/09/24",
@@ -69,18 +75,22 @@ describe("nhk visit helpers", () => {
       "【成約件数】",
       "　■新規　2件（地上1件、衛星1件）",
       "　■住所変更　5件（地上2件、衛星3件）",
+      "　■再開　解決6件、収納7口",
       "　■口座・クレ　4件",
       "【交通費】あり",
     ].join("\n"));
   });
 
   it("calculates totals used by display and kintone", () => {
-    expect(calculateNhkVisitTotals({
+    const counts = {
       newGround: 1,
       newSatellite: 2,
       addressGround: 3,
       addressSatellite: 4,
+      resumeResolved: 6,
+      resumeCollected: 7,
       bankCredit: 5,
-    })).toEqual({ newTotal: 3, addressTotal: 7, contractTotal: 15 });
+    };
+    expect(calculateNhkVisitTotals(counts)).toEqual({ newTotal: 3, addressTotal: 7, contractTotal: 15 });
   });
 });

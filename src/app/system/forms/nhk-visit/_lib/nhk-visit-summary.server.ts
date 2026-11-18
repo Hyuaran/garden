@@ -4,7 +4,7 @@ import type { NhkVisitSummaryRow } from "./nhk-visit-summary";
 export async function loadNhkVisitRows(startDate: string, endDate: string): Promise<NhkVisitSummaryRow[]> {
   const { data, error } = await getSupabaseAdmin()
     .from("system_nhk_visit_report")
-    .select("visit_date,start_time,end_time,destination,new_ground,new_satellite,address_ground,address_satellite,bank_credit,employee_number,employee_name")
+    .select("visit_date,start_time,end_time,destination,new_ground,new_satellite,address_ground,address_satellite,resume_resolved,resume_collected,bank_credit,employee_number,employee_name")
     .gte("visit_date", startDate)
     .lte("visit_date", endDate)
     .order("visit_date", { ascending: true })
@@ -21,6 +21,8 @@ export async function loadNhkVisitRows(startDate: string, endDate: string): Prom
     new_satellite: Number(row.new_satellite) || 0,
     address_ground: Number(row.address_ground) || 0,
     address_satellite: Number(row.address_satellite) || 0,
+    resume_resolved: Number(row.resume_resolved) || 0,
+    resume_collected: Number(row.resume_collected) || 0,
     bank_credit: Number(row.bank_credit) || 0,
     employee_number: row.employee_number == null ? null : String(row.employee_number),
     employee_name: String(row.employee_name),

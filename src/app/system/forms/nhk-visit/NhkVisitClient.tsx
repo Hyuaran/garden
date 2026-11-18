@@ -9,21 +9,14 @@ import {
   NHK_VISIT_DESTINATIONS,
   NHK_VISIT_TASK_NAME,
   weekdayLabel,
+  type NhkVisitCounts,
   type NhkVisitDestination,
   type NhkVisitTransportFee,
 } from "./_lib/nhk-visit";
 import local from './nhk-visit.module.css';
 import { FormPage, FormRow, RadioGroup, SelectField, Stepper, TextField, FixedValue, SubmitButton, ResultMessage, RecentList } from '../_components/form-kit';
 
-type Counts = {
-  newGround: number;
-  newSatellite: number;
-  addressGround: number;
-  addressSatellite: number;
-  bankCredit: number;
-};
-
-type ReportHistory = Counts & {
+type ReportHistory = NhkVisitCounts & {
   id: string;
   visit_date: string;
   start_time: string;
@@ -50,6 +43,8 @@ function normalizeReport(row: Record<string, unknown>): ReportHistory {
     newSatellite: Number(row.new_satellite ?? 0),
     addressGround: Number(row.address_ground ?? 0),
     addressSatellite: Number(row.address_satellite ?? 0),
+    resumeResolved: Number(row.resume_resolved ?? 0),
+    resumeCollected: Number(row.resume_collected ?? 0),
     bankCredit: Number(row.bank_credit ?? 0),
   };
 }
@@ -64,7 +59,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
   const [startTime, setStartTime] = useState("09:30");
   const [endTime, setEndTime] = useState("18:00");
   const [destination, setDestination] = useState("");
-  const [counts, setCounts] = useState<Counts>({ newGround: 0, newSatellite: 0, addressGround: 0, addressSatellite: 0, bankCredit: 0 });
+  const [counts, setCounts] = useState<NhkVisitCounts>({ newGround: 0, newSatellite: 0, addressGround: 0, addressSatellite: 0, resumeResolved: 0, resumeCollected: 0, bankCredit: 0 });
   const [transportFee, setTransportFee] = useState<NhkVisitTransportFee>("あり");
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState("");
@@ -77,11 +72,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
     startTime,
     endTime,
     destination: destination as NhkVisitDestination,
-    newGround: counts.newGround,
-    newSatellite: counts.newSatellite,
-    addressGround: counts.addressGround,
-    addressSatellite: counts.addressSatellite,
-    bankCredit: counts.bankCredit,
+    ...counts,
     transportFee,
   }) : "", [counts, destination, endTime, startTime, transportFee, visitDate]);
 
@@ -156,6 +147,11 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
         <p className={local.total}>住所変更　計 <strong>{totals.addressTotal}</strong> 件</p>
       </div>
       <div className={local.countGroup}>
+        <h3>再開</h3>
+        <Stepper label="解決" value={counts.resumeResolved} onChange={value => { setCounts(current => ({ ...current, resumeResolved: value })); setStatus(""); }} />
+        <Stepper label="収納" value={counts.resumeCollected} onChange={value => { setCounts(current => ({ ...current, resumeCollected: value })); setStatus(""); }} />
+      </div>
+      <div className={local.countGroup}>
         <h3>口座・クレ</h3>
         <Stepper label="件数" value={counts.bankCredit} onChange={value => { setCounts(current => ({ ...current, bankCredit: value })); setStatus(""); }} />
       </div>
@@ -180,7 +176,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
     <RecentList title="直近 1 週間のあなたの報告" items={history.map((item) => {
           const itemTotals = calculateNhkVisitTotals(item);
           return <p key={item.id}>
-            {formatCompactVisitDate(item.visit_date)}（{weekdayLabel(item.visit_date)}）{item.destination}　{item.start_time}〜{item.end_time}　新規{itemTotals.newTotal}・住所{itemTotals.addressTotal}・口座{item.bankCredit}　交通費{item.transport_fee}
+            {formatCompactVisitDate(item.visit_date)}（{weekdayLabel(item.visit_date)}）{item.destination}　{item.start_time}〜{item.end_time}　新規{itemTotals.newTotal}・住所{itemTotals.addressTotal}・再開 解決{item.resumeResolved}/収納{item.resumeCollected}・口座{item.bankCredit}　交通費{item.transport_fee}
           </p>;
         })} />
   </FormPage>;

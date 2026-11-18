@@ -9,6 +9,8 @@ export type NhkVisitSummaryRow = {
   new_satellite: number;
   address_ground: number;
   address_satellite: number;
+  resume_resolved: number;
+  resume_collected: number;
   bank_credit: number;
   employee_number?: string | null;
   employee_name: string;
@@ -21,6 +23,8 @@ export type NhkVisitTotals = {
   addressGround: number;
   addressSatellite: number;
   addressTotal: number;
+  resumeResolved: number;
+  resumeCollected: number;
   bankCredit: number;
   contractTotal: number;
 };
@@ -85,7 +89,7 @@ function durationHours(startTime: string, endTime: string) {
 }
 
 function emptyTotals(): NhkVisitTotals {
-  return { newGround: 0, newSatellite: 0, newTotal: 0, addressGround: 0, addressSatellite: 0, addressTotal: 0, bankCredit: 0, contractTotal: 0 };
+  return { newGround: 0, newSatellite: 0, newTotal: 0, addressGround: 0, addressSatellite: 0, addressTotal: 0, resumeResolved: 0, resumeCollected: 0, bankCredit: 0, contractTotal: 0 };
 }
 
 function addToTotals(totals: NhkVisitTotals, row: NhkVisitSummaryRow) {
@@ -102,6 +106,8 @@ function addToTotals(totals: NhkVisitTotals, row: NhkVisitSummaryRow) {
   totals.addressGround += Number(row.address_ground) || 0;
   totals.addressSatellite += Number(row.address_satellite) || 0;
   totals.addressTotal += rowTotals.addressTotal;
+  totals.resumeResolved += Number(row.resume_resolved) || 0;
+  totals.resumeCollected += Number(row.resume_collected) || 0;
   totals.bankCredit += Number(row.bank_credit) || 0;
   totals.contractTotal += rowTotals.contractTotal;
 }
@@ -247,6 +253,10 @@ function detailText(total: number, ground: number, satellite: number) {
   return total > 0 ? `${total}（地上${ground}・衛星${satellite}）` : "0";
 }
 
+function resumeText(totals: NhkVisitTotals) {
+  return `再開 解決${totals.resumeResolved}・収納${totals.resumeCollected}`;
+}
+
 export function buildNhkVisitChatworkSummary(rows: NhkVisitSummaryRow[], date: string) {
   const day = summarizeDay(rows, date);
   const month = summarizeMonth(rows, date.slice(0, 7));
@@ -260,14 +270,10 @@ export function buildNhkVisitChatworkSummary(rows: NhkVisitSummaryRow[], date: s
     lines.push(`■ 本日の報告　${day.reportPeople} 人`, "");
     for (const person of day.people) {
       lines.push(`${person.employeeName}　${person.destination}　${person.startTime}-${person.endTime}`);
-      if (person.contractTotal === 0) {
-        lines.push("　新規 0／住所変更 0／口座・クレ 0　＝ 0 件");
-      } else {
-        lines.push(`　新規 ${detailText(person.newTotal, person.newGround, person.newSatellite)}／住所変更 ${detailText(person.addressTotal, person.addressGround, person.addressSatellite)}／口座・クレ ${person.bankCredit}　＝ ${person.contractTotal} 件`);
-      }
+      lines.push(`　新規 ${detailText(person.newTotal, person.newGround, person.newSatellite)}／住所変更 ${detailText(person.addressTotal, person.addressGround, person.addressSatellite)}／${resumeText(person)}／口座・クレ ${person.bankCredit}　＝ ${person.contractTotal} 件`);
     }
-    lines.push("", `本日の合計　新規 ${day.totals.newTotal}・住所変更 ${day.totals.addressTotal}・口座クレ ${day.totals.bankCredit}　＝ ${day.totals.contractTotal} 件`);
   }
+  lines.push("", `本日の合計　新規 ${day.totals.newTotal}・住所変更 ${day.totals.addressTotal}・${resumeText(day.totals)}・口座クレ ${day.totals.bankCredit}　＝ ${day.totals.contractTotal} 件`);
 
   lines.push("", `■ 今月の累計（${monthRange(date)}）`);
   lines.push(month.people.length > 0 ? month.people.map((person) => `${person.employeeName}　${person.contractTotal} 件`).join("／") : "まだ報告はありません");
@@ -291,14 +297,14 @@ export function buildNhkVisitLineDailySummary(rows: NhkVisitSummaryRow[], date: 
   } else {
     lines.push(`本日の報告 ${day.reportPeople} 人`);
     for (const person of day.people) {
-      if (person.contractTotal === 0) {
-        lines.push(`${person.employeeName}　${person.destination}　0件`);
+      if (person.contractTotal === 0 && person.resumeResolved === 0 && person.resumeCollected === 0) {
+        lines.push(`${person.employeeName}　${person.destination}　0件・${resumeText(person)}`);
       } else {
-        lines.push(`${person.employeeName}　${person.destination}　新規${person.newTotal}・住所${person.addressTotal}・口座${person.bankCredit}＝${person.contractTotal}件`);
+        lines.push(`${person.employeeName}　${person.destination}　新規${person.newTotal}・住所${person.addressTotal}・${resumeText(person)}・口座${person.bankCredit}＝${person.contractTotal}件`);
       }
     }
   }
-  lines.push("", `本日の合計 ${day.totals.contractTotal} 件`);
+  lines.push("", `本日の合計 ${day.totals.contractTotal} 件・${resumeText(day.totals)}`);
   lines.push(`今月の累計 ${month.total} 件（1日あたり ${average.toFixed(1)} 件）`);
   const body = lines.join("\n");
   return body.length > 5000 ? `${body.slice(0, 4992)}…（以下省略）` : body;

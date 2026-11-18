@@ -1,17 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), redirect: mocks.redirect }));
-vi.mock("@/app/system/forms/nhk-visit/NhkVisitClient", () => ({
-  default: ({ submitterName, employeeNumber, mobile }: { submitterName: string; employeeNumber: string; mobile?: boolean }) => (
-    <div data-testid="nhk-visit-client" data-mobile={String(mobile)}>
-      {submitterName}/{employeeNumber}
-    </div>
-  ),
-}));
 
 import MobileNhkVisitPage from "./page";
 
@@ -33,6 +26,10 @@ describe("/m/nhk page", () => {
   beforeEach(() => {
     mocks.createServerClient.mockReset();
     mocks.redirect.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("redirects unauthenticated users back to the mobile form", async () => {
@@ -72,10 +69,15 @@ describe("/m/nhk page", () => {
     });
     mocks.createServerClient.mockResolvedValue(supabase);
 
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ ok: true, reports: [] }));
     render(await MobileNhkVisitPage());
+    await screen.findByText("まだありません");
 
     expect(supabase.query.select).toHaveBeenCalledWith("name,employee_number,garden_role,is_active,termination_date,deleted_at");
-    expect(screen.getByTestId("nhk-visit-client")).toHaveAttribute("data-mobile", "true");
-    expect(screen.getByTestId("nhk-visit-client")).toHaveTextContent("桐井 大輔/5678");
+    expect(screen.getByText("桐井 大輔 さん")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "送信する" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "再開" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "解決を増やす" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "収納を増やす" })).toBeInTheDocument();
   });
 });

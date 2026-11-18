@@ -10,6 +10,8 @@ export type NhkVisitCounts = {
   newSatellite: number;
   addressGround: number;
   addressSatellite: number;
+  resumeResolved: number;
+  resumeCollected: number;
   bankCredit: number;
 };
 
@@ -31,7 +33,7 @@ export function formatCompactVisitDate(value: string) {
   return `${month}/${day}`;
 }
 
-export function calculateNhkVisitTotals(input: NhkVisitCounts) {
+export function calculateNhkVisitTotals(input: Omit<NhkVisitCounts, "resumeResolved" | "resumeCollected">) {
   const newTotal = input.newGround + input.newSatellite;
   const addressTotal = input.addressGround + input.addressSatellite;
   return {
@@ -51,6 +53,7 @@ export function buildNhkVisitReportMessage(input: NhkVisitReportMessageInput) {
     "【成約件数】",
     `　■新規　${totals.newTotal}件（地上${input.newGround}件、衛星${input.newSatellite}件）`,
     `　■住所変更　${totals.addressTotal}件（地上${input.addressGround}件、衛星${input.addressSatellite}件）`,
+    `　■再開　解決${input.resumeResolved}件、収納${input.resumeCollected}口`,
     `　■口座・クレ　${input.bankCredit}件`,
     `【交通費】${input.transportFee}`,
   ].join("\n");

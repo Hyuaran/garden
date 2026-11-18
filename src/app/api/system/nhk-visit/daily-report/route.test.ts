@@ -45,6 +45,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 const sampleRow = {
   visit_date: "2026-09-24", start_time: "09:30", end_time: "18:00", destination: "NHK奈良",
   new_ground: 1, new_satellite: 0, address_ground: 0, address_satellite: 0, bank_credit: 0,
+  resume_resolved: 2, resume_collected: 3,
   employee_number: "0008", employee_name: "東海林 美琴",
 };
 
@@ -107,7 +108,7 @@ describe("NHK visit daily report route", () => {
   it("sends Chatwork message and writes a success log", async () => {
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect(mocks.sendMessage).toHaveBeenCalledWith("dev-room", expect.stringContaining("NHK訪問業務 集計"));
+    expect(mocks.sendMessage).toHaveBeenCalledWith("dev-room", expect.stringContaining("再開 解決2・収納3"));
     expect(mocks.inserts).toHaveLength(1);
     expect(mocks.inserts[0]).toMatchObject({ report_date: "2026-09-24", destination: "chatwork:dev-room", succeeded: true });
   });
