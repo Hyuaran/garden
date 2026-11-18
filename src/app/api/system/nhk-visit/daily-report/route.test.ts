@@ -108,7 +108,7 @@ describe("NHK visit daily report route", () => {
   it("sends Chatwork message and writes a success log", async () => {
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect(mocks.sendMessage).toHaveBeenCalledWith("dev-room", expect.stringContaining("再開 解決2・収納3"));
+    expect(mocks.sendMessage).toHaveBeenCalledWith("dev-room", expect.stringContaining("再開 5（解決2・収納3）"));
     expect(mocks.inserts).toHaveLength(1);
     expect(mocks.inserts[0]).toMatchObject({ report_date: "2026-09-24", destination: "chatwork:dev-room", succeeded: true });
   });

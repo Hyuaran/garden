@@ -134,7 +134,7 @@ describe("nhk visit route", () => {
 
     expect(response.status).toBe(200);
     expect(admin.insert).toHaveBeenCalledWith(expect.objectContaining({ resume_resolved: 2, resume_collected: 4 }));
-    expect((await response.json()).message).toContain("　■再開　解決2件、収納4口");
+    expect((await response.json()).message).toContain("　■再開　6件（解決2件、収納4口）");
     expect(mocks.createRecord).toHaveBeenCalledWith(241, expect.any(String), expect.objectContaining({
       再開_解決: { value: 2 },
       再開_収納: { value: 4 },
@@ -155,7 +155,7 @@ describe("nhk visit route", () => {
     expect(body.kintoneStatus).toBe("pending");
     expect(body.message).toContain("【派遣先】NHK奈良");
     expect(admin.insert).toHaveBeenCalledWith(expect.objectContaining({ resume_resolved: 0, resume_collected: 0 }));
-    expect(body.message).toContain("　■再開　解決0件、収納0口");
+    expect(body.message).toContain("　■再開　0件（解決0件、収納0口）");
     expect(admin.updates[0]).toMatchObject({ kintone_error: "kintone_500" });
   });
 });

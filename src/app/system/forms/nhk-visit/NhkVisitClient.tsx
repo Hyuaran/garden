@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   buildNhkVisitReportMessage,
+  calculateNhkVisitResumeTotal,
   calculateNhkVisitTotals,
   formatCompactVisitDate,
   NHK_VISIT_DESTINATIONS,
@@ -150,6 +151,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
         <h3>再開</h3>
         <Stepper label="解決" value={counts.resumeResolved} onChange={value => { setCounts(current => ({ ...current, resumeResolved: value })); setStatus(""); }} />
         <Stepper label="収納" value={counts.resumeCollected} onChange={value => { setCounts(current => ({ ...current, resumeCollected: value })); setStatus(""); }} />
+        <p className={local.total}>再開　計 <strong>{calculateNhkVisitResumeTotal(counts)}</strong> 件</p>
       </div>
       <div className={local.countGroup}>
         <h3>口座・クレ</h3>
@@ -176,7 +178,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
     <RecentList title="直近 1 週間のあなたの報告" items={history.map((item) => {
           const itemTotals = calculateNhkVisitTotals(item);
           return <p key={item.id}>
-            {formatCompactVisitDate(item.visit_date)}（{weekdayLabel(item.visit_date)}）{item.destination}　{item.start_time}〜{item.end_time}　新規{itemTotals.newTotal}・住所{itemTotals.addressTotal}・再開 解決{item.resumeResolved}/収納{item.resumeCollected}・口座{item.bankCredit}　交通費{item.transport_fee}
+            {formatCompactVisitDate(item.visit_date)}（{weekdayLabel(item.visit_date)}）{item.destination}　{item.start_time}〜{item.end_time}　新規{itemTotals.newTotal}・住所{itemTotals.addressTotal}・再開{calculateNhkVisitResumeTotal(item)}・口座{item.bankCredit}　交通費{item.transport_fee}
           </p>;
         })} />
   </FormPage>;

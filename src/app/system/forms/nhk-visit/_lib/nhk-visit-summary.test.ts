@@ -81,8 +81,8 @@ describe("nhk visit summary", () => {
     expect(body).toContain("[info][title]NHK訪問業務 集計（2026/09/24 木）[/title]");
     expect(body).toContain("■ 本日の報告　2 人");
     expect(body).toContain("山田 太郎　NHK奈良　09:30-18:00");
-    expect(body).toContain("新規 2（地上1・衛星1）／住所変更 0／再開 解決0・収納0／口座・クレ 1　＝ 3 件");
-    expect(body).toContain("本日の合計　新規 2・住所変更 2・再開 解決0・収納0・口座クレ 1　＝ 5 件");
+    expect(body).toContain("新規 2（地上1・衛星1）／住所変更 0／再開 0（解決0・収納0）／口座・クレ 1　＝ 3 件");
+    expect(body).toContain("本日の合計　新規 2・住所変更 2・再開 0（解決0・収納0）・口座クレ 1　＝ 5 件");
     expect(body).toContain("[/info]");
   });
 
@@ -92,22 +92,22 @@ describe("nhk visit summary", () => {
     const chatwork = buildNhkVisitChatworkSummary(rows, date);
     const line = buildNhkVisitLineDailySummary(rows, date);
 
-    expect(chatwork).toContain("新規 0／住所変更 0／再開 解決2・収納7／口座・クレ 0　＝ 0 件");
-    expect(chatwork).toContain("本日の合計　新規 0・住所変更 0・再開 解決2・収納7・口座クレ 0　＝ 0 件");
-    expect(line).toContain("山田 太郎　NHK奈良　新規0・住所0・再開 解決2・収納7・口座0＝0件");
-    expect(line).toContain("本日の合計 0 件・再開 解決2・収納7");
+    expect(chatwork).toContain("新規 0／住所変更 0／再開 9（解決2・収納7）／口座・クレ 0　＝ 0 件");
+    expect(chatwork).toContain("本日の合計　新規 0・住所変更 0・再開 9（解決2・収納7）・口座クレ 0　＝ 0 件");
+    expect(line).toContain("山田 太郎　NHK奈良　新規0・住所0・再開 9（解決2・収納7）・口座0＝0件");
+    expect(line).toContain("本日の合計 0 件・再開 9（解決2・収納7）");
     expect(line).toContain("今月の累計 0 件（1日あたり 0.0 件）");
     expect(analyze(rows, date).monthEndProjection).toBe(0);
   });
 
   it("shows zero resume counts on days without reports", () => {
     const date = "2026-09-24";
-    expect(buildNhkVisitChatworkSummary([], date)).toContain("本日の合計　新規 0・住所変更 0・再開 解決0・収納0・口座クレ 0　＝ 0 件");
-    expect(buildNhkVisitLineDailySummary([], date)).toContain("本日の合計 0 件・再開 解決0・収納0");
-    expect(buildNhkVisitLineDailySummary([row({})], date)).toContain("山田 太郎　NHK奈良　0件・再開 解決0・収納0");
+    expect(buildNhkVisitChatworkSummary([], date)).toContain("本日の合計　新規 0・住所変更 0・再開 0（解決0・収納0）・口座クレ 0　＝ 0 件");
+    expect(buildNhkVisitLineDailySummary([], date)).toContain("本日の合計 0 件・再開 0（解決0・収納0）");
+    expect(buildNhkVisitLineDailySummary([row({})], date)).toContain("山田 太郎　NHK奈良　0件・再開 0（解決0・収納0）");
   });
 
   it("builds short LINE body", () => {
-    expect(buildNhkVisitLineDailySummary([row({ new_ground: 2, bank_credit: 1 })], "2026-09-24")).toContain("山田 太郎　NHK奈良　新規2・住所0・再開 解決0・収納0・口座1＝3件");
+    expect(buildNhkVisitLineDailySummary([row({ new_ground: 2, bank_credit: 1 })], "2026-09-24")).toContain("山田 太郎　NHK奈良　新規2・住所0・再開 0（解決0・収納0）・口座1＝3件");
   });
 });

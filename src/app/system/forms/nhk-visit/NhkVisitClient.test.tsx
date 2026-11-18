@@ -46,7 +46,7 @@ describe("NhkVisitClient", () => {
             "【成約件数】",
             "　■新規　1件（地上1件、衛星0件）",
             "　■住所変更　0件（地上0件、衛星0件）",
-            "　■再開　解決1件、収納2口",
+            "　■再開　3件（解決1件、収納2口）",
             "　■口座・クレ　0件",
             "【交通費】あり",
           ].join("\n"),
@@ -68,7 +68,7 @@ describe("NhkVisitClient", () => {
     expect(await screen.findByText("送信しました（Kintone にも記録しました）")).toBeInTheDocument();
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
     expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ resumeResolved: 1, resumeCollected: 2 });
-    expect(screen.getByText((content) => content.includes("■再開 解決1件、収納2口"))).toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes("■再開 3件（解決1件、収納2口）"))).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "コピー" }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("【日付】2026/09/24")));
@@ -82,8 +82,8 @@ describe("NhkVisitClient", () => {
     }));
     render(<NhkVisitClient submitterName="東海林 美琴" employeeNumber="1234" />);
 
-    expect(await screen.findByText(/住所0・再開 解決2\/収納3・口座0/)).toBeInTheDocument();
-    expect(screen.getByText(/住所0・再開 解決0\/収納0・口座0/)).toBeInTheDocument();
+    expect(await screen.findByText(/住所0・再開5・口座0/)).toBeInTheDocument();
+    expect(screen.getByText(/住所0・再開0・口座0/)).toBeInTheDocument();
   });
 
   it("uses the same submit endpoint in mobile view without breadcrumbs", async () => {

@@ -254,7 +254,7 @@ function detailText(total: number, ground: number, satellite: number) {
 }
 
 function resumeText(totals: NhkVisitTotals) {
-  return `再開 解決${totals.resumeResolved}・収納${totals.resumeCollected}`;
+  return `再開 ${totals.resumeResolved + totals.resumeCollected}（解決${totals.resumeResolved}・収納${totals.resumeCollected}）`;
 }
 
 export function buildNhkVisitChatworkSummary(rows: NhkVisitSummaryRow[], date: string) {

@@ -101,6 +101,7 @@ function kintoneRecord(input: ValidInput, inserted: { id: string; submitted_at: 
     住所変更_計: { value: totals.addressTotal },
     再開_解決: { value: input.resumeResolved },
     再開_収納: { value: input.resumeCollected },
+    再開_計: { value: input.resumeResolved + input.resumeCollected },
     口座クレ: { value: input.bankCredit },
     成約_合計: { value: totals.contractTotal },
     交通費: { value: input.transportFee },
