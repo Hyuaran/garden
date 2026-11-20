@@ -30,8 +30,11 @@ export async function GET(request: Request) {
     }
     // 「超えました」と「超える見込み」が同時に立つときは、知らせは「超えました」の 1 通だけ（記録は両方）
     const spentOverNow = result.changes.some(c => c.key === "spent_over" && c.active);
+    // 「超えた」「超える見込み」が同時に落ち着いたときも、知らせは 1 通だけ（記録は両方）
+    const bothCalm = ["spent_over", "projected_over"].every(k => result.changes.some(c => c.key === k && !c.active));
     for (const change of result.changes) {
-      const quiet = spentOverNow && change.key === "projected_over" && change.active;
+      const quiet = (spentOverNow && change.key === "projected_over" && change.active)
+        || (bothCalm && change.key === "projected_over" && !change.active);
       if (!quiet && !await sendGardenNotice(usageNotice(result, change, now))) throw new Error("Notice unavailable");
       const { error: saveError } = await db.from("system_vercel_usage_alerts").upsert(change);
       if (saveError) throw saveError;

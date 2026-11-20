@@ -67,3 +67,13 @@ it("counts EffectiveCost (before the included credit) instead of BilledCost", as
   const result = await fetchBillingCharges(new Date("2026-10-20Z"), new Date("2026-10-28Z"), "test-billing-token", request);
   expect(result.rows).toEqual([{ day: "2026-10-23", service: "Fluid Provisioned Memory", usage: 75, unit: "gigabyte-hour", cost_usd: 1.25 }]);
 });
+it("says a new billing period started instead of 'calmed' on the first day, and writes 使用なし when empty",()=>{
+  const first=new Date("2026-11-20T09:05:00Z");
+  const prev=[{key:"spent_over",active:true,since:"2026-11-01T00:00:00Z",last_notified_at:"2026-11-01T00:00:00Z",detail:{}}] as never;
+  const r=judgeUsage([],prev,first);
+  const change=r.changes.find(c=>c.key==="spent_over")!;
+  const text=usageNotice(r,change,first);
+  expect(text).toContain("新しい請求期間が始まりました");
+  expect(text).not.toContain("落ち着きました");
+  expect(text).toContain("多い順：使用なし");
+});
