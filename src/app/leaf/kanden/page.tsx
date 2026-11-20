@@ -20,11 +20,10 @@ async function Page({ searchParams }: Props) {
   const search = typeof query.q === "string" ? query.q : "";
   let list: CaseList | null = null;
   try {
-    if (tab !== "forms") {
-      const { data, error } = await getSupabaseAdmin().rpc("leaf_kanden_case_list", { p_year: year, p_tab: tab });
-      if (error) console.error("leaf_kanden_case_list", error.code);
-      else list = data as CaseList;
-    }
+    // フォーム受付のタブでも、ほかのタブの件数を出すために一覧の件数を読む（受付の年度＝同じ年度）
+    const { data, error } = await getSupabaseAdmin().rpc("leaf_kanden_case_list", { p_year: year, p_tab: tab === "forms" ? "active" : tab });
+    if (error) console.error("leaf_kanden_case_list", error.code);
+    else list = data as CaseList;
   } catch {
     console.error("leaf_kanden_case_list: read failed");
   }

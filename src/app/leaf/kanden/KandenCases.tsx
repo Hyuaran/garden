@@ -75,7 +75,7 @@ export default function KandenCases({ list, year, currentYear, tab, search, inta
             {item.label} {list && <StatusBadge muted>{formatCount.format(list.counts[item.key])}</StatusBadge>}
           </Link>
         ))}
-        <Link href={caseListHref(year, "forms", search)} prefetch={false} aria-current={isIntake ? "page" : undefined}>フォーム受付</Link>
+        <Link href={caseListHref(year, "forms", search)} prefetch={false} aria-current={isIntake ? "page" : undefined}>フォーム受付 {isIntake && intake && <StatusBadge muted>{formatCount.format(intake.length)}</StatusBadge>}</Link>
       </SystemTabs>
       {saved && <ResultMessage success>画像保存のパスワードを設定しました。</ResultMessage>}
       {isIntake ? <>
