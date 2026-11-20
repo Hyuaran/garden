@@ -51,3 +51,11 @@ it("reads stored images in object-key order and makes one image-sized page per p
     { width: 8, height: 12 },
   ]);
 });
+
+it("builds a PDF from a .jpg-named file whose content is PNG", async () => {
+  const { buildPdf } = await import("./import-timetree.core");
+  const sharp = (await import("sharp")).default;
+  const png = new Uint8Array(await sharp({ create: { width: 4, height: 4, channels: 3, background: "#fff" } }).png().toBuffer());
+  const pdf = await buildPdf([{ source_key: "a", image_path: "timetree/2022/03/x/a.jpg" }], async () => png);
+  expect(pdf.byteLength).toBeGreaterThan(100);
+});

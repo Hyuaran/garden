@@ -50,10 +50,11 @@ export async function buildPdf(
     a.source_key < b.source_key ? -1 : Number(a.source_key > b.source_key));
   for (const photo of sorted) {
     const bytes = await readImage(photo.image_path);
-    const extension = photo.image_path.split(".").at(-1)?.toLowerCase();
-    const image = extension === "png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(
-      extension === "heic" ? await sharp(bytes).jpeg().toBuffer() : bytes,
-    );
+    // 拡張子ではなく中身で判断する（名前が .jpg で中身が PNG の写メが TimeTree にある・2026-11-20）
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+    const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+    const image = isPng ? await pdf.embedPng(bytes)
+      : await pdf.embedJpg(isJpeg ? bytes : await sharp(bytes).jpeg().toBuffer());
     const { width, height } = image;
     pdf.addPage([width, height]).drawImage(image, { x: 0, y: 0, width, height });
   }
