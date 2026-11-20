@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
 const { applyJissekiRules } = createRequire(import.meta.url)("./garden-jisseki-rules.js") as {
-  applyJissekiRules: (values: Record<string, string>) => { 実績日: string; 実績可否: string };
+  applyJissekiRules: (values: Record<string, string | string[]>) => { 実績日: string; 実績可否: string; 管理会社まち: string[] };
 };
 
 describe("顧客一覧の実績ルール", () => {
@@ -22,8 +22,22 @@ describe("顧客一覧の実績ルール", () => {
     ["後確前にキャンセル", { 受注日: order, キャンセル日: retry }, order, "否"],
     ["立ち上げ後にキャンセル", { 受注日: order, 立ち上げ日: launch, キャンセル日: launch }, launch, "否"],
     ["後確後にキャンセル", { 立ち上げ日: launch, 後確OK日: launch, キャンセル日: launch }, launch, "可"],
-    ["管理会社まちを優先", { 受注日: order, 立ち上げ日: launch, 商材詳細ステータス: "管理会社まち" }, "", "否"],
+    ["管理会社まちを優先", { 受注日: order, 立ち上げ日: launch, 管理会社まち: ["管理会社まち"] }, "", "否"],
   ] as const)("%s", (_name, values, date, eligibility) => {
-    expect(applyJissekiRules(values)).toEqual({ 実績日: date, 実績可否: eligibility });
+    expect(applyJissekiRules(values as Record<string, string | string[]>)).toMatchObject({ 実績日: date, 実績可否: eligibility });
+  });
+
+  it("管理会社回収日を入れたら、まちのチェックが外れて可・実績日は回収日", () => {
+    expect(applyJissekiRules({ 受注日: order, 管理会社まち: ["管理会社まち"], 管理会社回収日: launch }))
+      .toEqual({ 実績日: launch, 実績可否: "可", 管理会社まち: [] });
+  });
+  it("立ち上げと回収の両方なら遅い方の日", () => {
+    expect(applyJissekiRules({ 受注日: order, 立ち上げ日: retry, 管理会社回収日: launch })).toMatchObject({ 実績日: launch, 実績可否: "可" });
+  });
+  it("回収のあとにリトライなら否", () => {
+    expect(applyJissekiRules({ 受注日: order, 管理会社回収日: retry, リトライ日: launch })).toMatchObject({ 実績可否: "否" });
+  });
+  it("回収しても後確OK日なしのキャンセルは否", () => {
+    expect(applyJissekiRules({ 受注日: order, 管理会社回収日: launch, キャンセル日: launch })).toMatchObject({ 実績日: launch, 実績可否: "否" });
   });
 });

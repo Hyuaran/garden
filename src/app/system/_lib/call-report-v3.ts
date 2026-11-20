@@ -40,7 +40,7 @@ export function reportRanking(rows: EmployeeCallMetricRow[]) {
 
 // キャンセルを含める決定になった場合はここだけ切り替える。
 export const EXCLUDE_CANCELLED_REPORT_ORDERS = true;
-type Order = PointOrder & { kind: "today" | "tachiage" };
+type Order = PointOrder & { kind: "today" | "tachiage" | "kaishu" };
 const text = (r: KintoneRecord, key: string) => String(fieldValue(r, key) ?? "").trim();
 export function reportOrders(records: KintoneRecord[], date: string, credit = false): Order[] {
   return records.flatMap(r => {
@@ -48,8 +48,12 @@ export function reportOrders(records: KintoneRecord[], date: string, credit = fa
     if (orderDate !== date || (!credit && text(r, "実績可否") !== "可")) return [];
     const order = extractPointOrder(r, orderDate, credit);
     if (!order?.channel) return [];
+    // 実績日が管理会社回収日なら「管理会社回収」、立ち上げ日なら「立ち上げ」、それ以外は当日受注。
+    const collectedDate = text(r, "管理会社回収日");
     const launchDate = text(r, "立ち上げ日");
-    const kind = !credit && launchDate && launchDate === orderDate ? "tachiage" : "today";
+    const kind: Order["kind"] = credit ? "today"
+      : collectedDate && collectedDate === orderDate ? "kaishu"
+      : launchDate && launchDate === orderDate ? "tachiage" : "today";
     return [{ ...order, kind }];
   });
 }
@@ -89,14 +93,16 @@ export function reportPoints(orders: Order[], rows: PointRow[]) {
     total = roundPoints(total + subtotal);
     return subtotal ? [formatLine(CHANNELS[channel], subtotal, details)] : [];
   });
-  let launchTotal = 0;
-  const launchDetails = channels.flatMap(channel => {
-    const { subtotal, details } = aggregate(channel, "tachiage", `${CHANNELS[channel]}-`);
-    launchTotal = roundPoints(launchTotal + subtotal);
-    return details;
-  });
-  total = roundPoints(total + launchTotal);
-  if (launchTotal) buckets.push(formatLine("立ち上げ", launchTotal, launchDetails));
+  for (const [kind, label] of [["tachiage", "立ち上げ"], ["kaishu", "管理会社回収"]] as const) {
+    let kindTotal = 0;
+    const kindDetails = channels.flatMap(channel => {
+      const { subtotal, details } = aggregate(channel, kind, `${CHANNELS[channel]}-`);
+      kindTotal = roundPoints(kindTotal + subtotal);
+      return details;
+    });
+    total = roundPoints(total + kindTotal);
+    if (kindTotal) buckets.push(formatLine(label, kindTotal, kindDetails));
+  }
   return {
     text: `\n\n【テレマ全体】\n${[`合計件数：${total.toFixed(1)}P`, ...buckets].join("\n")}`,
     warnings: [...missing].map(([name, count]) => `⚠ポイント表に無い商材：${name} ${count}件`),

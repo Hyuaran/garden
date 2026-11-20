@@ -61,6 +61,17 @@ describe("本文v3の集計", () => {
     const result = reportPoints(orders, [row("コラボ", "hakuchi", "collab", 1.1), row("NURO", "lp", "nuro", 1.4)]);
     expect(result.text).toBe("\n\n【テレマ全体】\n合計件数：3.6P\n白地：1.1P（コラボ1.1）\n立ち上げ：2.5P（白地-コラボ1.1／LP-NURO1.4）");
   });
+  it("管理会社回収の受注は「管理会社回収」の行に出し、合計に含める", () => {
+    const customer = (extra: Record<string, string>) => record({ 受注日: "2026-11-09", 実績日: date, 実績可否: "可", 商材名区分2: "コラボ", 事業名: "自社", ...extra });
+    const orders = reportOrders([
+      customer({ 管理会社回収日: date }),
+      customer({ 立ち上げ日: date }),
+      customer({ 立ち上げ日: "2026-11-09", 管理会社回収日: date, B_リスト名: "WEB_ヒカリのプロ", 商材名区分2: "NURO" }),
+    ], date);
+    expect(orders.map(o => o.kind)).toEqual(["kaishu", "tachiage", "kaishu"]);
+    const result = reportPoints(orders, [row("コラボ", "hakuchi", "collab", 1.1), row("NURO", "lp", "nuro", 1.2)]);
+    expect(result.text).toBe("\n\n【テレマ全体】\n合計件数：3.4P\n立ち上げ：1.1P（白地-コラボ1.1）\n管理会社回収：2.3P（白地-コラボ1.1／LP-NURO1.2）");
+  });
   it("ポイント表の合計付与Pと配信の内訳を使い、ゼロを消し不明商材を警告する", () => {
     const orders = reportOrders([record({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "コラボ", 事業名: "自社" }), record({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "au光プラス", 事業名: "自社" })], date);
     const result = reportPoints(orders, [row("コラボ", "hakuchi", "collab", 1.2)]);
