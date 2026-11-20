@@ -22,7 +22,7 @@ export const SYSTEM_VIEW_SCOPES: SystemViewScope[] = [
   scope("home", "ホーム"), scope("docs", "資料"), scope("manuals", "マニュアル"),
   scope("mypage", "自分の情報"), scope("attendance", "勤怠打刻"), scope("shift", "シフト"), scope("zenkaku", "前確依頼"),
   scope("call-metrics", "テレマ コール集計", staff), scope("innovera-calls", "INNOVERA履歴・録音"),
-  scope("forms", "業務管理ツール"), scope("contracts", "契約書管理", manager),
+  scope("forms", "業務管理ツール"), scope("forms-kanden", "関電 申込の送信", staff), scope("contracts", "契約書管理", manager),
   scope("haken", "派遣管理", manager),
   scope("product-points", "付与ポイント表", manager),
   scope("sites", "コーポレートサイト", staff), scope("deliveries", "自動配信"),

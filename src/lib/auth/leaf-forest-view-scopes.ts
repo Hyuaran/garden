@@ -5,6 +5,7 @@ import type { SystemViewScope } from "./system-view-scopes";
 export const LEAF_FOREST_PAGES = [
   ["leaf-overview", "/leaf", "Leaf"],
   ["leaf-kanden", "/leaf/kanden", "関電 案件一覧"],
+  ["leaf-kanden-entry", "/leaf/kanden/entry", "関電 事務入力"],
   ["soil-overview", "/soil", "Soil"],
   ["seed-overview", "/seed", "Seed"],
   ["fruit-overview", "/fruit", "Fruit"],
@@ -27,7 +28,7 @@ export const LEAF_FOREST_TABS: Record<string, readonly (readonly [string, string
 };
 export const LEAF_FOREST_VIEW_SCOPES: SystemViewScope[] = LEAF_FOREST_PAGES.flatMap(([pageKey, , label]) => {
   const module = pageKey.split("-")[0] as "leaf" | "soil" | "seed" | "fruit" | "forest";
-  const minRole = pageKey === "leaf-kanden" ? "manager" : MODULE_MIN_ROLES[module];
+  const minRole = pageKey === "leaf-kanden" || pageKey === "leaf-kanden-entry" ? "manager" : MODULE_MIN_ROLES[module];
   const defaultRoles = GARDEN_ROLE_ORDER.filter(role => isRoleAtLeast(role, minRole));
   return [{ pageKey, tabKey: "", label, defaultRoles }, ...(LEAF_FOREST_TABS[pageKey] ?? []).map(([tabKey, label]) => ({ pageKey, tabKey, label, defaultRoles }))];
 });

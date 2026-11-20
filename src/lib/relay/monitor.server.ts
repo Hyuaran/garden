@@ -38,13 +38,17 @@ function recoveryBody(now: Date, downSince: string | null) {
 確認：https://garden-os.net/system/innovera[/info]`;
 }
 
-export async function sendGardenNotice(body: string) {
+export async function sendGardenNotice(body: string, signal?: AbortSignal, recipientAccountId?: string) {
   const token = process.env.CHATWORK_API_TOKEN;
   if (!token) return false;
-  await new ChatworkClient(token).sendMessage(
-    process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID || DEFAULT_CHATWORK_ROOM_ID,
-    body,
-  );
+  const client = new ChatworkClient(token, signal ? {
+    fetchImpl: (request, init) => fetch(request, { ...init, signal }),
+  } : undefined);
+  const room = recipientAccountId
+    ? (await client.getContacts()).find(contact => String(contact.account_id) === recipientAccountId)?.room_id
+    : process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID || DEFAULT_CHATWORK_ROOM_ID;
+  if (!room) return false;
+  await client.sendMessage(room, body);
   return true;
 }
 

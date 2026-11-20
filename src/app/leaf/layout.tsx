@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { canView, viewPermissionContext, ViewPermissionError } from "@/lib/auth/view-permission.server";
 import { LEAF_VIEW_SCOPES } from "@/lib/auth/leaf-view-scopes";
 import { LeafShell } from "./_components/LeafShell";
+import { japanDate } from "@/lib/notices";
+import { ENTRY_SCOPE, ENTRY_START } from "./kanden/entry/entry";
 
 export const metadata = { title: "Leaf | Garden" };
 
@@ -29,6 +31,8 @@ export default async function Layout({ children }: { children: ReactNode }) {
   const viewAccess = Object.fromEntries(await Promise.all(
     LEAF_VIEW_SCOPES.map(async scope => [scope.pageKey, await canView(scope.pageKey, "", viewer)]),
   ));
+  // 12/1 の展開までは全権管理者だけ（試し使い）
+  if (japanDate() < ENTRY_START && viewer.role !== "super_admin") viewAccess[ENTRY_SCOPE] = false;
   return (
     <LeafShell viewAccess={viewAccess} user={{ name, role: viewer.role, company: company?.company_name || "所属会社未登録" }}>
       <div className="garden-table-head-center" style={{ display: "contents" }}>{children}</div>

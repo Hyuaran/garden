@@ -1,4 +1,5 @@
 "use client";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import type { ComponentProps, ReactNode } from 'react';
@@ -29,5 +30,17 @@ export function StatusBadge({ children, muted = false }: { children: ReactNode; 
 /** 操作ボタンを横に並べる */
 export function ActionRow({ children }: { children: ReactNode }) { return <div className={styles.actionRow}>{children}</div>; }
 
-export function FieldGrid({ children }: {children: ReactNode}) { return <div className={styles.fieldGrid}>{children}</div>; }
+export function FieldGrid({ children, columns = 3 }: {children: ReactNode; columns?: 2 | 3}) { return <div className={columns === 2 ? `${styles.fieldGrid} ${styles.fieldGrid2}` : styles.fieldGrid}>{children}</div>; }
 export function FieldLabel({ label, children, required = false }: {required?: boolean; label: string; children: ReactNode}) { return <div className={styles.fieldLabel}><span>{label}{required && <span className="garden-required" aria-hidden="true">＊</span>}</span>{children}</div>; }
+
+
+export { default as FormDialog } from "@/app/system/_components/Modal/Modal";
+
+export function CheckboxField({ children, ...props }: Omit<ComponentProps<"input">, "type"> & { children: ReactNode }) {
+  return <label className="garden-radio"><input {...props} type="checkbox" /><span>{children}</span></label>;
+}
+
+export function PhotoPreview({ src, alt }: { src: string; alt: string }) {
+  /* eslint-disable-next-line @next/next/no-img-element */
+  return <img {...CLARITY_MASK} className={styles.photoPreview} src={src} alt={alt} loading="lazy" />;
+}

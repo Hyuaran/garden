@@ -45,7 +45,7 @@ export function LeafShell({ children, viewAccess, user }: {
         )}
         {visibleLeafMenus(viewAccess).map(menu => {
           const href = `/leaf/${menu.slug}`;
-          const active = pathname === href || pathname.startsWith(href + "/");
+          const active = pathname === href || (pathname.startsWith(href + "/") && pathname !== "/leaf/kanden/entry");
           return (
             <Link key={menu.slug} href={href} prefetch={false} className={active ? styles.active : undefined}
               aria-current={active ? "page" : undefined}>

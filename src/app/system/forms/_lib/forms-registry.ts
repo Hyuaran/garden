@@ -44,6 +44,11 @@ export const SYSTEM_FORMS: SystemFormDefinition[] = [
     description: "立て替えた経費・会社クレジットカードの利用を報告します。Garden に記録し、Kintone の経費一覧にも同じ内容が入ります。スマホは種類ごとに garden-os.net/m/expense/nhk（NHK）・/m/expense/nhk-kanden（関電・NHK）・/m/expense/ueda（上田基人 専用）から開けます。",
     roleLabel: "全員", minRole: "toss", icon: "document", href: "/system/forms/expense",
   },
+  {
+    slug: "kanden", name: "関電 申込の送信",
+    description: "関電の申込書の写メを添付して事務へ送ります。",
+    roleLabel: "社員以上", minRole: "staff", icon: "document", href: "/system/forms/kanden",
+  },
 ];
 
 export function getVisibleSystemForms(role: GardenRole) {

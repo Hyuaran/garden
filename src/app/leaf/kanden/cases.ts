@@ -5,6 +5,7 @@ export const CASE_TABS = [
 ] as const;
 
 export type CaseTab = typeof CASE_TABS[number]["key"];
+export type KandenTab = CaseTab | "forms";
 
 export type CaseRow = {
   id: string;
@@ -46,7 +47,7 @@ export function fiscalYear(today: Date) {
   return month < 4 ? year - 1 : year;
 }
 
-export function caseListHref(year: number, tab: CaseTab, search = "") {
+export function caseListHref(year: number, tab: KandenTab, search = "") {
   const query = new URLSearchParams({ year: String(year), tab });
   if (search) query.set("q", search);
   return `/leaf/kanden?${query}`;

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ModuleIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
 
 import { MOBILE_MODULES } from "./_lib/mobile-modules";
+import { KANDEN_ROLLOUT, japanToday } from "@/lib/leaf-kanden/rollout";
 
 export default function MobileHomePage() {
   return (
@@ -16,6 +17,7 @@ export default function MobileHomePage() {
       </header><SystemTabs />
 
       <Link href="/m/nhk" style={nhkLink}>NHK訪問業務 報告</Link>
+      {japanToday() >= KANDEN_ROLLOUT && <Link href="/m/kanden" style={nhkLink}>関電 申込の送信</Link>}
       <Link href="/p/toss/board" style={tossLink}>トスアップ一覧を見る</Link>
 
       <section aria-label="Garden 12モジュール" style={grid}>

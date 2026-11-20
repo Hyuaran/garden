@@ -1,0 +1,44 @@
+.columns {
+  display: grid;
+  /* 一覧は細く・入力を広く（1384px で日付が切れないように） */
+  grid-template-columns: 200px minmax(420px, 1.3fr) minmax(300px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.panel {
+  min-width: 0;
+}
+
+.panel h2 {
+  text-wrap: balance;
+}
+
+.fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.statusTabs[role="tablist"] {
+  flex-wrap: wrap;
+}
+
+.panelTabs {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .columns {
+    display: block;
+  }
+
+  .panelTabs {
+    display: block;
+  }
+
+  .panel[data-active="false"] {
+    display: none;
+  }
+}

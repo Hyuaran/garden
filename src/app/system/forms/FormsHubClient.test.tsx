@@ -55,7 +55,8 @@ describe("FormsHubClient", () => {
     expect(screen.getByRole("heading", { name: "給与計算連絡" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "出勤表・シフトLINE連絡テキスト生成" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "NHK訪問業務 報告" })).toBeInTheDocument();
-    expect(screen.getAllByText("社員以上")).toHaveLength(3);
+    expect(screen.getByRole("heading", { name: "関電 申込の送信" })).toBeInTheDocument();
+    expect(screen.getAllByText("社員以上")).toHaveLength(4);
     expect(localStorage.getItem("garden.forms.viewMode")).toBe("grid");
 
     fireEvent.click(screen.getByRole("tab", { name: /^自動で動いている/ }));

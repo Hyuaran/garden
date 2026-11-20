@@ -30,8 +30,7 @@ async function main() {
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
   for (let offset = 0; offset < rows.length; offset += 1000) {
-    const { error } = await db.from("leaf_kanden_orders")
-      .upsert(rows.slice(offset, offset + 1000), { onConflict: "fm_pk" });
+    const { error } = await db.rpc("leaf_kanden_import_orders", { p_rows: rows.slice(offset, offset + 1000) });
     if (error) throw new Error(`${offset + 1} 件目からの保存に失敗しました（${error.code}）。`);
   }
 

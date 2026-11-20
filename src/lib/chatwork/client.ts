@@ -103,6 +103,10 @@ export class ChatworkClient {
     return this.request<ChatworkRoom>(`/rooms/${roomId}`);
   }
 
+  getContacts(): Promise<{ account_id: number; room_id: number }[]> {
+    return this.request("/contacts");
+  }
+
   /** POST /rooms/:room_id/messages */
   async sendMessage(
     roomId: ChatworkRoomId,

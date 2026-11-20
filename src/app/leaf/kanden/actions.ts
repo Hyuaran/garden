@@ -1,6 +1,8 @@
 "use server";
 
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { signCasePhotos, submissionDetail } from "@/lib/leaf-kanden/submissions.server";
+import { UUID } from "@/lib/leaf-kanden/submissions";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   CASE_DETAIL_ERROR, CASE_PHOTO_ERROR, DETAIL_CUSTOMER_FIELDS, DETAIL_ORDER_FIELDS,
@@ -39,7 +41,6 @@ export async function loadCaseDetail(id: string): Promise<
 
 async function readPhotos(db: ReturnType<typeof getSupabaseAdmin>, kanriNo: string) {
   const photos: CasePhoto[] = [];
-  const storage = db.storage.from("leaf-kanden-photos");
   const pageSize = 500;
 
   for (let offset = 0; ; offset += pageSize) {
@@ -48,18 +49,35 @@ async function readPhotos(db: ReturnType<typeof getSupabaseAdmin>, kanriNo: stri
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
     const paths = data.map(photo => photo.image_path).filter(path => !/\.pdf$/i.test(path));
-    if (paths.length) {
-      const { data: signed, error: signError } = await storage.createSignedUrls(paths, 3600);
-      if (signError || !signed || signed.length !== paths.length) throw new Error(CASE_PHOTO_ERROR);
-      for (const photo of signed) {
-        if (photo.error || !photo.signedUrl) throw new Error(CASE_PHOTO_ERROR);
-        photos.push({
-          url: photo.signedUrl,
-          filename: `${kanriNo}_${photos.length + 1}.jpg`,
-          jpeg: /\.jpe?g$/i.test(photo.path ?? ""),
-        });
-      }
-    }
+    photos.push(...await signCasePhotos(paths, kanriNo, photos.length));
     if (data.length < pageSize) return photos;
+  }
+}
+
+
+export async function loadSubmissionDetail(id: string) {
+  try {
+    const { viewer } = await viewPermissionContext();
+    if (!await canView("leaf-kanden", "", viewer)) return { error: "閲覧権限がありません。" };
+    if (typeof id !== "string" || !UUID.test(id)) return { error: CASE_DETAIL_ERROR };
+
+    const row = await submissionDetail(id);
+    const db = getSupabaseAdmin();
+    const images = await db.from("leaf_kanden_photos").select("image_path")
+      .eq("set_id", row.set_id).order("image_path");
+    const order = row.kanri_no ? await db.from("leaf_kanden_orders").select("id")
+      .eq("kanri_no", row.kanri_no).order("ordered_on", { ascending: false, nullsFirst: false })
+      .order("id").limit(1).maybeSingle() : null;
+    if (order?.error) throw order.error;
+
+    try {
+      if (images.error) throw images.error;
+      const photos = await signCasePhotos(images.data.map(photo => photo.image_path), row.kanri_no ?? row.id);
+      return { row, photos, orderId: order?.data?.id };
+    } catch {
+      return { row, photos: [], orderId: order?.data?.id, photoError: CASE_PHOTO_ERROR };
+    }
+  } catch {
+    return { error: CASE_DETAIL_ERROR };
   }
 }

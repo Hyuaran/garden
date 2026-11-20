@@ -21,12 +21,13 @@ const filterKeys = <T,>(column: DataColumn<T>, row: T): string[] => {
   const value = column.filterValue?.(row) ?? String(column.value(row));
   return Array.isArray(value) ? [...new Set(value.length ? value : [""])] : [value];
 };
-export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText, loading = false, footer, groupBy }: {
+export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, onRowsChange, rowClickable, emptyText, loading = false, footer, groupBy }: {
   groupBy?: (row:T)=>string; footer?: ReactNode;
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
   searchText: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
   defaultSort: Sort; defaultFilters?: Record<string, string[]>; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
   onRowClick?: (row: T) => void; rowClickable?: (row: T) => boolean;
+  onRowsChange?: (rows: T[]) => void;
   /** 0 件のときの文（既定「該当する明細はありません。」） */
   emptyText?: string;
   loading?: boolean;
@@ -91,6 +92,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
       return difference * (sort.direction === "asc" ? 1 : -1);
     });
   }, [filtered, columns, sort, groupBy]);
+  useLayoutEffect(() => { onRowsChange?.(sorted); }, [onRowsChange, sorted]);
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, pages);
   const column = columns.find(column => column.id === menu);

@@ -47,6 +47,11 @@
   object-fit: contain;
 }
 
+.photoViewport {
+  max-block-size: 68vh;
+  overflow: auto;
+}
+
 .note {
   white-space: pre-wrap;
   overflow-wrap: break-word;

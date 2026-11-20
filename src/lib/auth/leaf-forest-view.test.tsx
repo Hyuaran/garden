@@ -26,7 +26,7 @@ describe("Leaf/Soil/Seed/Fruit/Forest view permissions", () => {
   for (const scope of LEAF_FOREST_VIEW_SCOPES) for (const role of GARDEN_ROLE_ORDER) {
     it(`default ${scope.pageKey}/${scope.tabKey}: ${role}`, () => {
       const module = scope.pageKey.split("-")[0] as "leaf" | "soil" | "seed" | "fruit" | "forest";
-      const minimum = scope.pageKey === "leaf-kanden" ? "manager" : MODULE_MIN_ROLES[module];
+      const minimum = scope.pageKey === "leaf-kanden" || scope.pageKey === "leaf-kanden-entry" ? "manager" : MODULE_MIN_ROLES[module];
       expect(resolveCanView([], scope.pageKey, scope.tabKey, { employeeId: "employee", role })).toBe(isRoleAtLeast(role, minimum));
     });
   }
@@ -74,11 +74,13 @@ describe("Leaf/Soil/Seed/Fruit/Forest view permissions", () => {
   });
   it("migration matches every scope and forbids viewer delegation on private/financial screens", () => {
     const sql = readFileSync("supabase/migrations/20261027000446_leaf_soil_seed_fruit_forest_view_permissions.sql", "utf8");
-    for (const scope of LEAF_FOREST_VIEW_SCOPES.filter(scope => scope.pageKey !== "leaf-kanden")) {
+    for (const scope of LEAF_FOREST_VIEW_SCOPES.filter(scope => scope.pageKey !== "leaf-kanden" && scope.pageKey !== "leaf-kanden-entry")) {
       expect(sql).toContain(`('${scope.pageKey}','${scope.tabKey}','${scope.label}',`);
     }
     const kanden = readFileSync("supabase/migrations/20261120000537_leaf_kanden_orders.sql", "utf8");
     expect(kanden).toContain("('leaf-kanden', '', '関電 案件一覧', array['manager', 'admin', 'super_admin']");
+    const entry = readFileSync("supabase/migrations/20261120000542_leaf_kanden_entry.sql", "utf8");
+    expect(entry).toContain("('leaf-kanden-entry', '', '関電 事務入力', array['manager', 'admin', 'super_admin']");
     expect(sql).toContain("page_key not like 'leaf-%' and page_key not like 'forest-%'");
     expect(sql).not.toMatch(/for (insert|update|delete)/i);
     expect(sql).not.toContain("/p/toss");
