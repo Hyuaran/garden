@@ -3,12 +3,14 @@
 import { japanDate } from "@/lib/notices";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendGardenNotice } from "@/lib/relay/monitor.server";
+import { UUID } from "@/lib/leaf-kanden/submissions";
 import { normalizeKanriNo } from "@/lib/leaf-kanden/kanri-no";
-import { orderStatus } from "@/lib/leaf-kanden/status";
+import { LEGACY_CANCEL_REASON, orderStatus } from "@/lib/leaf-kanden/status";
 import { supplyPoint } from "@/lib/leaf-kanden/supply-point";
-import type { EntryDetail, EntryDraft, EntryTarget, SaveMode, SupplyKey } from "./entry";
-import { booleanFields, dateFields, serviceFields, textFields } from "./entry";
-import { readEntryPhotos, readEntryRecord, requireEntry, signEntryPhotos } from "./queries.server";
+import type { TableQuery } from "@/app/system/_components/DataTable/DataTable";
+import type { EntryTab, EntryDetail, EntryDraft, EntryTarget, SaveMode, SupplyKey } from "./entry";
+import { ENTRY_TABS, booleanFields, dateFields, serviceFields, textFields } from "./entry";
+import { readEntryCalendar, readEntryHistory, readEntryList, readEntryPhotos, readEntryRecord, requireEntry, signEntryPhotos } from "./queries.server";
 
 const readError = "案件を読み込めませんでした。もう一度お試しください。";
 const photoError = "写メを読み込めませんでした。もう一度お試しください。";
@@ -16,7 +18,12 @@ const saveError = "保存できませんでした。もう一度お試しくだ�
 type RecordData = Awaited<ReturnType<typeof readEntryRecord>>;
 
 function recordVersion({ order, intake }: RecordData) {
-  return order ? order.garden_updated_at ?? order.imported_at : intake?.updated_at ?? null;
+  if (!order) return intake?.updated_at ?? null;
+  const saved = order.garden_updated_at ?? order.imported_at;
+  const flow = order.flow_updated_at;
+  if (!saved || !flow) return saved ?? flow;
+  // PostgREST returns timestamps in the same time zone. Keep the database's microsecond precision.
+  return saved.split("+")[0] > flow.split("+")[0] ? saved : flow;
 }
 
 function buildDraft({ order, intake }: RecordData): EntryDraft {
@@ -33,22 +40,49 @@ function buildDraft({ order, intake }: RecordData): EntryDraft {
   return draft;
 }
 
+export async function loadEntryList(tab: EntryTab, query: TableQuery, counts = false, refreshCalendar = false) {
+  try {
+    await requireEntry();
+    if (!ENTRY_TABS.includes(tab)) return { error: readError };
+    const [list, calendar] = await Promise.all([
+      readEntryList(tab, query, counts === true),
+      refreshCalendar === true ? readEntryCalendar().catch(() => null) : undefined,
+    ]);
+    return calendar === undefined ? { list } : { list, calendar };
+  } catch {
+    return { error: readError };
+  }
+}
+
 export async function loadEntryDetail(target: EntryTarget): Promise<{ detail: EntryDetail } | { error: string }> {
   try {
     await requireEntry();
     const record = await readEntryRecord(target);
     const draft = buildDraft(record);
     const { order, intake } = record;
+    const middles = serviceFields.flatMap(([service]) => {
+      const value = draft[(service + "_supply_point") as SupplyKey];
+      return (value && supplyPoint(value).middle) || [];
+    });
+    const [history, duplicates] = await Promise.all([
+      order ? readEntryHistory(order.id) : [],
+      middles.length ? findEntryDuplicates(target.id, middles) : {},
+    ]);
     const detail: EntryDetail = {
+      history,
+      duplicates,
       draft,
-      status: orderStatus({ ...draft, status: order?.status }),
+      status: orderStatus({ ...order, ...draft }),
       version: recordVersion(record),
-      reason: order?.status === "保留" ? order.hold_reason : order?.return_reason ?? null,
+      reason: order?.status === "保留" ? order.hold_reason : order?.status === "差し戻し" ? order.return_reason : order?.cancel_reason ?? null,
       photos: [],
+      payments: order?.leaf_kanden_payments ?? [],
+      paidOn: order?.paid_on ?? null,
+      refundedOn: order?.refunded_on ?? null,
     };
     try {
       const photos = await readEntryPhotos(draft.kanri_no, intake?.set_id);
-      detail.status = orderStatus({ ...draft, status: order?.status }, photos.some(photo => photo.category === "諸元"));
+      detail.status = orderStatus({ ...order, ...draft }, photos.some(photo => photo.category === "諸元"));
       detail.photos = await signEntryPhotos(photos, draft.kanri_no ?? target.id);
     } catch {
       detail.photoError = photoError;
@@ -57,6 +91,20 @@ export async function loadEntryDetail(target: EntryTarget): Promise<{ detail: En
   } catch {
     return { error: readError };
   }
+}
+
+async function findEntryDuplicates(id: string, middles: string[]) {
+  const { data, error } = await getSupabaseAdmin().rpc("leaf_kanden_supply_duplicates", {
+    p_id: id, p_middles: middles,
+  });
+  if (error) throw error;
+  return data as EntryDetail["duplicates"];
+}
+
+export async function checkEntryDuplicates(id: string, middles: string[]) {
+  await requireEntry();
+  if (typeof id !== "string" || !UUID.test(id) || !Array.isArray(middles) || middles.length > 3 || middles.some(value => typeof value !== "string" || !/^d{14}$/.test(value))) return {};
+  return findEntryDuplicates(id, middles);
 }
 
 function validDate(date: string) {
@@ -98,6 +146,9 @@ export async function saveEntry(target: EntryTarget, version: string | null, dra
     for (const [field, label] of dateFields) {
       if (next[field] && !validDate(next[field])) return { error: `${label}を確認してください。` };
     }
+    if (next.jisseki_month && !/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(next.jisseki_month)) {
+      return { error: "実績月を確認してください。" };
+    }
     for (const [service, label] of serviceFields) {
       const key: SupplyKey = `${service}_supply_point`;
       const value = next[key];
@@ -112,9 +163,13 @@ export async function saveEntry(target: EntryTarget, version: string | null, dra
 
     const kanriNo = next.kanri_no ? normalizeKanriNo(next.kanri_no) : null;
     const photos = await readEntryPhotos(kanriNo, intake?.set_id, true);
-    const manual = mode === "hold" ? "保留" : mode === "return" ? "差し戻し" : mode === "save" ? order?.status : null;
-    const status = orderStatus({ ...next, status: manual }, photos.length > 0);
-    if ((mode === "hold" || mode === "return") && status === "キャンセル") return { error: "取消日を確認してください。" };
+    const legacyCancel = !next.mailed_on && order?.status === "キャンセル" && order.cancel_reason === LEGACY_CANCEL_REASON;
+    const manual = mode === "hold" ? "保留" : mode === "return" ? "差し戻し"
+      : legacyCancel ? "キャンセル" : mode === "save" && (order?.status === "保留" || order?.status === "差し戻し")
+        ? order.status : null;
+    const cancelReason = next.cancelled_on ? "取消日あり" : order?.refunded_on ? "戻入あり"
+      : order?.cancel_reason === "取消日あり" || (next.mailed_on && order?.cancel_reason === LEGACY_CANCEL_REASON) ? null : order?.cancel_reason ?? null;
+    const status = orderStatus({ ...order, ...next, cancel_reason: cancelReason, status: manual }, photos.length > 0);
 
     const db = getSupabaseAdmin();
     const { data, error } = await db.rpc("leaf_kanden_save_entry", {
@@ -125,7 +180,8 @@ export async function saveEntry(target: EntryTarget, version: string | null, dra
       p_patch: {
         ...next, kanri_no: kanriNo,
         ...(!order || next.kanri_no !== original.kanri_no ? { kanri_no_raw: next.kanri_no } : {}),
-        status,
+        status: manual,
+        cancel_reason: cancelReason,
         hold_reason: mode === "hold" ? reason : status === "保留" ? order?.hold_reason ?? null : null,
         return_reason: mode === "return" ? reason : status === "差し戻し" ? order?.return_reason ?? null : null,
       },

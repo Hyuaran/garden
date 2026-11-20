@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
-import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
+import DataTable, { type DataColumn, type TableQuery } from "@/app/system/_components/DataTable/DataTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
@@ -12,8 +12,8 @@ import { ActionButton, ResultMessage, StatusBadge } from "@/app/system/forms/_co
 import styles from "@/app/soil/soil.module.css";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { LEAF_MENUS } from "../_constants/menus";
-import { CASE_DETAIL_ERROR, CASE_LIST_ERROR, CASE_TABS, caseListHref, type CaseList, type CaseRow, type KandenTab } from "./cases";
-import { type Submission } from "@/lib/leaf-kanden/submissions";
+import { CASE_DETAIL_ERROR, CASE_LIST_ERROR, CASE_TABS, caseListHref, caseQuery, type CaseList, type CaseRow, type KandenTab } from "./cases";
+import { loadCaseList } from "./case-list-actions";
 import { FormIntake, PhotoPasswordSettings } from "./FormIntake";
 import CaseDialog from "./CaseDialog";
 import { loadCaseDetail } from "./actions";
@@ -27,8 +27,8 @@ const rowFields = [
   ["contract_type", "契約種別", "text", "text"],
   ["progress", "進捗", "text", "mark"],
   ["entered_on", "エントリー日", "date", "fixed"],
-  ["app_sent_on", "申込送付日", "date", "fixed"],
-  ["invoice_sent_on", "請求送付日", "date", "fixed"],
+  ["mailed_on", "郵送日", "date", "fixed"],
+  ["invoice_sent_on", "請求Excel送付日", "date", "fixed"],
   ["sales_name", "受注者", "text", "text"],
   ["clerk_name", "事務担当", "text", "text"],
 ] as const;
@@ -44,9 +44,9 @@ columns.push({
 
 const formatCount = new Intl.NumberFormat("ja-JP");
 
-export default function KandenCases({ list, year, currentYear, tab, search, intake, firstIntakeYear, settingsAllowed, linkedOrder }: {
+export default function KandenCases({ list: initialList, year, currentYear, tab, search, firstIntakeYear, settingsAllowed, linkedOrder }: {
   list: CaseList | null; year: number; currentYear: number; tab: KandenTab; search: string;
-  intake?: Submission[] | null; firstIntakeYear?: number; settingsAllowed?: boolean;
+  firstIntakeYear?: number; settingsAllowed?: boolean;
   linkedOrder?: ReturnType<typeof loadCaseDetail> | null;
 }) {
   const router = useRouter();
@@ -55,48 +55,75 @@ export default function KandenCases({ list, year, currentYear, tab, search, inta
   const [saved, setSaved] = useState(false);
   const isIntake = tab === "forms";
   const intakeYears = Array.from({ length: Math.max(1, currentYear - (firstIntakeYear ?? currentYear) + 1) }, (_, index) => currentYear - index);
+  const [view, setView] = useState<{ initial: CaseList | null; list: CaseList } | null>(null);
+  const list = view && view.initial === initialList ? view.list : initialList;
   const years = [...new Set([currentYear, year, ...(isIntake ? intakeYears : list?.years ?? [])])].sort((a, b) => b - a);
-  const intakeUpdate = intake?.reduce((latest, row) => row.updated_at > latest ? row.updated_at : latest, "") || null;
+  const [query, setQuery] = useState(() => caseQuery(tab, search));
+  const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState(false);
+  const request = useRef(0);
+  const intake = list?.intake;
+  const remote = { query, total: list?.total ?? 0, onChange: (next: TableQuery) => { void readList(next); } };
+  async function readList(next: TableQuery, counts = false) {
+    const current = ++request.current;
+    setLoading(true);
+    setListError(false);
+    try {
+      const incoming = await loadCaseList(year, tab, next, counts);
+      if (current !== request.current) return;
+      if (!incoming) { setListError(true); return; }
+      setView({ initial: initialList, list: { ...incoming,
+        counts: counts ? incoming.counts : list?.counts ?? incoming.counts,
+        years: counts ? incoming.years : list?.years ?? [],
+        updatedAt: counts ? incoming.updatedAt : list?.updatedAt ?? null,
+        intakeUpdatedAt: counts ? incoming.intakeUpdatedAt : list?.intakeUpdatedAt,
+      } });
+      setQuery({ ...next, page: incoming.page });
+    } catch {
+      if (current === request.current) setListError(true);
+    } finally {
+      if (current === request.current) setLoading(false);
+    }
+  }
   return (
     <section className={styles.pageShell}>
       <SystemBreadcrumb root={{ label: "Leaf", href: "/leaf" }} items={[{ label: "関電" }]} />
       <h1 data-page-search-heading>{LEAF_MENUS[0].title}</h1>
       <UpdatedStampRow>
-        {isIntake ? <UpdatedStamp label="フォーム受付" date={intakeUpdate} emptyText="記録なし" showSeconds
-          onRefresh={() => router.refresh()} refreshLabel="フォーム受付を読み直す" /> :
-          <UpdatedStamp label="FileMaker 取り込み" date={list?.updatedAt} emptyText="記録なし"
-            title="画面からの取り直しはできません" />}
+        {isIntake ? <UpdatedStamp label="フォーム受付" date={list?.intakeUpdatedAt} emptyText="記録なし" showSeconds
+          busy={loading} onRefresh={() => void readList(query, true)} refreshLabel="フォーム受付を読み直す" /> :
+          <UpdatedStamp label="案件一覧" date={list?.updatedAt} emptyText="記録なし"
+            onRefresh={() => void readList(query, true)} refreshLabel="案件一覧を読み直す" />}
       </UpdatedStampRow>
       <SystemTabs aria-label="関電の案件一覧" actions={settingsAllowed &&
         <ActionButton onClick={() => { setSaved(false); setSettings(true); }}>画像保存の設定</ActionButton>}>
         {CASE_TABS.map(item => (
-          <Link key={item.key} href={caseListHref(year, item.key, search)} prefetch={false}
+          <Link key={item.key} href={caseListHref(year, item.key, query.search)} prefetch={false}
             aria-current={item.key === tab ? "page" : undefined}>
-            {item.label} {list && <StatusBadge muted>{formatCount.format(list.counts[item.key])}</StatusBadge>}
+            {item.label} {list?.counts && <StatusBadge muted>{formatCount.format(list.counts[item.key])}</StatusBadge>}
           </Link>
         ))}
-        <Link href={caseListHref(year, "forms", search)} prefetch={false} aria-current={isIntake ? "page" : undefined}>フォーム受付 {isIntake && intake && <StatusBadge muted>{formatCount.format(intake.length)}</StatusBadge>}</Link>
+        <Link href={caseListHref(year, "forms", query.search)} prefetch={false} aria-current={isIntake ? "page" : undefined}>フォーム受付 {isIntake && intake && <StatusBadge muted>{formatCount.format(list?.intakeTotal ?? 0)}</StatusBadge>}</Link>
       </SystemTabs>
       {saved && <ResultMessage success>画像保存のパスワードを設定しました。</ResultMessage>}
       {isIntake ? <>
-        <ResultMessage>{!intake && "フォーム受付を読み込めませんでした。もう一度お試しください。"}</ResultMessage>
+        <ResultMessage>{(!intake || listError) && "フォーム受付を読み込めませんでした。もう一度お試しください。"}</ResultMessage>
         <BoxSelect label="送信した年度" multiple={false} value={[String(year)]}
           options={years.map(option => ({ value: String(option), label: `${option}年度` }))}
-          onChange={([value]) => { if (Number(value) !== year) router.push(caseListHref(Number(value), tab, search)); }} />
-        {intake && <FormIntake rows={intake} year={year} />}
+          onChange={([value]) => { if (Number(value) !== year) router.push(caseListHref(Number(value), tab, query.search)); }} />
+        {intake && <FormIntake rows={intake} year={year} remote={remote} loading={loading} />}
       </> : <>
-        <ResultMessage>{!list && CASE_LIST_ERROR}</ResultMessage>
+        <ResultMessage>{(!list || listError) && CASE_LIST_ERROR}</ResultMessage>
         {list && (
           <>
             <BoxSelect label="受注した年度" multiple={false} value={[String(year)]}
               options={years.map(option => ({ value: String(option), label: `${option}年度` }))}
-              onChange={([value]) => { if (Number(value) !== year) router.push(caseListHref(Number(value), tab, search)); }} />
+              onChange={([value]) => { if (Number(value) !== year) router.push(caseListHref(Number(value), tab, query.search)); }} />
             {!list.hasOrders ? <p>FileMaker の受注はまだ取り込まれていません。</p> : (
               <div {...CLARITY_MASK}>
-                <DataTable rows={list.rows} columns={columns} rowKey={row => row.id}
-                  defaultSort={{ id: "ordered_on", direction: "desc" }}
-                  summary={rows => `件数 ${formatCount.format(rows.length)} 件 ／ 写メあり ${formatCount.format(rows.filter(row => row.photo_count > 0).length)} 件`}
-                  searchText={row => [row.kanri_no, row.kanri_no_raw, row.customer_name, row.customer_kana, row.address].join(" ")}
+                <DataTable rows={list.rows} columns={columns} rowKey={row => row.id} selectedKey={selected?.row.id}
+                  defaultSort={caseQuery(tab).sort} pageSize={50} remote={remote} loading={loading}
+                  summary={() => "件数 " + formatCount.format(list.total) + " 件 ／ 写メあり " + formatCount.format(list.withPhotos) + " 件"}
                   searchPlaceholder="管理番号・お客様名・カナ・住所"
                   emptyText="該当する案件はありません。"
                   onRowClick={row => setSelected({

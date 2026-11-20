@@ -1,7 +1,7 @@
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { japanDate } from "@/lib/notices";
 import { viewPermissionContext } from "@/lib/auth/view-permission.server";
-import { ENTRY_SCOPE, ENTRY_START, ENTRY_TITLE } from "./entry";
+import { ENTRY_SCOPE, ENTRY_START, ENTRY_TITLE, entryQuery } from "./entry";
 import { readEntryPage } from "./queries.server";
 import EntryScreen from "./EntryScreen";
 import { ResultMessage } from "@/app/system/forms/_components/form-kit";
@@ -10,7 +10,7 @@ import styles from "@/app/soil/soil.module.css";
 
 export const metadata = { title: `${ENTRY_TITLE} | Garden` };
 
-async function Page() {
+async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const today = japanDate();
   const { viewer } = await viewPermissionContext();
   // 12/1 の展開までは全権管理者だけ（試し使い）
@@ -21,8 +21,10 @@ async function Page() {
       <ResultMessage success>2026年12月1日から利用できます。</ResultMessage>
     </section>;
   }
-  const { list, calendar } = await readEntryPage();
-  return <EntryScreen list={list} calendar={calendar} today={today} />;
+  const params = await searchParams;
+  const query = { ...entryQuery, search: typeof params.q === "string" ? params.q : "" };
+  const { list, calendar } = await readEntryPage(query);
+  return <EntryScreen list={list} initialQuery={query} calendar={calendar} today={today} />;
 }
 
 export default withSystemView(ENTRY_SCOPE, Page, undefined, "/leaf/kanden/entry");

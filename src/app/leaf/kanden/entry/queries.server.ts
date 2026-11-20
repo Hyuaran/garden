@@ -6,7 +6,9 @@ import { signCasePhotos } from "@/lib/leaf-kanden/submissions.server";
 import { UUID } from "@/lib/leaf-kanden/submissions";
 import { normalizeKanriNo } from "@/lib/leaf-kanden/kanri-no";
 import type { CalendarDay } from "@/lib/leaf-kanden/supply-point";
-import { ENTRY_SCOPE, ENTRY_START, type EntryDraft, type EntryList, type EntryRecord, type EntryTarget } from "./entry";
+import { paymentColumns } from "../PaymentDetails";
+import type { TableQuery } from "@/app/system/_components/DataTable/DataTable";
+import { ENTRY_SCOPE, ENTRY_START, entryQuery, type EntryTab, type EntryHistory, type EntryDraft, type EntryList, type EntryRecord, type EntryTarget } from "./entry";
 
 export async function requireEntry() {
   const context = await requireSystemView(ENTRY_SCOPE);
@@ -15,16 +17,26 @@ export async function requireEntry() {
   return context;
 }
 
-export async function readEntryPage() {
-  const db = getSupabaseAdmin();
+export async function readEntryList(tab: EntryTab, query: TableQuery, counts: boolean) {
+  const { data, error } = await getSupabaseAdmin().rpc("leaf_kanden_entry_page", {
+    p_tab: tab, p_query: query, p_counts: counts,
+  });
+  if (error) throw error;
+  return data as EntryList;
+}
+
+export async function readEntryCalendar() {
+  const { data, error } = await getSupabaseAdmin().from("kanden_calendar").select("*").limit(1000);
+  return error ? null : readCalendarDays(data);
+}
+
+export async function readEntryPage(query = entryQuery) {
   const [list, calendar] = await Promise.allSettled([
-    db.rpc("leaf_kanden_entry_list"),
-    db.from("kanden_calendar").select("*").limit(1000),
+    readEntryList("受付待ち", query, true), readEntryCalendar(),
   ]);
   return {
-    list: list.status === "fulfilled" && !list.value.error ? list.value.data as EntryList : null,
-    calendar: calendar.status === "fulfilled" && !calendar.value.error
-      ? readCalendarDays(calendar.value.data) : null,
+    list: list.status === "fulfilled" ? list.value : null,
+    calendar: calendar.status === "fulfilled" ? calendar.value : null,
   };
 }
 
@@ -58,9 +70,9 @@ export async function readEntryRecord(target: EntryTarget) {
     const intake = data as Intake;
     return { order: null, intake };
   }
-  const { data, error } = await db.from("leaf_kanden_orders").select("*").eq("id", target.id).single();
+  const { data, error } = await db.from("leaf_kanden_orders").select(`*,leaf_kanden_payments(${paymentColumns})`).eq("id", target.id).single();
   if (error) throw error;
-  const order = data as EntryRecord;
+  const order = data as unknown as EntryRecord;
   let query = db.from("leaf_kanden_submissions").select(intakeFields);
   if (order.submission_id) query = query.eq("id", order.submission_id);
   else if (order.kanri_no) query = query.eq("kanri_no", order.kanri_no);
@@ -98,4 +110,17 @@ export async function signEntryPhotos(photos: Awaited<ReturnType<typeof readEntr
     signed.push(...batch.map((photo, index) => ({ ...photo, category: page[index].category })));
   }
   return signed;
+}
+
+export async function readEntryHistory(id: string) {
+  const db = getSupabaseAdmin();
+  const rows: EntryHistory[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await db.from("leaf_kanden_order_history")
+      .select("id,changed_at,changed_by,field,old_value,new_value")
+      .eq("order_id", id).order("changed_at", { ascending: false }).order("id").range(offset, offset + 499);
+    if (error) throw error;
+    rows.push(...data as EntryHistory[]);
+    if (data.length < 500) return rows;
+  }
 }

@@ -2,6 +2,8 @@
 
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { signCasePhotos, submissionDetail } from "@/lib/leaf-kanden/submissions.server";
+import { performanceMonth } from "@/lib/leaf-kanden/status";
+import { paymentColumns, type PaymentSummary } from "./PaymentDetails";
 import { UUID } from "@/lib/leaf-kanden/submissions";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
@@ -10,7 +12,7 @@ import {
 } from "./cases";
 
 export async function loadCaseDetail(id: string): Promise<
-  { error: string } | { detail: CaseDetail; photos: CasePhoto[]; photoError?: string }
+  { error: string } | { detail: CaseDetail; photos: CasePhoto[]; photoError?: string; payments?: PaymentSummary[]; paidOn?: string | null; refundedOn?: string | null }
 > {
   try {
     const { viewer } = await viewPermissionContext();
@@ -22,17 +24,23 @@ export async function loadCaseDetail(id: string): Promise<
     const db = getSupabaseAdmin();
     const columns = [
       ...DETAIL_ORDER_FIELDS.map(([field]) => field), ...DETAIL_CUSTOMER_FIELDS.map(([field]) => field),
-      "postal_code", "note", "kanri_no",
+      "postal_code", "note", "kanri_no", "paid_on", "refunded_on", `leaf_kanden_payments(${paymentColumns})`,
     ].join(",");
     const { data, error } = await db.from("leaf_kanden_orders").select(columns).eq("id", id).maybeSingle();
     if (error || !data) return { error: CASE_DETAIL_ERROR };
-    const { kanri_no: kanriNo, ...detail } = data as unknown as CaseDetail & { kanri_no: string | null };
-    if (!kanriNo) return { detail, photos: [] };
+    const { kanri_no: kanriNo, paid_on: paidOn, refunded_on: refundedOn, leaf_kanden_payments: payments, ...detail } =
+      data as unknown as CaseDetail & { kanri_no: string | null; paid_on: string | null; refunded_on: string | null;
+        leaf_kanden_payments: PaymentSummary[] };
+    detail.jisseki_month = performanceMonth({
+      jisseki_month: detail.jisseki_month as string | null, ordered_on: detail.ordered_on as string | null,
+    });
+    const result = { detail, payments, paidOn, refundedOn };
+    if (!kanriNo) return { ...result, photos: [] };
 
     try {
-      return { detail, photos: await readPhotos(db, kanriNo) };
+      return { ...result, photos: await readPhotos(db, kanriNo) };
     } catch {
-      return { detail, photos: [], photoError: CASE_PHOTO_ERROR };
+      return { ...result, photos: [], photoError: CASE_PHOTO_ERROR };
     }
   } catch {
     return { error: CASE_DETAIL_ERROR };

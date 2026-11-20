@@ -1,21 +1,43 @@
-import { describe, expect, it } from "vitest";
-import { orderStatus, type OrderStatus, type StatusInput } from "./status";
+import { expect, test } from "vitest";
+import { LEGACY_CANCEL_REASON, orderStatus, performanceMonth, type StatusInput } from "./status";
 
-describe("受注ステータス", () => {
-  it.each<[StatusInput, boolean, OrderStatus]>([
-    [{}, false, "受注"],
-    [{ ordered_on: "2026-11-20" }, false, "諸元待ち"],
-    [{ specs_on: "2026-11-20" }, false, "エントリー待ち"],
-    [{}, true, "エントリー待ち"],
-    [{ entered_on: "2026-11-20" }, true, "送付待ち"],
-    [{ app_sent_on: "2026-11-20" }, false, "請求待ち"],
-    [{ invoice_sent_on: "2026-11-20" }, false, "入金待ち"],
-    [{ payment_received_on: "2026-11-20" }, false, "支払待ち"],
-    [{ payment_received_on: "2026-11-20", is_direct: true }, false, "完了"],
-    [{ payment_sent_on: "2026-11-20" }, false, "完了"],
-    [{ completed_on: "2026-11-20" }, false, "完了"],
-    [{ completed_on: "2026-11-20", status: "保留" }, false, "保留"],
-    [{ entered_on: "2026-11-20", status: "差し戻し" }, true, "差し戻し"],
-    [{ cancelled_on: "2026-11-20", status: "保留" }, true, "キャンセル"],
-  ])("判定 %j", (input, photo, expected) => expect(orderStatus(input, photo)).toBe(expected));
+const date = "2026-11-01";
+const stages = [
+  ["specs_on", "エントリー待ち"], ["entered_on", "申込書待ち"],
+  ["application_received_on", "郵送待ち"], ["mailed_on", "入金待ち"],
+  ["paid_on", "完了"], ["refunded_on", "キャンセル"],
+] as const;
+
+test("日付の進んだ段階を優先し、手動の保留と差し戻しを最優先する", () => {
+  const order: StatusInput = { ordered_on: date };
+  expect(orderStatus(order)).toBe("諸元待ち");
+  for (const [field, status] of stages) {
+    order[field] = date;
+    expect(orderStatus(order)).toBe(status);
+  }
+  expect(orderStatus({ ...order, status: "保留" })).toBe("保留");
+  expect(orderStatus({ ...order, status: "差し戻し" })).toBe("差し戻し");
+  expect(orderStatus({ cancelled_on: date, paid_on: date })).toBe("キャンセル");
+});
+
+test("写メと TimeTree ラベルでも諸元を確認する", () => {
+  expect(orderStatus({}, true)).toBe("エントリー待ち");
+  expect(orderStatus({ timetree_label: " エントリー待ち " })).toBe("エントリー待ち");
+  expect(orderStatus({ timetree_label: "諸元待ち" })).toBe("諸元待ち");
+  expect(orderStatus({ timetree_label: " " })).toBe("諸元待ち");
+});
+
+test("旧案件の郵送前キャンセルは入金が見つかれば完了する", () => {
+  const order = { status: "キャンセル", cancel_reason: LEGACY_CANCEL_REASON } as const;
+  expect(orderStatus(order)).toBe("キャンセル");
+  expect(orderStatus({ ...order, status: "保留" })).toBe("保留");
+  expect(orderStatus({ ...order, status: null })).toBe("キャンセル");
+  expect(orderStatus({ ...order, paid_on: date })).toBe("完了");
+  expect(orderStatus({ ...order, entered_on: date, mailed_on: date })).toBe("入金待ち");
+});
+
+test("実績月が空の場合は受注月を使う", () => {
+  expect(performanceMonth({ ordered_on: date, jisseki_month: "" })).toBe("2026-11");
+  expect(performanceMonth({ ordered_on: date, jisseki_month: "2026-12" })).toBe("2026-12");
+  expect(performanceMonth({})).toBeNull();
 });

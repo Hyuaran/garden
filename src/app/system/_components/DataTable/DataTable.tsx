@@ -2,7 +2,7 @@
 import { useInitialSearch } from "@/lib/ui/InitialUrlView";
 import { normalizeSearch } from "@/lib/search/match";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import { Fragment, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useEffectEvent, useLayoutEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePageSearchTarget } from "../PageSearchSlot/PageSearchSlot";
 import styles from "./DataTable.module.css";
@@ -14,17 +14,20 @@ export type DataColumn<T> = {
 };
 // align の指定を優先し、未指定の列はデータ型から決める。
 export const cellAlignment = <T,>(column: DataColumn<T>) => column.align ?? (column.type === "date" ? "fixed" : column.type === "number" ? "number" : "text");
-type Sort = { id: string; direction: "asc" | "desc" };
+export type Sort = { id: string; direction: "asc" | "desc" };
+export type TableQuery = { page: number; search: string; sort: Sort; filters: Record<string, string[]> };
+export type RemoteTable = { query: TableQuery; total: number; onChange: (query: TableQuery) => void };
 const normalize = (value: string) => normalizeSearch(value);
 const matchesSearch = (text: string, query: string) => normalize(text).includes(normalize(query)) || (/^[\d\s+()‐‑‒–—−ー-]+$/.test(query.normalize("NFKC")) && normalizeSearch(text, true).includes(normalizeSearch(query, true)));
 const filterKeys = <T,>(column: DataColumn<T>, row: T): string[] => {
   const value = column.filterValue?.(row) ?? String(column.value(row));
   return Array.isArray(value) ? [...new Set(value.length ? value : [""])] : [value];
 };
-export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, onRowsChange, rowClickable, emptyText, loading = false, footer, groupBy }: {
+export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, onRowsChange, rowClickable, emptyText, loading = false, footer, groupBy, remote, selectedKey }: {
+  remote?: RemoteTable; selectedKey?: string;
   groupBy?: (row:T)=>string; footer?: ReactNode;
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
-  searchText: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
+  searchText?: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
   defaultSort: Sort; defaultFilters?: Record<string, string[]>; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
   onRowClick?: (row: T) => void; rowClickable?: (row: T) => boolean;
   onRowsChange?: (rows: T[]) => void;
@@ -49,7 +52,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     if (selection) selection.input.setSelectionRange(selection.start,selection.end,selection.direction ?? undefined);
   }, [searchHost, searchTarget]);
   const initialSearch = useInitialSearch();
-  const [search, setSearch] = useState(() => new URLSearchParams(initialSearch).get("q") ?? "");
+  const [search, setSearch] = useState(() => remote?.query.search ?? new URLSearchParams(initialSearch).get("q") ?? "");
   useLayoutEffect(() => {
     const read = () => { setSearch(new URLSearchParams(window.location.search).get("q") ?? ""); setPage(1); };
     const navigate = (event: Event) => { const url = new URL((event as CustomEvent<string>).detail, window.location.origin); if (url.pathname === window.location.pathname) { setSearch(url.searchParams.get("q") ?? ""); setPage(1); } };
@@ -80,8 +83,33 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     window.addEventListener("scroll", dismiss, true);
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); window.removeEventListener("resize", dismiss); window.removeEventListener("scroll", dismiss, true); };
   }, [menu]);
-  const filtered = useMemo(() => rows.filter(row => (!searchable || !search || matchesSearch(searchText(row), search)) && columns.every(column => !filters[column.id] || filterKeys(column, row).some(key => filters[column.id].includes(key)))), [rows, columns, filters, search, searchText, searchable]);
+  const remoteSearch = remote?.query.search;
+  const attemptedSearch = useRef<string | null>(null);
+  const updateSearch = useEffectEvent(() => {
+    attemptedSearch.current = search;
+    if (remote) remote.onChange({ ...remote.query, search, page: 1 });
+  });
+  useEffect(() => {
+    if (search === remoteSearch) attemptedSearch.current = null;
+    if (loading || remoteSearch === undefined || search === remoteSearch || search === attemptedSearch.current) return;
+    const timer = setTimeout(() => updateSearch(), 350);
+    return () => clearTimeout(timer);
+  }, [loading, remoteSearch, search]);
+  const activeSort = remote?.query.sort ?? sort;
+  const activeFilters = remote?.query.filters ?? filters;
+  function changeView(patch: Partial<TableQuery>) {
+    if (remote) {
+      if (!loading) remote.onChange({ ...remote.query, search, page: 1, ...patch });
+    } else {
+      if (patch.sort) setSort(patch.sort);
+      if (patch.filters) setFilters(patch.filters);
+      setPage(patch.page ?? 1);
+    }
+  }
+  const serverSide = !!remote;
+  const filtered = useMemo(() => serverSide ? rows : rows.filter(row => (!searchable || !search || matchesSearch(searchText?.(row) ?? "", search)) && columns.every(column => !filters[column.id] || filterKeys(column, row).some(key => filters[column.id].includes(key)))), [rows, columns, filters, search, searchText, searchable, serverSide]);
   const sorted = useMemo(() => {
+    if (serverSide) return filtered;
     const column = columns.find(column => column.id === sort.id);
     if (!column) return filtered;
     return [...filtered].sort((a, b) => {
@@ -91,39 +119,42 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
       const difference = column.type === "number" ? Number(av) - Number(bv) : column.type === "date" ? Date.parse(String(av)) - Date.parse(String(bv)) : String(av).localeCompare(String(bv), "ja", { numeric: true });
       return difference * (sort.direction === "asc" ? 1 : -1);
     });
-  }, [filtered, columns, sort, groupBy]);
+  }, [filtered, columns, sort, groupBy, serverSide]);
   useLayoutEffect(() => { onRowsChange?.(sorted); }, [onRowsChange, sorted]);
-  const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const currentPage = Math.min(page, pages);
+  const pages = Math.max(1, Math.ceil((remote?.total ?? sorted.length) / pageSize));
+  const currentPage = Math.min(remote?.query.page ?? page, pages);
   const column = columns.find(column => column.id === menu);
-  const options = column ? Array.from(rows.reduce((values, row) => { for (const key of filterKeys(column, row)) values.set(key, (values.get(key) ?? 0) + 1); return values; }, new Map<string, number>())).sort(([a], [b]) => a.localeCompare(b, "ja", { numeric: true })) : [];
+  const options = column ? Array.from(rows.reduce((values, row) => { for (const key of filterKeys(column, row)) values.set(key, (values.get(key) ?? 0) + 1); return values; }, new Map<string, number>((remote ? activeFilters[column.id] ?? [] : []).map(key => [key, 0])))).sort(([a], [b]) => a.localeCompare(b, "ja", { numeric: true })) : [];
   const visibleOptions = options.filter(([key]) => normalize(key).includes(normalize(menuSearch)));
   const apply = (values?: string[]) => {
     if (!column) return;
-    setFilters(previous => { const next = { ...previous }; if (!values || options.every(([key]) => values.includes(key))) delete next[column.id]; else next[column.id] = values; return next; });
-    setPage(1); close(true);
+    const next = { ...activeFilters };
+    if (!values || (!remote && options.every(([key]) => values.includes(key)))) delete next[column.id];
+    else next[column.id] = values;
+    changeView({ filters: next }); close(true);
   };
-  const searchControl = <div className={`${styles.search} ${searchTarget ? styles.headerSearch : styles.searchBox}`}>{!searchTarget && <small>検索</small>}<div className={styles.searchRow}><label className={styles.searchLabel}><span className={styles.searchField}><svg className={styles.searchIcon} viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input className={styles.searchInput} id={searchId} type="search" aria-label={searchTarget ? "この画面の中を検索" : "検索"} placeholder={searchPlaceholder} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></span></label><button type="button" className={styles.clear} disabled={!search && !Object.keys(filters).length} aria-label="絞り込みをすべて解除" title="絞り込みをすべて解除" onClick={() => { setSearch(""); setFilters({}); setPage(1); close(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" /><path d="m16 15 5 5M21 15l-5 5" /></svg></button></div></div>;
-  return <div ref={rootRef} data-table-search-id={searchId} className={styles.root}>
+  const searchControl = <div className={`${styles.search} ${searchTarget ? styles.headerSearch : styles.searchBox}`}>{!searchTarget && <small>検索</small>}<div className={styles.searchRow}><label className={styles.searchLabel}><span className={styles.searchField}><svg className={styles.searchIcon} viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input className={styles.searchInput} id={searchId} type="search" aria-label={searchTarget ? "この画面の中を検索" : "検索"} placeholder={searchPlaceholder} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></span></label><button type="button" className={styles.clear} disabled={(serverSide && loading) || (!search && !Object.keys(activeFilters).length)} aria-label="絞り込みをすべて解除" title="絞り込みをすべて解除" onClick={() => { setSearch(""); changeView({ search: "", filters: {} }); close(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" /><path d="m16 15 5 5M21 15l-5 5" /></svg></button></div></div>;
+  return <div ref={rootRef} data-table-search-id={searchId} data-remote={serverSide || undefined} className={styles.root}>
     {searchable && searchHost && createPortal(searchControl, searchHost)}
     <div className={styles.topRow}>{summary && <div className={styles.summary}>{summary(filtered)}</div>}
     <div className={[styles.toolbar, styles.controls].join(" ")}>{toolbar}{searchable && <div ref={localSearch} className={styles.localSearch} data-local-table-search="">{!searchHost && searchControl}</div>}</div></div>
-    <div className={styles.tableWrap} aria-busy={loading}><StickyTable><thead><tr>{columns.map(column => <th key={column.id} aria-sort={sort.id === column.id ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" aria-label={`${column.label}の並べ替え・絞り込み`} aria-haspopup="dialog" aria-expanded={menu === column.id} onClick={event => {
+    <div className={styles.tableWrap} aria-busy={loading}><StickyTable><thead><tr>{columns.map(column => <th key={column.id} aria-sort={activeSort.id === column.id ? activeSort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" disabled={serverSide && loading} aria-label={`${column.label}の並べ替え・絞り込み`} aria-haspopup="dialog" aria-expanded={menu === column.id} onClick={event => {
       if (menu === column.id) { close(); return; }
       trigger.current = event.currentTarget;
       const rect = event.currentTarget.getBoundingClientRect();
       setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 328)), top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 440)) });
-      setDraft(filters[column.id] ?? Array.from(new Set(rows.flatMap(row => filterKeys(column, row))))); setMenuSearch(""); setMenu(column.id);
-    }}>{column.label}<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="m4 6 4 4 4-4" /></svg>{filters[column.id] && <svg aria-label="絞り込み中" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2 3h12L9 9v4l-2 1V9Z" /></svg>}</button><button type="button" className={[styles.sortButton, sort.id === column.id ? styles.sortActive : ""].join(" ")} aria-label={sort.id === column.id ? `${column.label}を${sort.direction === "asc" ? "降順" : "昇順"}に並べ替える（今は${sort.direction === "asc" ? "昇順" : "降順"}）` : `${column.label}で並べ替える`} title={sort.id === column.id ? (sort.direction === "asc" ? "昇順（押すと降順）" : "降順（押すと昇順）") : "並べ替え"} onClick={() => { setSort(sort.id === column.id ? { id: column.id, direction: sort.direction === "asc" ? "desc" : "asc" } : { id: column.id, direction: column.type === "text" ? "asc" : "desc" }); setPage(1); close(); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d={sort.id !== column.id ? "M5 2v12M2.5 4.5 5 2l2.5 2.5M11 14V2m-2.5 9.5L11 14l2.5-2.5" : sort.direction === "asc" ? "M8 14V2m-4 4 4-4 4 4" : "M8 2v12m-4-4 4 4 4-4"} /></svg></button></th>)}</tr></thead><tbody>{sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((row,index) => <Fragment key={rowKey(row)}>{groupBy && (index === 0 || groupBy(row) !== groupBy(sorted[(currentPage - 1) * pageSize + index - 1])) && <tr><th colSpan={columns.length} scope="rowgroup">{groupBy(row)}</th></tr>}<tr className={onRowClick && (rowClickable?.(row) ?? true) ? styles.clickableRow : undefined}
+      setDraft(activeFilters[column.id] ?? (remote ? [] : Array.from(new Set(rows.flatMap(row => filterKeys(column, row)))))); setMenuSearch(""); setMenu(column.id);
+    }}>{column.label}<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="m4 6 4 4 4-4" /></svg>{activeFilters[column.id] && <svg aria-label="絞り込み中" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2 3h12L9 9v4l-2 1V9Z" /></svg>}</button><button type="button" disabled={serverSide && loading} className={[styles.sortButton, activeSort.id === column.id ? styles.sortActive : ""].join(" ")} aria-label={activeSort.id === column.id ? `${column.label}を${activeSort.direction === "asc" ? "降順" : "昇順"}に並べ替える（今は${activeSort.direction === "asc" ? "昇順" : "降順"}）` : `${column.label}で並べ替える`} title={activeSort.id === column.id ? (activeSort.direction === "asc" ? "昇順（押すと降順）" : "降順（押すと昇順）") : "並べ替え"} onClick={() => { changeView({ sort: { id: column.id, direction: activeSort.id === column.id ? (activeSort.direction === "asc" ? "desc" : "asc") : (column.type === "text" ? "asc" : "desc") } }); close(); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d={activeSort.id !== column.id ? "M5 2v12M2.5 4.5 5 2l2.5 2.5M11 14V2m-2.5 9.5L11 14l2.5-2.5" : activeSort.direction === "asc" ? "M8 14V2m-4 4 4-4 4 4" : "M8 2v12m-4-4 4 4 4-4"} /></svg></button></th>)}</tr></thead><tbody>{(remote ? sorted : sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)).map((row,index) => <Fragment key={rowKey(row)}>{groupBy && (index === 0 || groupBy(row) !== groupBy(sorted[(remote ? 0 : (currentPage - 1) * pageSize) + index - 1])) && <tr><th colSpan={columns.length} scope="rowgroup">{groupBy(row)}</th></tr>}<tr data-selected={selectedKey === rowKey(row) || undefined} aria-current={selectedKey === rowKey(row) || undefined} className={onRowClick && (rowClickable?.(row) ?? true) ? styles.clickableRow : undefined}
  tabIndex={onRowClick && (rowClickable?.(row) ?? true) ? 0 : undefined}
  onClick={event=>{if(onRowClick && (rowClickable?.(row) ?? true) && !(event.target as Element).closest('button, a, input, select, textarea, label, [role="button"], [contenteditable]')) onRowClick(row);}}
  onKeyDown={event=>{if(event.target===event.currentTarget && onRowClick && (rowClickable?.(row) ?? true) && (event.key==="Enter" || event.key===" ")){event.preventDefault();onRowClick(row);}}}>{columns.map(column => <td key={column.id} className={[`garden-cell-${cellAlignment(column)}`, column.wrap ? styles.wrap : ""].join(" ")}>{column.render ? column.render(row) : column.value(row)}</td>)}</tr></Fragment>)}</tbody>{footer && <tfoot>{footer}</tfoot>}</StickyTable>{loading && !sorted.length && <p role="status" className={styles.loading}>読み込み中…</p>}{!loading && !sorted.length && <p>{emptyText ?? "該当する明細はありません。"}</p>}</div>
     <div className={styles.toolbar}><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>前へ</button><span>{currentPage} / {pages}</span><button type="button" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>次へ</button></div>
     {column && <div ref={menuRef} role="dialog" aria-label={`${column.label}の並べ替え・絞り込み`} className={styles.menu} style={{ ...position, maxHeight: `calc(100dvh - ${position.top + 8}px)` }}>
-      <div className={styles.sortRow}>{(["asc", "desc"] as const).map(direction => <button type="button" key={direction} aria-pressed={sort.id === column.id && sort.direction === direction} onClick={() => { setSort({ id: column.id, direction }); setPage(1); close(true); }}>{direction === "asc" ? "昇順" : "降順"}</button>)}</div>
+      <div className={styles.sortRow}>{(["asc", "desc"] as const).map(direction => <button type="button" key={direction} aria-pressed={activeSort.id === column.id && activeSort.direction === direction} onClick={() => { changeView({ sort: { id: column.id, direction } }); close(true); }}>{direction === "asc" ? "昇順" : "降順"}</button>)}</div>
       <input type="search" aria-label="値を検索" placeholder="値を検索" value={menuSearch} onChange={event => setMenuSearch(event.target.value)} />
-      <label><input type="checkbox" checked={visibleOptions.length > 0 && visibleOptions.every(([key]) => draft.includes(key))} onChange={event => { const keys = visibleOptions.map(([key]) => key); setDraft(event.target.checked ? Array.from(new Set([...draft, ...keys])) : draft.filter(key => !keys.includes(key))); }} />すべて選択</label>
-      <div className={styles.options}>{visibleOptions.map(([key, count]) => <label key={key}><input type="checkbox" checked={draft.includes(key)} onChange={event => setDraft(event.target.checked ? [...draft, key] : draft.filter(value => value !== key))} /><span>{key || "（空白）"} ({count})</span></label>)}</div>
+      {remote && menuSearch && !options.some(([key]) => key === menuSearch) && <label><input type="checkbox" checked={draft.includes(menuSearch)} onChange={event => setDraft(event.target.checked ? [...draft, menuSearch] : draft.filter(value => value !== menuSearch))} />「{menuSearch}」と一致</label>}
+      <label><input type="checkbox" checked={visibleOptions.length > 0 && visibleOptions.every(([key]) => draft.includes(key))} onChange={event => { const keys = visibleOptions.map(([key]) => key); setDraft(event.target.checked ? Array.from(new Set([...draft, ...keys])) : draft.filter(key => !keys.includes(key))); }} />{remote ? "表示中の値をすべて選択" : "すべて選択"}</label>
+      <div className={styles.options}>{visibleOptions.map(([key, count]) => <label key={key}><input type="checkbox" checked={draft.includes(key)} onChange={event => setDraft(event.target.checked ? [...draft, key] : draft.filter(value => value !== key))} /><span>{key || "（空白）"} {!remote && " (" + count + ")"}</span></label>)}</div>
       <div className={styles.actions}><button type="button" onClick={() => apply()}>解除</button><button type="button" className={styles.primary} onClick={() => apply(draft)}>OK</button></div>
     </div>}
   </div>;

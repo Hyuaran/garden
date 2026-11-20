@@ -37,3 +37,9 @@ describe("FileMaker の受注 CSV", () => {
     expect(() => parseOrderCsv('主キー,備考\n1,"メモ')).toThrow("引用符");
   });
 });
+
+it("FileMaker の申込Excel送付日を郵送日へ、請求Excel送付日を請求日に割り当てる", () => {
+  const order = convertOrder({ 主キー: "1", 申込Excel送付日: "2026-11-18", 請求Excel送付日: "2026-11-20" });
+  expect(order).toMatchObject({ mailed_on: "2026-11-18", invoice_sent_on: "2026-11-20" });
+  expect(order).not.toHaveProperty("app_sent_on");
+});

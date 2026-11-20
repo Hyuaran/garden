@@ -4,6 +4,7 @@ import { ActionRow, CheckboxField, FieldGrid, FieldLabel, FormRow, RadioGroup,
   ResultMessage, SelectField, TextArea, TextField } from "@/app/system/forms/_components/form-kit";
 import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
 import { nextSupplyDay, supplyPoint, type CalendarDay } from "@/lib/leaf-kanden/supply-point";
+import { performanceMonth } from "@/lib/leaf-kanden/status";
 import { choiceFields, dateFields, serviceFields, type EntryDraft, type EntryList, type TextKey } from "./entry";
 
 type Props = {
@@ -40,6 +41,9 @@ export default function EntryFields({ draft, setDraft, options, calendar, today,
         </ActionRow>
       </FieldLabel>
       <FieldGrid columns={2}>{text("kanri_no", "管理番号")}{text("ordered_on", "受注日", "date")}</FieldGrid>
+      <FieldLabel label="実績月"><TextField aria-label="実績月" type="month"
+        value={performanceMonth(draft) ?? ""} onChange={event => change("jisseki_month", event.target.value || null)} />
+      </FieldLabel>
       <BoxSelect label="獲得内容" value={serviceFields.filter(([field]) => draft[`has_${field}`]).map(([field]) => field)}
         options={serviceOptions} onChange={values => setDraft({ ...draft, has_denki: values.includes("denki"),
           has_douryoku: values.includes("douryoku"), has_gas: values.includes("gas") })} />

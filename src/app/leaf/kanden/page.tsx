@@ -1,9 +1,9 @@
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { InitialUrlView } from "@/lib/ui/InitialUrlView";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { caseTab, fiscalYear, type CaseList } from "./cases";
+import { caseQuery, caseTab, fiscalYear, type CaseList } from "./cases";
 import { viewPermissionContext } from "@/lib/auth/view-permission.server";
-import { submissionsForYear } from "@/lib/leaf-kanden/submissions.server";
+import { readCaseList } from "./case-queries.server";
 import { UUID } from "@/lib/leaf-kanden/submissions";
 import { loadCaseDetail } from "./actions";
 import KandenCases from "./KandenCases";
@@ -20,18 +20,14 @@ async function Page({ searchParams }: Props) {
   const search = typeof query.q === "string" ? query.q : "";
   let list: CaseList | null = null;
   try {
-    // フォーム受付のタブでも、ほかのタブの件数を出すために一覧の件数を読む（受付の年度＝同じ年度）
-    const { data, error } = await getSupabaseAdmin().rpc("leaf_kanden_case_list", { p_year: year, p_tab: tab === "forms" ? "active" : tab });
-    if (error) console.error("leaf_kanden_case_list", error.code);
-    else list = data as CaseList;
+    list = await readCaseList(year, tab, caseQuery(tab, search), true);
   } catch {
-    console.error("leaf_kanden_case_list: read failed");
+    console.error("leaf_kanden_case_page: read failed");
   }
 
   const { viewer } = await viewPermissionContext();
-  const intake = tab === "forms" ? await submissionsForYear(year).catch(() => null) : null;
   let firstYear = currentYear;
-  if (tab === "forms" && intake) {
+  if (tab === "forms" && list) {
     const { data } = await getSupabaseAdmin().from("leaf_kanden_submissions").select("submitted_at")
       .order("submitted_at").limit(1).maybeSingle();
     if (data?.submitted_at) firstYear = fiscalYear(new Date(data.submitted_at));
@@ -42,7 +38,7 @@ async function Page({ searchParams }: Props) {
   return (
     <InitialUrlView key={`${year}/${tab}/${orderId ?? ""}`} search={new URLSearchParams({ q: search }).toString()}>
       <KandenCases list={list} year={year} currentYear={currentYear} tab={tab} search={search}
-        intake={intake} firstIntakeYear={firstYear} settingsAllowed={viewer.role === "super_admin"} linkedOrder={order} />
+        firstIntakeYear={firstYear} settingsAllowed={viewer.role === "super_admin"} linkedOrder={order} />
     </InitialUrlView>
   );
 }

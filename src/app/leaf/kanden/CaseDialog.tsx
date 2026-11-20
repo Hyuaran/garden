@@ -6,6 +6,7 @@ import { ResultMessage } from "@/app/system/forms/_components/form-kit";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import type { loadCaseDetail } from "./actions";
 import { DETAIL_CUSTOMER_FIELDS, DETAIL_ORDER_FIELDS, type CaseDetail, type CaseRow, type DetailField } from "./cases";
+import PaymentDetails from "./PaymentDetails";
 import CasePhotos from "./CasePhotos";
 import styles from "./case-dialog.module.css";
 
@@ -49,6 +50,7 @@ export default function CaseDialog({ row, read, onClose }: {
               <Details detail={result.detail} fields={DETAIL_ORDER_FIELDS} />
               <Details detail={result.detail} fields={DETAIL_CUSTOMER_FIELDS} />
             </div>
+            <PaymentDetails rows={result.payments ?? []} paidOn={result.paidOn} refundedOn={result.refundedOn} />
             {!result.photoError && <CasePhotos photos={result.photos} />}
             <section>
               <h3>備考</h3>

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
+import DataTable, { type DataColumn, type RemoteTable } from "@/app/system/_components/DataTable/DataTable";
 import Modal from "@/app/system/_components/Modal/Modal";
 import { ActionButton, ActionRow, ResultMessage, TextField } from "@/app/system/forms/_components/form-kit";
 import KandenSummary from "@/app/system/forms/kanden/KandenSummary";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import { acquisitionLabel, urgentLabel, type Submission } from "@/lib/leaf-kanden/submissions";
+import { acquisitionLabel, urgentLabel } from "@/lib/leaf-kanden/submissions";
 import { loadSubmissionDetail } from "./actions";
-import { CASE_DETAIL_ERROR, caseListHref } from "./cases";
+import { CASE_DETAIL_ERROR, caseListHref, type IntakeRow } from "./cases";
 import CasePhotos from "./CasePhotos";
 import { setKandenPhotoPassword } from "./photo-password-actions";
 
@@ -17,7 +17,7 @@ const timestamp = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
   hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
 });
-const columns: DataColumn<Submission>[] = [
+const columns: DataColumn<IntakeRow>[] = [
   { id: "submitted_at", label: "送信日時", type: "date", value: row => row.submitted_at, render: row => timestamp.format(new Date(row.submitted_at)) },
   { id: "acquisition", label: "区分", type: "text", align: "mark", value: row => row.acquisition },
   { id: "kanri_no", label: "管理番号", type: "text", align: "fixed", value: row => row.kanri_no ?? "" },
@@ -53,12 +53,11 @@ function IntakeDialog({ read, onClose, year }: {
   </Modal>;
 }
 
-export function FormIntake({ rows, year }: { rows: Submission[]; year: number }) {
+export function FormIntake({ rows, year, remote, loading }: { rows: IntakeRow[]; year: number; remote: RemoteTable; loading: boolean }) {
   const [read, setRead] = useState<ReturnType<typeof loadSubmissionDetail> | null>(null);
   return <div {...CLARITY_MASK}>
     <DataTable rows={rows} columns={columns} rowKey={row => row.id}
-      defaultSort={{ id: "submitted_at", direction: "desc" }}
-      searchText={row => [row.kanri_no, row.kanri_no_raw, row.customer_name, row.employee_name].join(" ")}
+      defaultSort={{ id: "submitted_at", direction: "desc" }} pageSize={50} remote={remote} loading={loading}
       searchPlaceholder="管理番号・お客様名・送った人"
       emptyText="該当する送信はありません。"
       onRowClick={row => setRead(loadSubmissionDetail(row.id).catch(() => ({ error: CASE_DETAIL_ERROR })))} />

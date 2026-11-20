@@ -37,7 +37,7 @@ it("閲覧権限を確認してから写メ用の署名 URL をまとめて発�
     { path: "c.png", signedUrl: "https://example.test/c" },
   ] });
   await expect(loadCaseDetail(id)).resolves.toEqual({
-    detail: { customer_name: "山田" },
+    detail: { customer_name: "山田", jisseki_month: null },
     photos: [
       { url: "https://example.test/a", filename: "123_1.jpg", jpeg: true },
       { url: "https://example.test/c", filename: "123_2.jpg", jpeg: false },

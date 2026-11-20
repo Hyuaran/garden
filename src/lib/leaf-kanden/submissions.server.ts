@@ -40,20 +40,6 @@ export async function recentSubmissions(employeeId: string) {
   return unpack(data);
 }
 
-export async function submissionsForYear(year: number) {
-  const rows: Submission[] = [];
-  const pageSize = 500;
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await submissionsQuery()
-      .gte("submitted_at", `${year}-04-01T00:00:00+09:00`)
-      .lt("submitted_at", `${year + 1}-04-01T00:00:00+09:00`)
-      .range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    rows.push(...unpack(data));
-    if (data.length < pageSize) return rows;
-  }
-}
-
 export async function submissionDetail(id: string) {
   const { data, error } = await submissionsQuery().eq("id", id);
   if (error || !data.length) throw error ?? new Error("Submission not found");

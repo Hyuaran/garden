@@ -1,7 +1,8 @@
+.layout { container: kanden-entry / inline-size; }
+
 .columns {
   display: grid;
-  /* 一覧は細く・入力を広く（1384px で日付が切れないように） */
-  grid-template-columns: 200px minmax(420px, 1.3fr) minmax(300px, 1fr);
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.3fr) minmax(300px, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -29,7 +30,40 @@
   display: none;
 }
 
-@media (max-width: 1024px) {
+.panel:first-child table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  font-size: .8125rem;
+}
+
+.panel:first-child :is(th, td) { padding: .35rem; }
+.panel:first-child :is(th, td):first-child { width: 32%; }
+.panel:first-child :is(th, td):nth-child(3) { width: 24%; }
+.panel:first-child th button { padding: 0; min-height: 2rem; }
+.panel:first-child th button:first-child { display: inline; white-space: normal; }
+.panel:first-child th button:first-child svg { width: .75em; vertical-align: middle; }
+.panel:first-child th button:nth-child(2) { padding: 0; }
+.panel:first-child th button:nth-child(2) svg { width: .85em; }
+.panel:first-child td:first-child { overflow: hidden; text-overflow: ellipsis; }
+.name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history { max-height: 16rem; overflow: auto; overflow-wrap: anywhere; }
+
+@media (width < 1280px) {
+  .columns { grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.3fr); }
+  .panel:last-child { grid-column: 1 / -1; }
+}
+
+@container kanden-entry (width < 1112px) {
+  .columns { grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.3fr); }
+  .panel:last-child { grid-column: 1 / -1; }
+}
+
+@container kanden-entry (width < 796px) {
+  .columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+}
+
+@media (width < 900px) {
   .columns {
     display: block;
   }
@@ -41,4 +75,9 @@
   .panel[data-active="false"] {
     display: none;
   }
+}
+
+@media (width < 700px) {
+  .statusTabs[role="tablist"] { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .statusTabs[role="tablist"] > * { flex: none; }
 }

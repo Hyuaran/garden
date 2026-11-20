@@ -27,7 +27,7 @@ const dateFields = {
   ordered_on: "受注日",
   entered_on: "エントリー日",
   specs_on: "諸元回収日",
-  app_sent_on: "申込Excel送付日",
+  mailed_on: "申込Excel送付日",
   invoice_sent_on: "請求Excel送付日",
   cancelled_on: "取消日",
 } as const;
