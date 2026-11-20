@@ -8,6 +8,17 @@ export function HeaderViewProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<HTMLDivElement | null>(null);
   return <Target.Provider value={target}><Register.Provider value={setTarget}>{children}</Register.Provider></Target.Provider>;
 }
+function UnavailableViewButton({ placeholder = false }: { placeholder?: boolean }) {
+  return (
+    <span className={styles.fallback} style={placeholder ? { visibility: "hidden" } : undefined}
+      aria-hidden={placeholder || undefined} tabIndex={placeholder ? undefined : 0}>
+      <button type="button" disabled aria-label="この画面は表示の切り替えがありません">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11" /></svg>
+      </button>
+      <span className={styles.tooltip} role="tooltip">この画面は表示の切り替えがありません</span>
+    </span>
+  );
+}
 export function HeaderViewSlot({ mobile = false }: { mobile?: boolean }) {
   const register = useContext(Register);
   const [node, setNode] = useState<HTMLDivElement | null>(null);
@@ -33,12 +44,7 @@ export function HeaderViewSlot({ mobile = false }: { mobile?: boolean }) {
     return () => query.removeEventListener("change", update);
   }, [node, mobile, register]);
   return <div className={styles.slot}>
-    {!occupied && <span className={styles.fallback} style={{ visibility: "hidden" }} aria-hidden="true">
-      <button type="button" disabled aria-label="この画面は表示の切り替えがありません">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11" /></svg>
-      </button>
-      <span className={styles.tooltip} role="tooltip">この画面は表示の切り替えがありません</span>
-    </span>}
+    {!occupied && <UnavailableViewButton placeholder />}
     <div ref={setNode} />
   </div>;
 }
@@ -46,4 +52,8 @@ export default function HeaderViewToggle({ children, ready = true }: { children:
   const target = useContext(Target);
   const content = <div className={styles.toggle} style={{visibility:ready?"visible":"hidden"}} role="group" aria-label="表示形式">{children}</div>;
   return target === undefined ? content : target ? createPortal(content, target) : null;
+}
+
+export function UnavailableHeaderViewToggle() {
+  return <HeaderViewToggle><UnavailableViewButton /></HeaderViewToggle>;
 }

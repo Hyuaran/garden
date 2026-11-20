@@ -4,9 +4,7 @@ import type { SystemViewScope } from "./system-view-scopes";
 
 export const LEAF_FOREST_PAGES = [
   ["leaf-overview", "/leaf", "Leaf"],
-  ["leaf-kanden", "/leaf/kanden", "関電"],
-  ["leaf-kanden-input", "/leaf/kanden/input", "関電・入力"],
-  ["leaf-kanden-backoffice", "/leaf/kanden/backoffice", "関電・事務"],
+  ["leaf-kanden", "/leaf/kanden", "関電 案件一覧"],
   ["soil-overview", "/soil", "Soil"],
   ["seed-overview", "/seed", "Seed"],
   ["fruit-overview", "/fruit", "Fruit"],
@@ -23,14 +21,14 @@ export const LEAF_FOREST_PAGES = [
   ["forest-journal-review", "/forest/shiwakechou/[corp_id]/review", "仕訳の確認"],
 ] as const;
 export const LEAF_FOREST_TABS: Record<string, readonly (readonly [string, string])[]> = {
-  "leaf-kanden-input": [["myprofile", "マイページ"], ["input", "新規送信"], ["mypage", "案件一覧"]],
   "forest-dashboard": [["overview", "概要"], ["matrix", "6法人マトリクス"]],
   "forest-shinkouki": [["numbers", "数値更新"], ["rollover", "期の切り替え"]],
   "forest-shinkouki-company": [["numbers", "数値更新"], ["rollover", "期の切り替え"]],
 };
 export const LEAF_FOREST_VIEW_SCOPES: SystemViewScope[] = LEAF_FOREST_PAGES.flatMap(([pageKey, , label]) => {
   const module = pageKey.split("-")[0] as "leaf" | "soil" | "seed" | "fruit" | "forest";
-  const defaultRoles = GARDEN_ROLE_ORDER.filter(role => isRoleAtLeast(role, MODULE_MIN_ROLES[module]));
+  const minRole = pageKey === "leaf-kanden" ? "manager" : MODULE_MIN_ROLES[module];
+  const defaultRoles = GARDEN_ROLE_ORDER.filter(role => isRoleAtLeast(role, minRole));
   return [{ pageKey, tabKey: "", label, defaultRoles }, ...(LEAF_FOREST_TABS[pageKey] ?? []).map(([tabKey, label]) => ({ pageKey, tabKey, label, defaultRoles }))];
 });
 export function leafForestPageKey(path: string) {

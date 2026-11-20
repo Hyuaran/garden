@@ -1,78 +1,62 @@
 "use client";
-import { useLeafForestNavigation } from "@/lib/auth/leaf-forest-view.client";
 
-import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
-import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
-import { signOutUnified, useAuthUnified } from "@/app/_lib/auth-unified";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import type { ReactNode } from "react";
+import { ModuleShell } from "@/app/_components/layout/GardenShell/ModuleShell";
+import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
+import { RootMenuIcon } from "@/app/root/_components/RootMenuIcon";
+import { UnavailableHeaderViewToggle } from "@/app/system/_components/HeaderViewToggle";
+import styles from "@/app/system/_components/ShachoShell/shacho-shell.module.css";
+import rootStyles from "@/app/root/_components/root-shell.module.css";
+import { visibleLeafMenus } from "../_constants/menus";
 
-const LEAF_ICON = "/themes/garden-shell/images/icons_bloom/orb_leaf.png";
-
-const ACTIVITY_ITEMS = [
-  {
-    time: "11:40",
-    icon: LEAF_ICON,
-    title: "Leaf 入口を整備",
-    body: "事業部カードから利用可能なプロトタイプへ進めるようにしています。",
-  },
-  {
-    time: "10:25",
-    icon: LEAF_ICON,
-    title: "関電プロトタイプ閲覧",
-    body: "入力画面と事務画面を Garden Shell の中で確認できる状態にしました。",
-  },
-  {
-    time: "09:50",
-    icon: "/themes/garden-shell/images/icons_bloom/orb_root.png",
-    title: "本実装の次段階",
-    body: "プロトタイプ確認後、Root 連携と各事業部画面を順に設計します。",
-  },
-];
-
-type LeafActivePage = "overview" | "kanden-input" | "kanden-backoffice";
-
-function roleLabel(role: string | null): string {
-  if (role === "super_admin") return "全権管理";
-  if (role === "admin") return "管理";
-  if (role === "manager") return "マネージャー";
-  if (role === "staff") return "スタッフ";
-  return "Garden Leaf";
-}
-
-export function leafPageMenu(active: LeafActivePage): GardenShellPageMenuItem[] {
-  return [
-    { href: "/leaf", label: "Overview", icon: "諺", active: active === "overview" },
-    { href: "/leaf/kanden/input", label: "関電・入力", icon: "鴻", active: active === "kanden-input" },
-    {
-      href: "/leaf/kanden/backoffice",
-      label: "関電・事務",
-      icon: "鴻",
-      active: active === "kanden-backoffice",
-    },
-  ];
-}
-
-export default function LeafShell({
-  active,
-  children,
-}: {
-  active: LeafActivePage;
-  children: React.ReactNode;
+export function LeafShell({ children, viewAccess, user }: {
+  children: ReactNode;
+  viewAccess: Record<string, boolean>;
+  user: { name: string; company: string; role: GardenRole };
 }) {
-  const visible = useLeafForestNavigation();
-  const { role, employeeNumber } = useAuthUnified();
-  const userName = employeeNumber ? `社員 ${employeeNumber}` : "Garden Leaf";
-
+  const pathname = usePathname();
+  const router = useRouter();
+  async function signOut() {
+    const { error } = await createBrowserClient().auth.signOut();
+    if (error) throw error;
+    router.replace("/login");
+    router.refresh();
+  }
   return (
-    <GardenShell
-      activeModule="leaf"
-      pageMenu={leafPageMenu(active).filter(item => visible(item.href))}
-      activityItems={ACTIVITY_ITEMS}
-      userName={userName}
-      userEmail={null}
-      userRoleLabel={roleLabel(role)}
-      onLogout={() => signOutUnified()}
+    <ModuleShell
+      moduleId="leaf"
+      moduleName="Leaf"
+      moduleLabel="Leaf"
+      gardenRole={user.role}
+      userName={user.name}
+      affiliation={user.company}
+      roleLabel={GARDEN_ROLE_LABELS[user.role]}
+      signOut={signOut}
+      menu={<>
+        <div className={rootStyles.navLabel}>メニュー</div>
+        {viewAccess["leaf-overview"] && (
+          <Link href="/leaf" className={pathname === "/leaf" ? styles.active : undefined}
+            aria-current={pathname === "/leaf" ? "page" : undefined}>
+            <RootMenuIcon icon="home" />概要
+          </Link>
+        )}
+        {visibleLeafMenus(viewAccess).map(menu => {
+          const href = `/leaf/${menu.slug}`;
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link key={menu.slug} href={href} prefetch={false} className={active ? styles.active : undefined}
+              aria-current={active ? "page" : undefined}>
+              <RootMenuIcon icon={menu.icon} /><span>{menu.title}</span>
+            </Link>
+          );
+        })}
+      </>}
     >
+      <UnavailableHeaderViewToggle />
       {children}
-    </GardenShell>
+    </ModuleShell>
   );
 }

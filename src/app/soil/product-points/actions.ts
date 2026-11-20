@@ -76,7 +76,10 @@ export async function savePoint(
           "保存できませんでした。入力内容を確認して、もう一度保存してください。",
       };
     }
-    return { rows: data as PointRow[] };
+    return {
+      rows: data as PointRow[],
+      notice: "Kintone の付与件数は、受注を開いて保存したとき、または管理者が反映したときに新しい値になります。",
+    };
   } catch (error) {
     return {
       error:

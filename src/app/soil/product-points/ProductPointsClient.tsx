@@ -132,6 +132,7 @@ export default function ProductPointsClient({
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
   const [error, setError] = useState(initialError);
+  const [notice, setNotice] = useState<string>();
   const change = <K extends keyof PointRow>(key: K, value: PointRow[K]) =>
     setDraft((current) => current && { ...current, [key]: value });
   // 既定の並び＝管理表の付与ポイントシートの順（sort_order）→ 白地・LP・アライアンス → 新しい期間が上
@@ -230,6 +231,7 @@ export default function ProductPointsClient({
         rollback(result.error ?? "保存できませんでした。");
         return;
       }
+      setNotice(result.notice);
       const saved = result.rows;
       setRows(
         optimistic
@@ -283,6 +285,7 @@ export default function ProductPointsClient({
         </label>
       </div>
       <ResultMessage>{error}</ResultMessage>
+      {notice && <p role="status">{notice}</p>}
       <DataTable
         rows={visible}
         columns={columns}

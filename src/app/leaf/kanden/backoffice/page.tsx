@@ -1,8 +1,5 @@
-import { withInitialUrlView } from "@/lib/ui/withInitialUrlView.server";
-import { LeafForestView } from "@/lib/auth/leaf-forest-view.server";
-import Content from "./view";
-function Page() {
- return <LeafForestView page="leaf-kanden-backoffice"><Content /></LeafForestView>;
-}
+import { redirect } from "next/navigation";
 
-export default withInitialUrlView(Page);
+export default function Page() {
+  redirect("/leaf/kanden");
+}

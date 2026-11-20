@@ -4,7 +4,6 @@ import { GARDEN_ROLE_ORDER, isRoleAtLeast } from "@/app/root/_constants/types";
 import { MODULE_MIN_ROLES } from "@/app/_constants/module-min-roles";
 import { LEAF_FOREST_PAGES, LEAF_FOREST_VIEW_SCOPES, leafForestPageKey } from "./leaf-forest-view-scopes";
 import { resolveCanView, type ViewPermission, type Viewer } from "./view-permission";
-import { leafPrototypeHtml } from "./leaf-prototype-html";
 
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ permissions: [] as ViewPermission[], viewer: { employeeId: "EMP-test", role: "staff" } as Viewer, member: false }));
@@ -25,9 +24,10 @@ beforeEach(() => { mocks.permissions = []; mocks.viewer = { employeeId: "EMP-tes
 
 describe("Leaf/Soil/Seed/Fruit/Forest view permissions", () => {
   for (const scope of LEAF_FOREST_VIEW_SCOPES) for (const role of GARDEN_ROLE_ORDER) {
-    it(`unchanged default ${scope.pageKey}/${scope.tabKey}: ${role}`, () => {
+    it(`default ${scope.pageKey}/${scope.tabKey}: ${role}`, () => {
       const module = scope.pageKey.split("-")[0] as "leaf" | "soil" | "seed" | "fruit" | "forest";
-      expect(resolveCanView([], scope.pageKey, scope.tabKey, { employeeId: "employee", role })).toBe(isRoleAtLeast(role, MODULE_MIN_ROLES[module]));
+      const minimum = scope.pageKey === "leaf-kanden" ? "manager" : MODULE_MIN_ROLES[module];
+      expect(resolveCanView([], scope.pageKey, scope.tabKey, { employeeId: "employee", role })).toBe(isRoleAtLeast(role, minimum));
     });
   }
   for (const scope of LEAF_FOREST_VIEW_SCOPES) {
@@ -63,15 +63,22 @@ describe("Leaf/Soil/Seed/Fruit/Forest view permissions", () => {
     expect(leafForestPageKey("/p/toss")).toBeUndefined();
     expect(leafForestPageKey("/forest/login")).toBeUndefined();
   });
-  it("restricted prototype removes denied contents, event handlers and script data", () => {
-    const html = '<html><head></head><body><div id="screen-input">allowed</div><div id="screen-mypage">secret</div><script>const secretData=1;</script><button onclick="write()">send</button></body></html>';
-    const result = leafPrototypeHtml(html, "input", true);
-    expect(result).toContain("allowed"); expect(result).not.toContain("secret"); expect(result).not.toContain("onclick");
-    expect(leafPrototypeHtml(html, "input", false)).toContain("secretData");
+  it("旧プロトタイプの設定は案件一覧の閲覧権限にならない", () => {
+    const settings = [
+      setting("leaf-kanden-input", ["staff"], "input"),
+      setting("leaf-kanden-backoffice", ["staff"]),
+    ];
+    expect(resolveCanView(settings, "leaf-kanden", "", mocks.viewer)).toBe(false);
+    expect(resolveCanView(settings, "leaf-kanden-backoffice", "", mocks.viewer)).toBe(false);
+    expect(leafForestPageKey("/leaf/kanden/input")).toBeUndefined();
   });
   it("migration matches every scope and forbids viewer delegation on private/financial screens", () => {
     const sql = readFileSync("supabase/migrations/20261027000446_leaf_soil_seed_fruit_forest_view_permissions.sql", "utf8");
-    for (const scope of LEAF_FOREST_VIEW_SCOPES) expect(sql).toContain(`('${scope.pageKey}','${scope.tabKey}','${scope.label}',`);
+    for (const scope of LEAF_FOREST_VIEW_SCOPES.filter(scope => scope.pageKey !== "leaf-kanden")) {
+      expect(sql).toContain(`('${scope.pageKey}','${scope.tabKey}','${scope.label}',`);
+    }
+    const kanden = readFileSync("supabase/migrations/20261120000537_leaf_kanden_orders.sql", "utf8");
+    expect(kanden).toContain("('leaf-kanden', '', '関電 案件一覧', array['manager', 'admin', 'super_admin']");
     expect(sql).toContain("page_key not like 'leaf-%' and page_key not like 'forest-%'");
     expect(sql).not.toMatch(/for (insert|update|delete)/i);
     expect(sql).not.toContain("/p/toss");

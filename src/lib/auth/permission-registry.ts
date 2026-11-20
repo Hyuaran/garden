@@ -1,3 +1,4 @@
+import { LEAF_VIEW_SCOPES } from "./leaf-view-scopes";
 import { SOIL_VIEW_SCOPES } from "./soil-view-scopes";
 import { SPROUT_RILL_VIEW_SCOPES } from "./sprout-rill-view-scopes";
 import { BUD_VIEW_SCOPES } from "./bud-view-scopes";
@@ -40,7 +41,7 @@ export type PermissionEntry = {
   tabKey?: string;
   key: string;
   label: string;
-  group: "System" | "Root" | "Bud" | "Soil" | "API";
+  group: "System" | "Root" | "Bud" | "Soil" | "Leaf" | "API";
   kind: "画面" | "タブ" | "操作" | "API";
   allows: (role: GardenRole) => boolean;
   source: string;
@@ -127,6 +128,11 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     allows: () => true,
     source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SIDEBAR_HIDDEN_ROLES＋LIMITED_MENU_ITEMS",
   },
+  ...LEAF_VIEW_SCOPES.map((scope): PermissionEntry => ({
+    key: scope.pageKey, label: scope.label, group: "Leaf", kind: "画面",
+    pageKey: scope.pageKey, tabKey: scope.tabKey,
+    allows: role => scope.defaultRoles.includes(role), source: "src/lib/auth/leaf-view-scopes.ts",
+  })),
   ...SOIL_VIEW_SCOPES.map((scope): PermissionEntry => ({
     key: scope.pageKey + "-view", pageKey: scope.pageKey, tabKey: scope.tabKey,
     label: scope.label, group: "Soil", kind: "画面",
