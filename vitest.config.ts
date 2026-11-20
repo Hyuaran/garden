@@ -15,7 +15,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/leaf-kanden-photos/*.test.ts"],
     exclude: ["node_modules", ".next", "dist"],
   },
 });

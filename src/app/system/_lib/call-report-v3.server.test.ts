@@ -45,6 +45,9 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
     });
     const result = await loadCallReportV3(client([point("カード", "credit", 0.4)]), metrics(), people);
     expect(result.reportV3?.points).toContain("合計件数：2.8P");
+    expect(mocks.records).toHaveBeenCalledWith(10, "mock-customer",
+      `実績日 = "${date}" and 実績可否 in ("可")`,
+      expect.arrayContaining(["実績日", "実績可否", "立ち上げ日"]));
     expect(mocks.records.mock.calls.filter(([app]) => app !== 10).map(([app]) => app)).toEqual(creditApps());
     expect(result.reportV3?.warnings).toEqual(["⚠クレカのアプリ 94 を読めませんでした"]);
     const output = buildCallReport(summarizeCallMetrics(result), new Date(date + "T06:00:00Z"), result);
@@ -90,9 +93,9 @@ describe("配信v3の読み込み（外部接続はすべてモック）", () =>
 
   it("モックの本文を全文で確認する", async () => {
     mocks.records.mockImplementation(async (app: string | number) => app === 10 ? [
-      rec({ 受注日: date, 商材名区分2: "コラボ", 事業名: "自社" }),
-      rec({ 受注日: date, 商材名区分2: "でんき", 事業名: "自社" }),
-      rec({ 受注日: date, 商材名区分2: "コラボLP", 事業名: "自社", B_リスト名: "WEB_ヒカリのプロ" }),
+      rec({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "コラボ", 事業名: "自社" }),
+      rec({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "でんき", 事業名: "自社" }),
+      rec({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "コラボLP", 事業名: "自社", B_リスト名: "WEB_ヒカリのプロ" }),
     ] : []);
     const m = metrics();
     m.employeeMetrics = [

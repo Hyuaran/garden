@@ -1,4 +1,4 @@
-import { CHANNELS, REPORT_GROUPS, pointFor, roundPoints, resolveChannel, type Order, type PointRow } from "@/lib/product-points";
+import { CHANNELS, REPORT_GROUPS, pointFor, roundPoints, resolveChannel, type Channel, type Order as PointOrder, type PointRow } from "@/lib/product-points";
 import type { KintoneRecord } from "@/lib/kintone/records";
 import { fieldValue } from "../kanri/_lib/kanri-core";
 import type { EmployeeCallMetricRow } from "./call-metrics";
@@ -40,18 +40,22 @@ export function reportRanking(rows: EmployeeCallMetricRow[]) {
 
 // キャンセルを含める決定になった場合はここだけ切り替える。
 export const EXCLUDE_CANCELLED_REPORT_ORDERS = true;
+type Order = PointOrder & { kind: "today" | "tachiage" };
 const text = (r: KintoneRecord, key: string) => String(fieldValue(r, key) ?? "").trim();
 export function reportOrders(records: KintoneRecord[], date: string, credit = false): Order[] {
   return records.flatMap(r => {
-    const orderDate = credit ? text(r, "日付_4") || text(r, "紹介日") : text(r, "受注日");
-    if (orderDate !== date || (EXCLUDE_CANCELLED_REPORT_ORDERS && text(r, "商材ステータス") === "キャンセル")) return [];
+    const orderDate = credit ? text(r, "日付_4") || text(r, "紹介日") : text(r, "実績日");
+    if (orderDate !== date || (!credit && text(r, "実績可否") !== "可")) return [];
     const order = extractPointOrder(r, orderDate, credit);
-    return order?.channel ? [order] : [];
+    if (!order?.channel) return [];
+    const launchDate = text(r, "立ち上げ日");
+    const kind = !credit && launchDate && launchDate === orderDate ? "tachiage" : "today";
+    return [{ ...order, kind }];
   });
 }
 
 // 日付の絞り込みは呼び出し側で行う。獲得方法が不明な受注も返す。
-export function extractPointOrder(r: KintoneRecord, orderDate: string, credit = false): Order | null {
+export function extractPointOrder(r: KintoneRecord, orderDate: string, credit = false): PointOrder | null {
     if (EXCLUDE_CANCELLED_REPORT_ORDERS && text(r, "商材ステータス") === "キャンセル") return null;
     // 管理表のクレカには事業名相当の「文字列__1行__14」がある。
     const business = text(r, "事業名") || (credit ? text(r, "文字列__1行__14") : "");
@@ -65,20 +69,34 @@ export function extractPointOrder(r: KintoneRecord, orderDate: string, credit = 
 export function reportPoints(orders: Order[], rows: PointRow[]) {
   let total = 0;
   const missing = new Map<string, number>();
-  const buckets = Object.keys(CHANNELS).flatMap(channel => {
+  function aggregate(channel: Channel, kind: Order["kind"], prefix = "") {
     let subtotal = 0;
     const groups = new Map<string, number>();
-    for (const order of orders.filter(o => o.channel === channel)) {
+    for (const order of orders.filter(o => o.channel === channel && o.kind === kind)) {
       const row = pointFor(rows, order) ?? (order.masterProduct ? pointFor(rows, { ...order, productName: order.masterProduct }) : null);
       if (!row) { missing.set(order.productName, (missing.get(order.productName) ?? 0) + 1); continue; }
       subtotal = roundPoints(subtotal + row.total_points);
       groups.set(row.report_group, roundPoints((groups.get(row.report_group) ?? 0) + row.total_points));
     }
+    const details = Object.entries(REPORT_GROUPS).flatMap(([key, label]) => (groups.get(key) ?? 0) ? [`${prefix}${label}${groups.get(key)!.toFixed(1)}`] : []);
+    return { subtotal, details };
+  }
+  const channels = Object.keys(CHANNELS) as Channel[];
+  const formatLine = (label: string, subtotal: number, details: string[]) =>
+    `${label}：${subtotal.toFixed(1)}P${details.length ? `（${details.join("／")}）` : ""}`;
+  const buckets = channels.flatMap(channel => {
+    const { subtotal, details } = aggregate(channel, "today");
     total = roundPoints(total + subtotal);
-    const details = Object.entries(REPORT_GROUPS).flatMap(([key, label]) => (groups.get(key) ?? 0) ? [`${label}${groups.get(key)!.toFixed(1)}`] : []);
-    if (subtotal === 0) return [];
-    return [`${CHANNELS[channel as keyof typeof CHANNELS]}：${subtotal.toFixed(1)}P${details.length ? `（${details.join("／")}）` : ""}`];
+    return subtotal ? [formatLine(CHANNELS[channel], subtotal, details)] : [];
   });
+  let launchTotal = 0;
+  const launchDetails = channels.flatMap(channel => {
+    const { subtotal, details } = aggregate(channel, "tachiage", `${CHANNELS[channel]}-`);
+    launchTotal = roundPoints(launchTotal + subtotal);
+    return details;
+  });
+  total = roundPoints(total + launchTotal);
+  if (launchTotal) buckets.push(formatLine("立ち上げ", launchTotal, launchDetails));
   return {
     text: `\n\n【テレマ全体】\n${[`合計件数：${total.toFixed(1)}P`, ...buckets].join("\n")}`,
     warnings: [...missing].map(([name, count]) => `⚠ポイント表に無い商材：${name} ${count}件`),

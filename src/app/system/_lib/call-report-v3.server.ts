@@ -111,7 +111,7 @@ export async function loadCallReportV3(client: PointClient, metrics: CallMetrics
     try {
       const token = process.env.KINTONE_KANRI_CUSTOMER_TOKEN;
       if (!token) throw new Error("顧客一覧の鍵なし");
-      const customer = await getAllRecords(10, token, `受注日 = "${metrics.from}"`, ["受注日", "事業名", "B_リスト名", "商材名区分2", "m_product", "商材ステータス"]);
+      const customer = await getAllRecords(10, token, `実績日 = "${metrics.from}" and 実績可否 in ("可")`, ["受注日", "実績日", "実績可否", "立ち上げ日", "事業名", "B_リスト名", "商材名区分2", "m_product", "商材ステータス"]);
       orders.push(...reportOrders(customer, metrics.from));
     } catch { warnings.push("⚠顧客一覧を読めませんでした（ポイントは読めた分のみ）"); }
     const credit = await Promise.all(creditApps().map(app => safeFetchCredit(app, metrics.from, { report: true })));

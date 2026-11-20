@@ -41,15 +41,28 @@ describe("本文v3の集計", () => {
     expect(reportRanking([metric("南薗 太郎", 0, 0)])).toBe("");
   });
   it("当日の受注と獲得方法・キャンセル除外・クレカ代替欄を扱う", () => {
-    const customer = (extra: Record<string, string>) => record({ 受注日: date, 商材名区分2: "コラボ", 事業名: "自社", ...extra });
-    const orders = reportOrders([customer({}), customer({ B_リスト名: "WEB_ヒカリのプロ" }), customer({ 事業名: "アライアンス" }), customer({ 商材ステータス: "キャンセル" }), customer({ 受注日: "2026-11-09" }), customer({ 事業名: "他社" })], date);
+    const customer = (extra: Record<string, string>) => record({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "コラボ", 事業名: "自社", ...extra });
+    const orders = reportOrders([customer({}), customer({ B_リスト名: "WEB_ヒカリのプロ" }), customer({ 事業名: "アライアンス" }), customer({ 商材ステータス: "キャンセル" }), customer({ 実績日: "2026-11-09" }), customer({ 実績可否: "" }), customer({ 事業名: "他社" })], date);
     expect(orders.map(o => o.channel)).toEqual(["hakuchi", "lp", "alliance"]);
     expect(reportOrders([record({ 紹介日: date, 商材名区分2: "カード" })], date, true)[0].channel).toBe("hakuchi");
     expect(reportOrders([record({ 日付_4: date, ドロップダウン_12: "カード", 文字列__1行__14: "アライアンス" })], date, true)[0].channel).toBe("alliance");
     expect(reportOrders([record({ 日付_4: date, ドロップダウン_12: "カード", 事業名: "自社", リスト名: "WEB_カード" })], date, true)[0].channel).toBe("lp");
   });
+  it("当日受注と立ち上げを別の行に出し、実績可否が否の案件を省く", () => {
+    const customer = (extra: Record<string, string>) => record({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "コラボ", 事業名: "自社", ...extra });
+    const orders = reportOrders([
+      customer({}),
+      customer({ 受注日: "2026-11-09", 立ち上げ日: date, B_リスト名: "WEB_ヒカリのプロ", 商材名区分2: "NURO" }),
+      customer({ 立ち上げ日: date, 実績可否: "否" }),
+      customer({ 立ち上げ日: date }),
+      customer({ 実績日: "" }),
+    ], date);
+    expect(orders.map(o => o.kind)).toEqual(["today", "tachiage", "tachiage"]);
+    const result = reportPoints(orders, [row("コラボ", "hakuchi", "collab", 1.1), row("NURO", "lp", "nuro", 1.4)]);
+    expect(result.text).toBe("\n\n【テレマ全体】\n合計件数：3.6P\n白地：1.1P（コラボ1.1）\n立ち上げ：2.5P（白地-コラボ1.1／LP-NURO1.4）");
+  });
   it("ポイント表の合計付与Pと配信の内訳を使い、ゼロを消し不明商材を警告する", () => {
-    const orders = reportOrders([record({ 受注日: date, 商材名区分2: "コラボ", 事業名: "自社" }), record({ 受注日: date, 商材名区分2: "au光プラス", 事業名: "自社" })], date);
+    const orders = reportOrders([record({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "コラボ", 事業名: "自社" }), record({ 受注日: date, 実績日: date, 実績可否: "可", 商材名区分2: "au光プラス", 事業名: "自社" })], date);
     const result = reportPoints(orders, [row("コラボ", "hakuchi", "collab", 1.2)]);
     expect(result.text).toBe("\n\n【テレマ全体】\n合計件数：1.2P\n白地：1.2P（コラボ1.2）");
     expect(reportPoints([], []).text).toBe("\n\n【テレマ全体】\n合計件数：0.0P");
@@ -74,8 +87,8 @@ describe("本文v3の集計", () => {
   it("商材名区分2 で表に無いときは「商材区分2（マスタ）」で探す（タイプなしの au光プラス）", () => {
     const rec = (fields: Record<string, string>) => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, { value: v }]));
     const orders = reportOrders([
-      rec({ 受注日: date, 事業名: "自社", B_リスト名: "", 商材名区分2: "au光プラス", m_product: "au光プラス タイプ3", 商材ステータス: "" }),
-      rec({ 受注日: date, 事業名: "自社", B_リスト名: "", 商材名区分2: "au光プラス", m_product: "", 商材ステータス: "" }),
+      rec({ 受注日: date, 実績日: date, 実績可否: "可", 事業名: "自社", B_リスト名: "", 商材名区分2: "au光プラス", m_product: "au光プラス タイプ3", 商材ステータス: "" }),
+      rec({ 受注日: date, 実績日: date, 実績可否: "可", 事業名: "自社", B_リスト名: "", 商材名区分2: "au光プラス", m_product: "", 商材ステータス: "" }),
     ] as never, date);
     const row = (product: string, total: number) => ({ id: product, product, channel: "hakuchi", category: "kaisen", report_group: "au", start_date: date, end_date: null, total_points: total, toss_points: 0.2, closer_points: total - 0.2, unit_price: null, has_option: null, kintone_names: [], sort_order: 0, note: null, updated_at: date, updated_by: null });
     const result = reportPoints(orders, [row("au光プラス タイプ3", 2.0)] as never);
