@@ -41,7 +41,7 @@ export type EntryList = {
   page: number;
   counts: Partial<Record<EntryTab, number>> | null;
   updatedAt: string | null;
-  options: Record<typeof choiceFields[number][0], string[] | null> | null;
+  options: (Record<typeof choiceFields[number][0], string[] | null> & { reason?: string[] }) | null;
 };
 export type EntryRecord = EntryDraft & StatusInput & {
   id: string;

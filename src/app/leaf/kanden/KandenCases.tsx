@@ -59,6 +59,7 @@ export default function KandenCases({ list: initialList, year, currentYear, tab,
   const list = view && view.initial === initialList ? view.list : initialList;
   const years = [...new Set([currentYear, year, ...(isIntake ? intakeYears : list?.years ?? [])])].sort((a, b) => b - a);
   const [query, setQuery] = useState(() => caseQuery(tab, search));
+  const [showReason, setShowReason] = useState(tab === "cancelled");
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState(false);
   const request = useRef(0);
@@ -74,6 +75,7 @@ export default function KandenCases({ list: initialList, year, currentYear, tab,
       if (!incoming) { setListError(true); return; }
       setView({ initial: initialList, list: { ...incoming,
         counts: counts ? incoming.counts : list?.counts ?? incoming.counts,
+        options: incoming.options ?? list?.options ?? null,
         years: counts ? incoming.years : list?.years ?? [],
         updatedAt: counts ? incoming.updatedAt : list?.updatedAt ?? null,
         intakeUpdatedAt: counts ? incoming.intakeUpdatedAt : list?.intakeUpdatedAt,
@@ -85,6 +87,11 @@ export default function KandenCases({ list: initialList, year, currentYear, tab,
       if (current === request.current) setLoading(false);
     }
   }
+  const reasonColumn: DataColumn<CaseRow> = {
+    id: "cancel_reason", label: "理由", type: "text", wrap: true,
+    value: row => row.cancel_reason ?? "",
+    filterOptions: (list?.options?.cancel_reason ?? []).map(reason => ({ value: reason, label: reason || "（なし）" })),
+  };
   return (
     <section className={styles.pageShell}>
       <SystemBreadcrumb root={{ label: "Leaf", href: "/leaf" }} items={[{ label: "関電" }]} />
@@ -121,10 +128,15 @@ export default function KandenCases({ list: initialList, year, currentYear, tab,
               onChange={([value]) => { if (Number(value) !== year) router.push(caseListHref(Number(value), tab, query.search)); }} />
             {!list.hasOrders ? <p>FileMaker の受注はまだ取り込まれていません。</p> : (
               <div {...CLARITY_MASK}>
-                <DataTable rows={list.rows} columns={columns} rowKey={row => row.id} selectedKey={selected?.row.id}
+                <DataTable rows={list.rows} columns={showReason ? [...columns, reasonColumn] : columns} rowKey={row => row.id} selectedKey={selected?.row.id}
                   defaultSort={caseQuery(tab).sort} pageSize={50} remote={remote} loading={loading}
                   summary={() => "件数 " + formatCount.format(list.total) + " 件 ／ 写メあり " + formatCount.format(list.withPhotos) + " 件"}
-                  searchPlaceholder="管理番号・お客様名・カナ・住所"
+                  toolbar={<label>
+                    <input type="checkbox" checked={showReason} disabled={loading || !!query.filters.cancel_reason}
+                      onChange={event => setShowReason(event.target.checked)} />
+                    理由列を表示
+                  </label>}
+                  searchPlaceholder="管理番号・お客様名・カナ・住所・理由"
                   emptyText="該当する案件はありません。"
                   onRowClick={row => setSelected({
                     row, read: loadCaseDetail(row.id).catch(() => ({ error: CASE_DETAIL_ERROR })),

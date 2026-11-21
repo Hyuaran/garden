@@ -18,6 +18,7 @@ export type CaseRow = {
   acquisition: string | null;
   contract_type: string | null;
   progress: string | null;
+  cancel_reason: string | null;
   entered_on: string | null;
   mailed_on: string | null;
   invoice_sent_on: string | null;
@@ -32,6 +33,7 @@ export type CaseList = {
   years: number[] | null;
   counts: Record<CaseTab, number> | null;
   rows: CaseRow[];
+  options: { cancel_reason: string[] } | null;
   total: number;
   page: number;
   withPhotos: number;

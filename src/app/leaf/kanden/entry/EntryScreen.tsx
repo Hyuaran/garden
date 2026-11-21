@@ -247,7 +247,7 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
         <DataTable rows={rows} columns={columns} rowKey={rowKey}
           defaultSort={entryQuery.sort} pageSize={50} selectedKey={selectedId} loading={listBusy || saving}
           remote={{ query, total: list?.total ?? 0, onChange: next => { if (!pending.current) void readList(tab, next); } }}
-          searchPlaceholder="管理番号・お客様名・カナ・住所・電話・供給地点"
+          searchPlaceholder="管理番号・お客様名・カナ・住所・電話・供給地点・理由"
           onRowClick={openRow} emptyText="該当する案件はありません。" />
       </section>
       <section className={styles.panel} data-active={panel === "入力"} aria-label="入力">
