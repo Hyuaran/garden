@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { LEGACY_CANCEL_REASON, orderStatus, performanceMonth, type StatusInput } from "./status";
 
 const date = "2026-11-01";
@@ -40,4 +40,13 @@ test("実績月が空の場合は受注月を使う", () => {
   expect(performanceMonth({ ordered_on: date, jisseki_month: "" })).toBe("2026-11");
   expect(performanceMonth({ ordered_on: date, jisseki_month: "2026-12" })).toBe("2026-12");
   expect(performanceMonth({})).toBeNull();
+});
+
+describe("明細なし（完了扱い）", () => {
+  it("郵送済みで印があれば完了・戻入があればキャンセル", async () => {
+    const { orderStatus, LEGACY_DONE_REASON } = await import("./status");
+    expect(orderStatus({ mailed_on: "2024-07-01", cancel_reason: LEGACY_DONE_REASON })).toBe("完了");
+    expect(orderStatus({ mailed_on: "2024-07-01", cancel_reason: LEGACY_DONE_REASON, refunded_on: "2024-09-01" })).toBe("キャンセル");
+    expect(orderStatus({ cancel_reason: LEGACY_DONE_REASON })).toBe("諸元待ち");
+  });
 });

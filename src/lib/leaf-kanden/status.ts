@@ -6,6 +6,8 @@ export type OrderStatus = typeof ORDER_STATUSES[number];
 
 export const LEGACY_CANCEL_REASON = "郵送前キャンセル（入金なし）";
 export const PDF_REVIEW_REASON = "要確認（明細が PDF の月）";
+// 入金明細が無い昔の受注（郵送済み）を完了として扱う印（2026-11-21 東海林さん）
+export const LEGACY_DONE_REASON = "明細なし（完了扱い）";
 
 export type StatusInput = Partial<Record<
   "ordered_on" | "jisseki_month" | "specs_on" | "entered_on" | "application_received_on" |
@@ -17,7 +19,7 @@ export function orderStatus(order: StatusInput, hasSpecsPhoto = false): OrderSta
   if (order.status === "保留" || order.status === "差し戻し") return order.status;
   if (order.cancelled_on || order.refunded_on ||
       (order.cancel_reason === LEGACY_CANCEL_REASON && !order.mailed_on && !order.paid_on)) return "キャンセル";
-  if (order.paid_on) return "完了";
+  if (order.paid_on || (order.cancel_reason === LEGACY_DONE_REASON && order.mailed_on)) return "完了";
   if (order.mailed_on) return "入金待ち";
   if (order.application_received_on) return "郵送待ち";
   if (order.entered_on) return "申込書待ち";
