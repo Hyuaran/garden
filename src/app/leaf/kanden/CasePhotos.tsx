@@ -32,7 +32,9 @@ async function jpegBlob(photo: CasePhoto) {
   }
 }
 
-export default function CasePhotos({ photos, entry = false }: { photos: CasePhoto[]; entry?: boolean }) {
+export default function CasePhotos({ photos, entry = false, emptyText = "写メはありません。" }: {
+  photos: CasePhoto[]; entry?: boolean; emptyText?: string;
+}) {
   const [index, setIndex] = useState<number | null>(entry && photos.length ? 0 : null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -103,12 +105,20 @@ export default function CasePhotos({ photos, entry = false }: { photos: CasePhot
   // eslint-disable-next-line @next/next/no-img-element
   const preview = photo && index !== null && <img key={photo.filename} className={styles.largePhoto}
     src={photo.url} alt={`写メ ${index + 1}`} loading="lazy"
-    style={entry ? { transform: `rotate(${rotation}deg)`, zoom } : undefined}
+    style={entry ? { transform: `rotate(${rotation}deg)`, maxHeight: `${65 * zoom}vh` } : undefined}
     onError={() => setError("画像を表示できませんでした。")} />;
 
   return (
-    <section>
-      <h3>写メ（{photos.length} 枚）</h3>
+    <section className={entry ? styles.entryPhotos : undefined}>
+      {entry ? <header className={styles.imageToolbar}>
+        <h2>申込書プレビュー</h2>
+        <div className={styles.zoomGroup}>
+          <ActionButton aria-label="縮小" disabled={!photo || zoom <= 0.5} onClick={() => setZoom(zoom - 0.25)}>−</ActionButton>
+          <span aria-live="polite">{Math.round(zoom * 100)}%</span>
+          <ActionButton aria-label="拡大" disabled={!photo || zoom >= 3} onClick={() => setZoom(zoom + 0.25)}>＋</ActionButton>
+          <ActionButton aria-label="100%に戻す" disabled={!photo} onClick={() => setZoom(1)}>100%</ActionButton>
+        </div>
+      </header> : <h3>写メ（{photos.length} 枚）</h3>}
       <ResultMessage>{error}</ResultMessage>
       {photo && index !== null ? (
         <>
@@ -118,17 +128,13 @@ export default function CasePhotos({ photos, entry = false }: { photos: CasePhot
             <span aria-live="polite">{index + 1} / {photos.length}</span>
             <ActionButton disabled={index === photos.length - 1} onClick={() => show(index + 1)}>次の画像</ActionButton>
             <ActionButton disabled={saving} onClick={() => startSave(photo)}>画像を保存</ActionButton>
-            {entry && <>
-              <ActionButton disabled={zoom >= 3} onClick={() => setZoom(zoom + 0.25)}>拡大</ActionButton>
-              <ActionButton disabled={zoom <= 0.5} onClick={() => setZoom(zoom - 0.25)}>縮小</ActionButton>
-              <ActionButton onClick={() => setRotation((rotation + 90) % 360)}>90度回転</ActionButton>
-            </>}
+            {entry && <ActionButton onClick={() => setRotation((rotation + 90) % 360)}>90度回転</ActionButton>}
           </ActionRow>
           {entry ? <div className={styles.photoViewport}>
-            <div style={{ inlineSize: `${Math.max(zoom, 1) * 100}%` }}>{preview}</div>
+            <div style={{ inlineSize: `${zoom * 100}%` }}>{preview}</div>
           </div> : preview}
         </>
-      ) : (
+      ) : entry && !photos.length ? <p className={styles.photoEmpty}>{emptyText}</p> : (
         <div className={styles.thumbnails}>
           {photos.map((item, position) => (
             <ActionButton key={item.filename} aria-label={`写メ ${position + 1} を拡大`}

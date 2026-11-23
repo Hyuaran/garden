@@ -15,7 +15,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
-    include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/leaf-kanden-photos/*.test.ts", "scripts/leaf-kanden-orders/*.test.ts", "scripts/leaf-kanden-payments/*.test.ts", "public/kintone/*.test.ts", "scripts/kokyaku-fuyo-points/*.test.ts"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/leaf-kanden-photos/*.test.ts", "scripts/leaf-kanden-orders/*.test.ts", "scripts/soil-kanden-list/*.test.ts", "scripts/leaf-kanden-payments/*.test.ts", "public/kintone/*.test.ts", "scripts/kokyaku-fuyo-points/*.test.ts"],
     exclude: ["node_modules", ".next", "dist"],
   },
 });

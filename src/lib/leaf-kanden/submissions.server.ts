@@ -34,10 +34,36 @@ function unpack(data: unknown): Submission[] {
   }));
 }
 
-export async function recentSubmissions(employeeId: string) {
-  const { data, error } = await submissionsQuery().eq("employee_id", employeeId).limit(10);
+export async function countUrgentSubmissions(employeeId: string) {
+  const { count, error } = await getSupabaseAdmin().from("leaf_kanden_submissions")
+    .select("id", { count: "exact", head: true }).eq("employee_id", employeeId).eq("urgent_sw", true);
   if (error) throw error;
-  return unpack(data);
+  return count ?? 0;
+}
+
+export async function recentSubmissions(employeeId: string, offset = 0, size = 10, urgent = false) {
+  let query = submissionsQuery().eq("employee_id", employeeId);
+  if (urgent) query = query.eq("urgent_sw", true);
+  const { data, error } = await query.range(offset, offset + size - 1);
+  if (error) throw error;
+  return withOrderStatus(employeeId, unpack(data));
+}
+
+async function withOrderStatus(employeeId: string, rows: Submission[]) {
+  if (!rows.length) return rows;
+  const { data: statuses, error: statusError } = await getSupabaseAdmin().rpc("leaf_kanden_sales_statuses", {
+    p_employee: employeeId, p_ids: rows.map(row => row.id),
+  });
+  if (statusError) throw statusError;
+  const byId = new Map((statuses as { id: string; status: string }[]).map(row => [row.id, row.status]));
+  return rows.map(row => ({ ...row, order_status: byId.get(row.id) }));
+}
+
+export async function ownSubmission(id: string, employeeId: string) {
+  const { data, error } = await submissionsQuery().eq("id", id).eq("employee_id", employeeId);
+  if (error) throw error;
+  const rows = await withOrderStatus(employeeId, unpack(data));
+  return rows[0] ?? null;
 }
 
 export async function submissionDetail(id: string) {

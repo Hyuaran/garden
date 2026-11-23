@@ -79,9 +79,9 @@ export function convertOrder(row: CsvRow) {
 }
 
 /** 引用符内の改行・カンマと、二重の引用符を扱う。 */
-export function parseOrderCsv(content: string): CsvRow[] {
+export function* csvRecords(content: string): Generator<string[], void> {
   const input = content.replace(/^\uFEFF/, "");
-  const records: string[][] = [];
+  let line = 1;
   let record: string[] = [];
   let field = "";
   let quoted = false;
@@ -93,8 +93,12 @@ export function parseOrderCsv(content: string): CsvRow[] {
   }
   function finishRecord() {
     finishField();
-    if (record.length > 1 || record[0]) records.push(record);
+    const values = record;
     record = [];
+    if (values.length > 1 || values[0]) {
+      line++;
+      return values;
+    }
   }
 
   for (let index = 0; index < input.length; index++) {
@@ -111,10 +115,11 @@ export function parseOrderCsv(content: string): CsvRow[] {
     } else if (char === ",") {
       finishField();
     } else if (char === "\n" || char === "\r") {
-      finishRecord();
+      const values = finishRecord();
+      if (values) yield values;
       if (char === "\r" && input[index + 1] === "\n") index++;
     } else if (closedQuote || (char === '"' && field)) {
-      throw new Error(`CSV の ${records.length + 1} レコード目の引用符が不正です。`);
+      throw new Error(`CSV の ${line} レコード目の引用符が不正です。`);
     } else if (char === '"') {
       quoted = true;
     } else {
@@ -122,13 +127,19 @@ export function parseOrderCsv(content: string): CsvRow[] {
     }
   }
   if (quoted) throw new Error("CSV の引用符が閉じていません。");
-  if (record.length || field || closedQuote) finishRecord();
+  if (record.length || field || closedQuote) {
+    const values = finishRecord();
+    if (values) yield values;
+  }
+}
 
-  const headers = records.shift()?.map(header => header.trim());
+export function parseOrderCsv(content: string): CsvRow[] {
+  const records = csvRecords(content);
+  const headers = records.next().value?.map(header => header.trim());
   if (!headers?.includes("主キー") || new Set(headers).size !== headers.length) {
     throw new Error("CSV の見出しが不正です。");
   }
-  return records.map((values, index) => {
+  return Array.from(records, (values, index) => {
     if (values.length !== headers.length) throw new Error(`CSV の ${index + 2} レコード目の項目数が不正です。`);
     return Object.fromEntries(headers.map((header, column) => [header, values[column]]));
   });

@@ -1,10 +1,10 @@
 import { expect, it, vi } from "vitest";
 import { loadEntryDetail } from "./actions";
 import type { EntryRecord } from "./entry";
-import { readEntryHistory, readEntryPhotos, readEntryRecord, requireEntry, signEntryPhotos } from "./queries.server";
+import { readEntryHistory, readEntryListValues, readEntryPhotos, readEntryRecord, requireEntry, signEntryPhotos } from "./queries.server";
 
 vi.mock("./queries.server", () => ({
-  requireEntry: vi.fn(), readEntryHistory: vi.fn(), readEntryPhotos: vi.fn(),
+  requireEntry: vi.fn(), readEntryHistory: vi.fn(), readEntryListValues: vi.fn(), readEntryPhotos: vi.fn(),
   readEntryRecord: vi.fn(), signEntryPhotos: vi.fn(),
 }));
 vi.mock("@/lib/relay/monitor.server", () => ({ sendGardenNotice: vi.fn() }));
@@ -21,13 +21,16 @@ it("選択IDの詳細・変更履歴・入金明細・写メを1回の応答で�
     paid_on: "2026-11-20", leaf_kanden_payments: payments,
   } as EntryRecord });
   vi.mocked(readEntryHistory).mockResolvedValue(history);
+  const listValues = { customer_name: "テスト用リスト" };
+  vi.mocked(readEntryListValues).mockResolvedValue(listValues);
   vi.mocked(readEntryPhotos).mockResolvedValue([{ image_path: "photo.jpg", category: "諸元" }]);
   vi.mocked(signEntryPhotos).mockResolvedValue(photos);
 
-  expect(await loadEntryDetail(target)).toMatchObject({ detail: { status: "完了", history, payments, photos,
+  expect(await loadEntryDetail(target)).toMatchObject({ detail: { status: "完了", history, payments, photos, listValues,
     draft: { mailed_on: "2026-11-18", invoice_sent_on: "2026-11-20" } } });
   expect(requireEntry).toHaveBeenCalledTimes(1);
   expect(readEntryRecord).toHaveBeenCalledExactlyOnceWith(target);
   expect(readEntryHistory).toHaveBeenCalledExactlyOnceWith(target.id);
-  expect(readEntryPhotos).toHaveBeenCalledExactlyOnceWith("1504115", undefined);
+  expect(readEntryListValues).toHaveBeenCalledExactlyOnceWith("1504115");
+  expect(readEntryPhotos).toHaveBeenCalledExactlyOnceWith("1504115", undefined, false, target.id);
 });

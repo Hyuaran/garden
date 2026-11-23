@@ -1,5 +1,5 @@
 import { requireSystemView } from "@/lib/auth/view-permission.server";
-import { employeeRecord, recentSubmissions } from "@/lib/leaf-kanden/submissions.server";
+import { countUrgentSubmissions, employeeRecord, recentSubmissions } from "@/lib/leaf-kanden/submissions.server";
 import { isRoleAtLeast } from "@/app/root/_constants/types";
 import { FormPage, ResultMessage } from "../_components/form-kit";
 import KandenForm from "./KandenForm";
@@ -18,6 +18,10 @@ export default async function KandenFormPage({ mobile = false }: { mobile?: bool
     </FormPage>;
   }
   const employee = await employeeRecord(context);
-  const recent = await recentSubmissions(employee.id).catch(() => null);
-  return <KandenForm name={employee.name} number={employee.number} mobile={mobile} initialRecent={recent} />;
+  const [recent, urgentCount] = await Promise.all([
+    recentSubmissions(employee.id).catch(() => null),
+    countUrgentSubmissions(employee.id).catch(() => null),
+  ]);
+  return <KandenForm name={employee.name} number={employee.number} mobile={mobile}
+    initialRecent={recent} initialUrgentCount={urgentCount} />;
 }

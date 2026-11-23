@@ -3,8 +3,8 @@
 import { PDFDocument } from "pdf-lib";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendGardenNotice } from "@/lib/relay/monitor.server";
-import { normalizeKanriNo } from "@/lib/leaf-kanden/kanri-no";
-import { formEmployee, recentSubmissions } from "@/lib/leaf-kanden/submissions.server";
+import { pdKey } from "@/lib/leaf-kanden/sales-form";
+import { formEmployee, ownSubmission, recentSubmissions } from "@/lib/leaf-kanden/submissions.server";
 import {
   acquisitionLabel, dateInJapan, MAX_PHOTOS, MAX_PHOTO_BYTES, PHOTO_BUCKET, PHOTO_TYPES,
   submissionError, urgentLabel, UUID, validSlot, type FormInput, type PhotoSlot, type Submission,
@@ -26,21 +26,24 @@ export async function preparePhotoUploads(id: string, slots: PhotoSlot[], append
     if (typeof id !== "string" || !UUID.test(id) || !validSlots(slots, append)) return { error: uploadError };
     const db = getSupabaseAdmin();
     const month = dateInJapan(new Date()).slice(0, 7).replace("-", "/");
-    const { error: insertError } = await db.from("leaf_kanden_form_uploads").upsert(
-      { id, employee_id: employee.id, upload_month: month }, { onConflict: "id", ignoreDuplicates: true },
-    );
-    if (insertError) throw insertError;
+    if (!append) {
+      const { error } = await db.from("leaf_kanden_form_uploads").upsert(
+        { id, employee_id: employee.id, upload_month: month }, { onConflict: "id", ignoreDuplicates: true },
+      );
+      if (error) throw error;
+    }
     const [draft, existing] = await Promise.all([
       db.from("leaf_kanden_form_uploads").select("upload_month,locked_until").eq("id", id).eq("employee_id", employee.id).single(),
-      db.from("leaf_kanden_submissions").select("specs_status,leaf_kanden_photo_sets(photo_count)").eq("id", id).maybeSingle(),
+      db.from("leaf_kanden_submissions").select("specs_status,leaf_kanden_photo_sets(photo_count)").eq("id", id).eq("employee_id", employee.id).maybeSingle(),
     ]);
     if (draft.error || existing.error || (draft.data.locked_until && Date.parse(draft.data.locked_until) > Date.now())) {
       return { error: uploadError };
     }
-    if (append !== Boolean(existing.data) || (append && (
-      existing.data?.specs_status !== "諸元待ち" ||
-      Number((existing.data.leaf_kanden_photo_sets as unknown as { photo_count: number }).photo_count) + slots.length > MAX_PHOTOS
-    ))) return { error: uploadError };
+    if (append !== Boolean(existing.data)) return { error: uploadError };
+    if (existing.data) {
+      const set = existing.data.leaf_kanden_photo_sets as unknown as { photo_count: number };
+      if (set.photo_count + slots.length > MAX_PHOTOS) return { error: uploadError };
+    }
 
     const folder = uploadFolder(draft.data.upload_month, id);
     const uploads = await Promise.all(slots.map(async slot => {
@@ -107,7 +110,7 @@ async function buildPdf(paths: string[]) {
 
 export async function sendKandenForm(
   id: string, input: FormInput | null, slots: PhotoSlot[], allowMissingSpecs: boolean,
-): Promise<{ error: string } | { recent: Submission[] | null }> {
+): Promise<{ error: string } | { recent: Submission[] | null; updated?: Submission | null }> {
   const append = input === null;
   if (typeof id !== "string" || !UUID.test(id) || !validSlots(slots, append)) return { error: saveError };
   const hasSpecs = slots.some(slot => slot.kind === "specs");
@@ -132,17 +135,25 @@ export async function sendKandenForm(
     const existing = await db.from("leaf_kanden_submissions")
       .select("set_id,kanri_no,specs_status,submitted_at").eq("id", id).eq("employee_id", employee.id).maybeSingle();
     if (existing.error) throw existing.error;
-    const recent = () => recentSubmissions(employee.id).catch(() => null);
-    if (existing.data && (!append || existing.data.specs_status === "あり")) return { recent: await recent() };
+    async function saved() {
+      const recent = await recentSubmissions(employee.id).catch(() => null);
+      const updated = append
+        ? recent?.find(row => row.id === id) ?? await ownSubmission(id, employee.id).catch(() => null)
+        : undefined;
+      return { recent, updated };
+    }
+    if (existing.data && !append) return saved();
     if (append && !existing.data) return { error: "追加先の送信を確認できませんでした。" };
 
     const previous = existing.data ? await db.from("leaf_kanden_photos").select("image_path")
       .eq("set_id", existing.data.set_id).order("image_path") : null;
     if (previous?.error) throw previous.error;
     const previousPaths = previous?.data?.map(row => row.image_path) ?? [];
-    if (previousPaths.length + slots.length > MAX_PHOTOS) return { error: "写メは1回の送信につき30枚までです。" };
     const folder = uploadFolder(draft.data.upload_month, id);
     const paths = slots.map(slot => pathFor(folder, slot));
+    if (append && paths.every(path => previousPaths.includes(path))) return saved();
+    if (paths.some(path => previousPaths.includes(path))) return { error: saveError };
+    if (previousPaths.length + slots.length > MAX_PHOTOS) return { error: "写メは1回の送信につき30枚までです。" };
     const pdf = await buildPdf([...previousPaths, ...paths]);
     const pdfPath = `pdf/${folder}.pdf`;
     if (pdf.bytes.byteLength > maxPdfBytes) throw new PdfSizeError();
@@ -159,7 +170,7 @@ export async function sendKandenForm(
     });
     if (!uploaded.ok) throw new Error("PDF upload failed");
 
-    const kanriNo = input ? normalizeKanriNo(input.kanri_no_raw) : existing.data?.kanri_no;
+    const kanriNo = input ? pdKey(input.kanri_no_raw)?.number : existing.data?.kanri_no;
     const { error } = await db.rpc("leaf_kanden_commit_form", {
       p_submission: {
         id, employee_id: employee.id, employee_name: employee.name, employee_number: employee.number, kanri_no: kanriNo,
@@ -168,6 +179,7 @@ export async function sendKandenForm(
           customer_name: input.customer_name.trim(), has_denki: input.has_denki, has_douryoku: input.has_douryoku,
           has_gas: input.has_gas, urgent_sw: input.urgent_sw, sw_month: input.urgent_sw ? input.sw_month : null,
           note: input.note.trim(), specs_status: hasSpecs ? "あり" : "諸元待ち",
+          customer_fields: input.customer ?? null,
         }),
       },
       p_photos: slots.map((slot, index) => ({
@@ -181,8 +193,9 @@ export async function sendKandenForm(
       // A retry may follow a lost RPC response. Only restore the previous PDF after
       // confirming that the transaction left the submission waiting for specifications.
       if (previousPdf?.data) {
-        const status = await db.from("leaf_kanden_submissions").select("specs_status").eq("id", id).single();
-        if (status.data?.specs_status === "諸元待ち") {
+        const committed = await db.from("leaf_kanden_photos").select("image_path")
+          .eq("set_id", existing.data!.set_id).in("image_path", paths);
+        if (!committed.error && committed.data.length === 0) {
           const restored = await fetch(uploadUrl.signedUrl, {
             method: "PUT",
             headers: { "Content-Type": "application/pdf", "x-upsert": "true" },
@@ -190,7 +203,7 @@ export async function sendKandenForm(
             signal: AbortSignal.timeout(8_000),
           }).catch(() => null);
           if (!restored?.ok) console.error("Kanden PDF restore failed");
-        } else if (status.data?.specs_status === "あり") return { recent: await recent() };
+        } else if (!committed.error && committed.data.length === paths.length) return saved();
       }
       throw error;
     }
@@ -208,7 +221,7 @@ export async function sendKandenForm(
         console.error("Kanden form notice failed");
       }
     }
-    return { recent: await recent() };
+    return saved();
   } catch (error) {
     if (error instanceof PdfSizeError) return { error: pdfSizeError };
     console.error("Kanden form save failed");

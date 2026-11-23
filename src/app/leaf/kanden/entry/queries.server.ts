@@ -3,12 +3,11 @@ import { requireSystemView } from "@/lib/auth/view-permission.server";
 import { japanDate } from "@/lib/notices";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { signCasePhotos } from "@/lib/leaf-kanden/submissions.server";
-import { UUID } from "@/lib/leaf-kanden/submissions";
+import { UUID, type CustomerFields } from "@/lib/leaf-kanden/submissions";
 import { normalizeKanriNo } from "@/lib/leaf-kanden/kanri-no";
 import type { CalendarDay } from "@/lib/leaf-kanden/supply-point";
 import { paymentColumns } from "../PaymentDetails";
-import type { TableQuery } from "@/app/system/_components/DataTable/DataTable";
-import { ENTRY_SCOPE, ENTRY_START, entryQuery, type EntryTab, type EntryHistory, type EntryDraft, type EntryList, type EntryRecord, type EntryTarget } from "./entry";
+import { DEFAULT_ENTRY_TAB, ENTRY_SCOPE, ENTRY_START, entryQuery, type EntryQuery, type EntryTab, type EntryHistory, type EntryDraft, type EntryList, type EntryRecord, type EntryTarget } from "./entry";
 
 export async function requireEntry() {
   const context = await requireSystemView(ENTRY_SCOPE);
@@ -17,12 +16,42 @@ export async function requireEntry() {
   return context;
 }
 
-export async function readEntryList(tab: EntryTab, query: TableQuery, counts: boolean) {
+export async function readEntryList(tab: EntryTab, query: EntryQuery, counts: boolean) {
   const { data, error } = await getSupabaseAdmin().rpc("leaf_kanden_entry_page", {
     p_tab: tab, p_query: query, p_counts: counts,
   });
   if (error) throw error;
   return data as EntryList;
+}
+
+export async function readEntryListValues(number: string | null): Promise<Partial<EntryDraft> | null> {
+  const kanriNo = number && normalizeKanriNo(number);
+  if (!kanriNo) return null;
+  const { data, error } = await getSupabaseAdmin().from("soil_kanden_list")
+    .select("customer_name,customer_kana,customer_no,postal_code,address1,address2,phone1,phone2,mobile,billing_address1,billing_address2,supply_point,capacity,power_capacity,contract_type")
+    .eq("kanri_no", kanriNo)
+    .order("fm_updated_on", { ascending: false, nullsFirst: false })
+    .order("fm_rowid", { ascending: false })
+    .limit(1).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    customer_name: data.customer_name,
+    customer_kana: data.customer_kana,
+    postal_code: data.postal_code,
+    address: [data.address1, data.address2].join("") || null,
+    phone: data.phone1 ?? data.phone2 ?? data.mobile,
+    pay_address: [data.billing_address1, data.billing_address2].join("") || null,
+    prev_kana: data.customer_kana,
+    prev_name: data.customer_name,
+    prev_customer_no: data.customer_no,
+    prev_supply_22: data.supply_point,
+    denki_customer_no: data.customer_no,
+    denki_supply_point: data.supply_point,
+    capacity: data.capacity,
+    capacity_douryoku: data.power_capacity,
+    contract_type: data.contract_type,
+  };
 }
 
 export async function readEntryCalendar() {
@@ -32,7 +61,7 @@ export async function readEntryCalendar() {
 
 export async function readEntryPage(query = entryQuery) {
   const [list, calendar] = await Promise.allSettled([
-    readEntryList("受付待ち", query, true), readEntryCalendar(),
+    readEntryList(DEFAULT_ENTRY_TAB, query, true), readEntryCalendar(),
   ]);
   return {
     list: list.status === "fulfilled" ? list.value : null,
@@ -53,10 +82,10 @@ function readCalendarDays(rows: Record<string, unknown>[]): CalendarDay[] | null
   return days.length === rows.length ? days : null;
 }
 
-const intakeFields = "id,set_id,employee_id,employee_name,kanri_no,customer_name,acquisition,urgent_sw,sw_month,has_denki,has_douryoku,has_gas,note,updated_at";
+const intakeFields = "id,set_id,employee_id,employee_name,employee_number,kanri_no,customer_name,acquisition,urgent_sw,sw_month,has_denki,has_douryoku,has_gas,note,updated_at,customer_fields";
 type Intake = Pick<EntryDraft, "kanri_no" | "customer_name" | "acquisition" | "urgent_sw" | "sw_month" |
   "has_denki" | "has_douryoku" | "has_gas" | "note"> & {
-  id: string; set_id: string; employee_id: string; employee_name: string; updated_at: string;
+  id: string; set_id: string; employee_id: string; employee_name: string; employee_number: string | null; updated_at: string; customer_fields?: CustomerFields | null;
 };
 
 export async function readEntryRecord(target: EntryTarget) {
@@ -82,17 +111,23 @@ export async function readEntryRecord(target: EntryTarget) {
   return { order, intake: result.data as Intake | null };
 }
 
-export async function readEntryPhotos(kanriNo: string | null, setId: string | undefined, specsOnly = false) {
+export async function readEntryPhotos(kanriNo: string | null, setId: string | undefined, specsOnly = false, orderId?: string) {
   kanriNo = kanriNo && normalizeKanriNo(kanriNo);
-  if (!kanriNo && !setId) return [];
+  if (!kanriNo && !setId && !orderId) return [];
   const photos: { image_path: string; category: string }[] = [];
   const db = getSupabaseAdmin();
+  const attached = orderId ? await db.from("leaf_kanden_photo_sets").select("id")
+    .eq("set_key", `entry/${orderId}`).maybeSingle() : null;
+  if (attached?.error) throw attached.error;
+  const matches = [
+    kanriNo && `kanri_no.eq.${kanriNo}`,
+    setId && `set_id.eq.${setId}`,
+    attached?.data && `set_id.eq.${attached.data.id}`,
+  ].filter(Boolean);
+  if (!matches.length) return [];
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
-    let query = db.from("leaf_kanden_photos").select("image_path,category");
-    if (kanriNo && setId) query = query.or(`kanri_no.eq.${kanriNo},set_id.eq.${setId}`);
-    else if (kanriNo) query = query.eq("kanri_no", kanriNo);
-    else if (setId) query = query.eq("set_id", setId);
+    let query = db.from("leaf_kanden_photos").select("image_path,category").or(matches.join(","));
     if (specsOnly) query = query.eq("category", "諸元");
     const { data, error } = await query.order("event_date", { nullsFirst: false }).order("image_path")
       .order("id").range(offset, offset + pageSize - 1);

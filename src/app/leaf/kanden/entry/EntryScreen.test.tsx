@@ -2,67 +2,144 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import { loadEntryDetail, loadEntryList } from "./actions";
-import { entryQuery, type EntryList } from "./entry";
+import { entryQuery, type EntryDetail, type EntryDraft, type EntryList } from "./entry";
 import EntryScreen from "./EntryScreen";
 
 vi.mock("./actions", () => ({ checkEntryDuplicates: vi.fn(), loadEntryDetail: vi.fn(), loadEntryList: vi.fn(), saveEntry: vi.fn() }));
+vi.mock("./specs-actions", () => ({ commitEntrySpecs: vi.fn(), prepareEntrySpecs: vi.fn() }));
+
+function detail(name: string): EntryDetail {
+  return {
+    draft: { customer_name: name, specs_on: "2026-11-20" } as EntryDraft,
+    listValues: { customer_name: name }, photos: [], duplicates: {}, history: [], payments: [],
+    status: "エントリー待ち", version: null, reason: null, paidOn: null, refundedOn: null,
+  };
+}
 
 const initial: EntryList = {
-  rows: [["intake", "1", "受付案件", null, "受付待ち", null]],
-  total: 1, page: 1, counts: { "受付待ち": 1, "郵送待ち": 51 }, updatedAt: null, options: null,
+  rows: [["entry", "1", "入力案件", null, "エントリー待ち", null]],
+  total: 1, page: 1, counts: { "エントリー待ち": 1, "郵送待ち": 51 }, updatedAt: null, options: null,
 };
 
 beforeEach(() => vi.resetAllMocks());
 
-it("初期タブの行と集計を表示し、次のタブが届くまで前の一覧を保持する", async () => {
+it("エントリー待ちの詳細から始まり、一覧で選んだ案件を同じタブで開く", async () => {
   const next = Promise.withResolvers<Awaited<ReturnType<typeof loadEntryList>>>();
   vi.mocked(loadEntryList).mockReturnValue(next.promise);
-  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} />);
+  vi.mocked(loadEntryDetail).mockResolvedValue({ detail: detail("郵送案件") });
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={detail("入力案件")} />);
   const tabs = within(screen.getByLabelText("案件の状況")).getAllByRole("tab");
   expect(tabs.map(tab => tab.textContent)).toEqual([
-    "受付待ち1", "諸元待ち0", "エントリー待ち0", "申込書待ち0", "郵送待ち51", "入金待ち0", "完了0", "キャンセル0", "保留0", "差し戻し0",
+    "一覧", "諸元待ち0", "エントリー待ち1", "申込書待ち0", "郵送待ち51", "入金待ち0", "完了0", "キャンセル0", "差し戻し0",
   ]);
-  fireEvent.click(tabs[4]);
+  expect(tabs[2]).toHaveAttribute("aria-selected", "true");
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  fireEvent.click(tabs[0]);
   expect(tabs[0]).toHaveAttribute("aria-selected", "true");
-  expect(screen.getByText("受付案件")).toBeInTheDocument();
-  expect(loadEntryList).toHaveBeenCalledExactlyOnceWith("郵送待ち", entryQuery, true);
-  expect(loadEntryDetail).not.toHaveBeenCalled();
+  expect(screen.getByDisplayValue("入力案件").closest("[data-loading]")).toHaveAttribute("data-loading", "true");
+  expect(loadEntryList).toHaveBeenCalledExactlyOnceWith("一覧", entryQuery, false, false, undefined);
   next.resolve({ list: { ...initial, rows: [["mail", "2", "郵送案件", "2026-11-01", "郵送待ち", null]], total: 51 } });
-  expect(await screen.findByText("郵送案件")).toBeInTheDocument();
-  expect(tabs[4]).toHaveAttribute("aria-selected", "true");
-  expect(screen.queryByText("受付案件")).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByText("郵送案件"));
+  expect(await screen.findByDisplayValue("郵送案件")).toBeInTheDocument();
+  expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+  expect(loadEntryDetail).toHaveBeenCalledExactlyOnceWith({ id: "mail", intake: false });
+  fireEvent.click(screen.getByRole("button", { name: "一覧へ戻る" }));
+  expect(screen.getByText("郵送案件")).toBeInTheDocument();
+  expect(loadEntryList).toHaveBeenCalledTimes(1);
 });
 
-it("Ctrl+↑↓でページ境界をまたぎ、選択した1件だけを読み込む", async () => {
-  const firstPage: EntryList = { ...initial, total: 51, counts: { "受付待ち": 51 }, rows:
-    Array.from({ length: 50 }, (_, i) => ["row-" + i, String(i), "案件" + i, null, "受付待ち", null]) };
+it("Ctrl+↑↓でページ境界をまたぎ、ページと詳細を同じ応答で取得する", async () => {
+  const firstPage: EntryList = { ...initial, total: 51, rows:
+    Array.from({ length: 50 }, (_, i) => ["row-" + i, String(i), "案件" + i, null, "エントリー待ち", null]) };
   vi.mocked(loadEntryList).mockResolvedValueOnce({ list: { ...firstPage, page: 2, counts: null,
-    rows: [["row-50", "50", "案件50", null, "受付待ち", null]] } })
-    .mockResolvedValueOnce({ list: { ...firstPage, counts: null } });
-  vi.mocked(loadEntryDetail).mockResolvedValue({ error: "詳細取得結果" });
-  render(<EntryScreen today="2026-11-20" calendar={[]} list={firstPage} />);
-  fireEvent.click(screen.getByText("案件49"));
-  expect(await screen.findByText("詳細取得結果")).toBeInTheDocument();
+    rows: [["row-50", "50", "案件50", null, "エントリー待ち", null]] },
+    detailId: "row-50", selectedDetail: { detail: detail("案件50") } })
+    .mockResolvedValueOnce({ list: firstPage, detailId: "row-49", selectedDetail: { detail: detail("案件49") } });
+  vi.mocked(loadEntryDetail).mockResolvedValue({ detail: detail("関連案件") });
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={firstPage} initialDetail={{
+    ...detail("案件0"), related: [{ id: "row-49", number: "49", name: "案件49" }],
+  }} />);
+  fireEvent.click(screen.getByRole("button", { name: "49 案件49" }));
+  await screen.findByDisplayValue("関連案件");
   fireEvent.keyDown(window, { ctrlKey: true, key: "ArrowDown" });
-  expect(await screen.findByText("案件50")).toBeInTheDocument();
-  expect(loadEntryList).toHaveBeenNthCalledWith(1, "受付待ち", { ...entryQuery, page: 2 }, false);
-  expect(loadEntryDetail).toHaveBeenNthCalledWith(2, { id: "row-50", intake: true });
-  expect(screen.getByText("案件50").closest("tr")).toHaveAttribute("data-selected", "true");
+  expect(await screen.findByDisplayValue("案件50")).toBeInTheDocument();
+  expect(loadEntryList).toHaveBeenNthCalledWith(1, "エントリー待ち", { ...entryQuery, page: 2 }, false, false, "first");
   fireEvent.keyDown(window, { ctrlKey: true, key: "ArrowUp" });
-  expect(await screen.findByText("案件49")).toBeInTheDocument();
-  expect(loadEntryList).toHaveBeenNthCalledWith(2, "受付待ち", entryQuery, false);
-  expect(loadEntryDetail).toHaveBeenCalledTimes(3);
-  expect(loadEntryDetail).toHaveBeenLastCalledWith({ id: "row-49", intake: true });
+  expect(await screen.findByDisplayValue("案件49")).toBeInTheDocument();
+  expect(loadEntryList).toHaveBeenNthCalledWith(2, "エントリー待ち", entryQuery, false, false, "last");
+  expect(loadEntryDetail).toHaveBeenCalledTimes(1);
 });
 
-it("初期一覧50件とカレンダーのコンポーネント出力を200KB未満に収める", () => {
-  const list: EntryList = { ...initial, total: 19_000, counts: { "受付待ち": 19_000 },
+it("入力した検索条件をサーバーに一度だけ送る", async () => {
+  vi.mocked(loadEntryList).mockResolvedValue({ list: { ...initial, rows: [], total: 0 } });
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={detail("入力案件")} />);
+  fireEvent.keyDown(window, { ctrlKey: true, key: "f" });
+  const search = screen.getByRole("form", { name: "案件の条件検索" });
+  fireEvent.change(within(search).getByLabelText("ご契約名義"), { target: { value: "山田*" } });
+  fireEvent.click(within(search).getByRole("button", { name: "検索条件を追加" }));
+  fireEvent.change(within(search).getByLabelText("管理番号"), { target: { value: "==123" } });
+  fireEvent.click(within(search).getByRole("button", { name: "全案件を検索" }));
+  expect(await screen.findByText("該当する案件はありません。")).toBeInTheDocument();
+  expect(loadEntryList).toHaveBeenCalledExactlyOnceWith("一覧", {
+    ...entryQuery, requests: [{ customer_name: "山田*" }, { kanri_no: "==123" }],
+  }, false, false, undefined);
+});
+
+it("転記で照合差分が消え、日付入力で業務ステータスが進む", () => {
+  const loaded = detail("編集前");
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={{
+    ...loaded, listValues: { customer_name: "受注時の名義" },
+  }} />);
+  expect(screen.getByLabelText("ご契約名義").closest("[data-comparison]")).toHaveAttribute("data-comparison", "different");
+  fireEvent.click(screen.getByRole("button", { name: "ご契約名義をリストから転記" }));
+  expect(screen.getByDisplayValue("受注時の名義").closest("[data-comparison]")).toHaveAttribute("data-comparison", "match");
+  fireEvent.change(screen.getByLabelText("エントリー日"), { target: { value: "2026-11-20" } });
+  expect(within(screen.getByLabelText("業務ステータス")).getByText("申込書待ち").parentElement)
+    .toHaveAttribute("data-current", "true");
+});
+
+it("リストに無い案件では転記を無効にし、未分類の写メをすべてタブで最初に開く", () => {
+  const initialDetail = {
+    ...detail("テスト案件"), listValues: null,
+    photos: [{ category: "未分類", url: "https://example.test/photo.jpg", filename: "photo.jpg", jpeg: true }],
+  };
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={initialDetail} />);
+  expect(screen.getByText("リストに無い案件")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "リスト全項目転記" })).toBeDisabled();
+  expect(screen.getByLabelText("ご契約名義").closest("[data-comparison]")).toHaveAttribute("data-comparison", "new");
+  const tabs = within(screen.getByLabelText("書類の種類"));
+  expect(tabs.getByRole("tab", { name: "すべて" })).toHaveAttribute("aria-selected", "true");
+  const preview = within(screen.getByLabelText("申込書プレビュー"));
+  expect(preview.getByRole("img")).toHaveAttribute("src", "https://example.test/photo.jpg");
+  fireEvent.click(tabs.getByRole("tab", { name: "電灯" }));
+  expect(preview.queryByRole("img")).not.toBeInTheDocument();
+});
+
+it.each([["電灯", "電灯", "application"], ["未分類", "すべて", "specs"]])(
+  "諸元と%sの写メがある場合に%sタブを開く",
+  (category, tab, firstPhoto) => {
+    const initialDetail = {
+      ...detail("テスト案件"),
+      photos: [
+        { category: "諸元", url: "https://example.test/specs.jpg", filename: "specs.jpg", jpeg: true },
+        { category, url: "https://example.test/application.jpg", filename: "application.jpg", jpeg: true },
+      ],
+    };
+    render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={initialDetail} />);
+    expect(screen.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+    expect(within(screen.getByLabelText("申込書プレビュー")).getByRole("img"))
+      .toHaveAttribute("src", `https://example.test/${firstPhoto}.jpg`);
+  },
+);
+
+it("初期のリスト・選択案件・カレンダーの出力を200KB未満に収める", () => {
+  const list: EntryList = { ...initial, total: 19_000,
     rows: Array.from({ length: 50 }, (_, i) => [
       "00000000-0000-0000-0000-" + String(i).padStart(12, "0"), String(1504000 + i),
-      "お客様".repeat(40), null, "受付待ち", null,
+      "お客様".repeat(40), null, "エントリー待ち", null,
     ]) };
   const calendar = Array.from({ length: 1000 }, () => ({ schedule: "01", date: "2026-11-20" }));
-  const props = { list, calendar, today: "2026-11-20" };
+  const props = { list, calendar, today: "2026-11-20", initialDetail: detail("入力案件") };
   const markup = renderToStaticMarkup(<EntryScreen {...props} />);
   expect(Buffer.byteLength(markup) + Buffer.byteLength(JSON.stringify(props))).toBeLessThan(200_000);
 });

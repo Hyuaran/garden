@@ -1,0 +1,411 @@
+.salesForm button[aria-pressed="true"] {
+  border-color: var(--tealDark);
+  background: var(--soft);
+}
+
+.salesForm button > svg, .acquisitionOptions svg, .modeBanner svg, .profileCard h2 svg {
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
+.guide {
+  position: relative;
+  overflow: hidden;
+  background: #17191d;
+  border-radius: 8px;
+  margin-inline: auto;
+}
+
+.guide video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.guide span {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: var(--guide-width);
+  height: var(--guide-height);
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 20rem rgb(0 0 0 / 32%);
+  pointer-events: none;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  max-height: 65dvh;
+  object-fit: contain;
+}
+
+.case {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.case summary {
+  cursor: pointer;
+}
+
+.case p {
+  margin: 0.5rem 0;
+}
+
+.customerFields {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--card);
+}
+
+.pageHeader h1 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 16px;
+}
+
+.headerActions { display: flex; align-items: center; gap: 6px; }
+
+.headerActions > .leaveButton, .modeBar > button {
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+
+.tabs > button {
+  min-width: 0;
+  padding: 14px 2px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.salesForm .tabs > button[aria-pressed="true"] {
+  border-bottom-color: var(--tealDark);
+  background: var(--soft);
+  color: var(--tealDark);
+}
+
+.phone {
+  box-sizing: border-box;
+  width: min(100%, 340px);
+  margin: 24px auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.phoneBar {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.phoneBody { padding: 18px; }
+
+.salesForm .phoneBody [data-form-row] {
+  display: block;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.salesForm .phoneBody [data-form-row] > h2 {
+  margin: 0 0 6px;
+  color: var(--sub);
+  font-size: 11px;
+  letter-spacing: .05em;
+}
+
+.modeBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.modeBar > button, .pdResult[data-state="outside"] {
+  border-color: var(--line);
+  background: var(--bg);
+}
+
+.acquisition, .ocr, .pdResult {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.acquisition > p {
+  margin: 0 0 8px;
+  color: var(--sub);
+  font-size: 11px;
+}
+
+.acquisitionOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.acquisitionOptions label { position: relative; }
+
+.acquisitionOptions input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.acquisitionOptions label > span {
+  display: block;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  line-height: 1.4;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.acquisitionOptions small {
+  display: block;
+  margin-top: 3px;
+  color: var(--sub);
+  font-size: 10px;
+}
+
+.acquisitionOptions input:checked + span,
+.attachment[data-attached="true"],
+.pdResult[data-state="matched"] {
+  border-color: var(--tealDark);
+  background: var(--soft);
+}
+
+.acquisitionOptions input:checked + span,
+.acquisitionOptions input:checked + span small { color: var(--tealDark); }
+
+.acquisitionOptions input:focus-visible + span {
+  outline: 2px solid var(--tealDark);
+  outline-offset: 2px;
+}
+
+.attachments { display: grid; gap: 8px; }
+
+.attachment {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.attachmentHead, .attachmentHead strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attachmentHead { justify-content: space-between; }
+.attachmentHead strong { font-size: 13px; }
+.attachmentHead small, .attachmentHead > span { color: var(--sub); font-size: 10px; }
+.attachmentHead > span { white-space: nowrap; }
+
+.attachmentNumber {
+  display: grid;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 11px;
+}
+
+.attachment[data-attached="true"] .attachmentNumber,
+.attachment[data-attached="true"] .attachmentHead > span { color: var(--tealDark); }
+
+.attachmentActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.attachmentActions > button {
+  flex: 1;
+  min-height: 34px;
+  padding: 8px 4px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.attachmentActions > .captureButton {
+  background: var(--soft);
+  color: var(--tealDark);
+}
+
+.ocr { margin-top: 12px; font-size: 12px; }
+.ocr small { display: block; text-align: right; }
+
+.urgent {
+  display: grid;
+  gap: 6px;
+  margin-block: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.urgent[data-urgent="true"], .pdResult[data-state="error"] {
+  border-color: var(--danger);
+  background: var(--dangerBg);
+}
+
+.pdResult {
+  margin-top: 12px;
+  border-inline-start-width: 3px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.pdResult[data-state="pending"]:has(.pdEmpty) {
+  min-height: 140px;
+  border: 0;
+  background: transparent;
+}
+.pdResult > p { margin: 0 0 6px; }
+.pdResult > .pdEmpty {
+  margin: 0;
+  padding: 16px 0;
+  color: var(--sub);
+  font-size: 11px;
+  text-align: center;
+}
+
+.salesDialog[data-garden-modal], .lockDialog[data-garden-modal] {
+  width: min(360px, calc(100% - 32px));
+  border-radius: 12px;
+}
+
+.lockDialog h2, .lockDialog p { text-align: center; }
+.lockDialog::backdrop { background: color-mix(in srgb, var(--root-heading) 70%, var(--root-bg-panel)); }
+
+@media (max-width: 480px) {
+  .phone { width: 100%; margin-block: 12px; }
+}
+
+.modeBanner, .foundCase {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+  font-size: 12px;
+}
+
+.modeBanner, .caseLookup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.modeBanner button, .caseLookup button { flex: none; min-height: 30px; padding: 3px 7px; font-size: 11px; }
+.postAddForm { font-size: 12px; }
+
+.profile, .caseList { display: grid; gap: 10px; }
+
+.profileCard, .case {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.profileCard h2 {
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.profileRows > div {
+  display: grid;
+  grid-template-columns: minmax(72px, 100px) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding-block: 3px;
+  font-size: 12px;
+}
+
+.profileStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.profileStats > div { padding: 10px 12px; border-radius: 6px; border-inline-start: 3px solid var(--tealDark); background: var(--bg); }
+.profileStats > div:last-child { border-inline-start-color: var(--danger); }
+.profileCard > button { width: 100%; text-align: left; font-size: 12px; }
+
+.caseTools { display: flex; align-items: stretch; gap: 6px; }
+.caseTools > button { padding: 6px 8px; font-size: 11px; }
+.caseTools > .urgentFilter { flex: 1; background: var(--dangerBg); color: var(--danger); }
+.salesForm .caseTools > .urgentFilter[aria-pressed="true"] { border-color: var(--danger); background: var(--dangerBg); }
+.case { padding: 10px 12px; font-size: 12px; }
+.case summary > strong { overflow-wrap: anywhere; }
+.case summary > small { display: block; color: var(--sub); font-size: 11px; }
+.caseStatuses { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+.confirmText { margin-top: 0; font-size: 12px; text-align: center; }
+.confirmNumber, .urgentConfirm {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--root-bg);
+  color: var(--root-text);
+  text-align: center;
+  font-size: 12px;
+}
+.confirmNumber strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.urgentConfirm { border: 1px solid var(--root-border); font-weight: 700; }
+.confirmDetails { margin-bottom: 0; font-size: 12px; }
+.confirmDetails > div { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, 2fr); gap: 8px; padding-block: 3px; }
+.confirmDetails dd { margin: 0; overflow-wrap: anywhere; }
+.salesDialog [data-modal-actions] { display: flex; justify-content: stretch; }
+.salesDialog [data-modal-actions] > button { flex: 1; margin: 0; }
+
+/* アイコンと文字を 1 行に（全体の svg{display:block} で上下に割れていた・2026-11-23） */
+.salesForm button:has(> svg) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.salesForm button > svg { display: inline-block; }
+.acquisitionOptions button:has(> svg) { justify-content: flex-start; }
+.acquisitionOptions svg { display: inline-block; margin-right: 6px; }
