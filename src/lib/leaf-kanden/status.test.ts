@@ -50,3 +50,11 @@ describe("明細なし（完了扱い）", () => {
     expect(orderStatus({ cancel_reason: LEGACY_DONE_REASON })).toBe("諸元待ち");
   });
 });
+
+describe("請求前キャンセル（TimeTree）", () => {
+  it("キャンセルになる・入金があれば完了", async () => {
+    const { orderStatus, TIMETREE_CANCEL_REASON } = await import("./status");
+    expect(orderStatus({ cancel_reason: TIMETREE_CANCEL_REASON, timetree_label: "請求前キャンセル" })).toBe("キャンセル");
+    expect(orderStatus({ cancel_reason: TIMETREE_CANCEL_REASON, paid_on: "2026-01-01" })).toBe("完了");
+  });
+});

@@ -8,6 +8,8 @@ export const LEGACY_CANCEL_REASON = "郵送前キャンセル（入金なし）"
 export const PDF_REVIEW_REASON = "要確認（明細が PDF の月）";
 // 入金明細が無い昔の受注（郵送済み）を完了として扱う印（2026-11-21 東海林さん）
 export const LEGACY_DONE_REASON = "明細なし（完了扱い）";
+// TimeTree の「請求前キャンセル」（FileMaker に入る前に取り消し・2026-11-23）
+export const TIMETREE_CANCEL_REASON = "請求前キャンセル（TimeTree）";
 
 export type StatusInput = Partial<Record<
   "ordered_on" | "jisseki_month" | "specs_on" | "entered_on" | "application_received_on" |
@@ -18,7 +20,8 @@ export type StatusInput = Partial<Record<
 export function orderStatus(order: StatusInput, hasSpecsPhoto = false): OrderStatus {
   if (order.status === "保留" || order.status === "差し戻し") return order.status;
   if (order.cancelled_on || order.refunded_on ||
-      (order.cancel_reason === LEGACY_CANCEL_REASON && !order.mailed_on && !order.paid_on)) return "キャンセル";
+      (order.cancel_reason === LEGACY_CANCEL_REASON && !order.mailed_on && !order.paid_on) ||
+      (order.cancel_reason === TIMETREE_CANCEL_REASON && !order.paid_on)) return "キャンセル";
   if (order.paid_on || (order.cancel_reason === LEGACY_DONE_REASON && order.mailed_on)) return "完了";
   if (order.mailed_on) return "入金待ち";
   if (order.application_received_on) return "郵送待ち";
