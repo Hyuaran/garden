@@ -21,7 +21,7 @@ test("日付の進んだ段階を優先し、手動の保留と差し戻しを�
 });
 
 test("写メと TimeTree ラベルでも諸元を確認する", () => {
-  expect(orderStatus({}, true)).toBe("エントリー待ち");
+  expect(orderStatus({}, true)).toBe("諸元待ち");
   expect(orderStatus({ timetree_label: " エントリー待ち " })).toBe("エントリー待ち");
   expect(orderStatus({ timetree_label: "諸元待ち" })).toBe("諸元待ち");
   expect(orderStatus({ timetree_label: " " })).toBe("諸元待ち");

@@ -380,7 +380,7 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
     <div data-loading={listBusy} aria-busy={listBusy}>
       {!searching && !showList && draft && loaded && status && progress &&
         <EntryFlow draft={draft} paidOn={loaded.paidOn} status={status} progress={progress} canEdit={canEdit}
-          specsReady={hasSpecs || !!loaded.flow?.timetree_label?.trim() && loaded.flow.timetree_label.trim() !== "諸元待ち"}
+          specsReady={!!loaded.flow?.timetree_label?.trim() && loaded.flow.timetree_label.trim() !== "諸元待ち"}
           setDraft={setDraft} />}
       <ResultMessage>{error || (!list && "案件一覧を読み込めませんでした。更新ボタンを押してください。")
         || (!calendar && "供給開始カレンダーを読み込めませんでした。")}</ResultMessage>

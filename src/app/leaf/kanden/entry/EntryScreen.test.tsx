@@ -176,7 +176,7 @@ it("サムネイルから分類を即時に反映し、拡大表示からの保�
   fireEvent.click(within(screen.getByLabelText("写メ 1 の種類")).getByRole("radio", { name: "諸元" }));
   expect(screen.getByRole("tab", { name: "諸元" })).toHaveAttribute("aria-selected", "true");
   const flow = within(screen.getByLabelText("業務ステータス"));
-  expect(flow.getByText("諸元回収OK")).toBeInTheDocument();
+  expect(flow.getByText("諸元待ち")).toBeInTheDocument();
   expect(saveEntryPhotoCategory).toHaveBeenCalledExactlyOnceWith({ id: "entry", intake: false }, "photo", "set", "諸元");
   pending.resolve({});
   await waitFor(() => expect(within(screen.getByLabelText("写メ 1 の種類")).getByRole("radio", { name: "電灯" })).toBeEnabled());

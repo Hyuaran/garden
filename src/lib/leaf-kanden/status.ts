@@ -17,7 +17,8 @@ export type StatusInput = Partial<Record<
   string | null
 >> & { status?: OrderStatus | null };
 
-export function orderStatus(order: StatusInput, hasSpecsPhoto = false): OrderStatus {
+// 諸元の写メがあるだけでは進めない（2026-11-24 東海林さん：諸元が足りない等あるため）。第2引数は互換のため残す。
+export function orderStatus(order: StatusInput, _hasSpecsPhoto = false): OrderStatus {
   if (order.status === "保留" || order.status === "差し戻し") return order.status;
   if (order.cancelled_on || order.refunded_on ||
       (order.cancel_reason === LEGACY_CANCEL_REASON && !order.mailed_on && !order.paid_on) ||
@@ -27,7 +28,7 @@ export function orderStatus(order: StatusInput, hasSpecsPhoto = false): OrderSta
   if (order.application_received_on) return "郵送待ち";
   if (order.entered_on) return "申込書待ち";
   const label = order.timetree_label?.trim();
-  if (order.specs_on || hasSpecsPhoto || (label && label !== "諸元待ち")) return "エントリー待ち";
+  if (order.specs_on || (label && label !== "諸元待ち")) return "エントリー待ち";
   return "諸元待ち";
 }
 
