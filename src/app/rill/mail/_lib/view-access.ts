@@ -9,7 +9,9 @@ export function isMailPageForBox(page: string, path: string) {
   try {
     const base = "https://graph.microsoft.com/v1.0";
     const url = new URL(page.startsWith("/") ? base + page : page);
+    // Microsoft returns nextLink as mailFolders('inbox') while we build mailFolders/inbox.
+    const norm = (value: string) => decodeURIComponent(value).replace(/\('([^'()/]*)'\)/g, "/$1").toLowerCase();
     return url.origin === "https://graph.microsoft.com"
-      && decodeURIComponent(url.pathname).toLowerCase() === decodeURIComponent(new URL(base + path).pathname).toLowerCase();
+      && norm(url.pathname) === norm(new URL(base + path).pathname);
   } catch { return false; }
 }

@@ -123,6 +123,8 @@ describe("Sprout / Rill の画面・全タブ", () => {
   it("ページ送りに別の受信箱のURLを指定しても読めない", () => {
     const path = "/me/mailFolders/inbox/messages";
     expect(isMailPageForBox("https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$skiptoken=next", path)).toBe(true);
+    expect(isMailPageForBox("https://graph.microsoft.com/v1.0/me/mailFolders('inbox')/messages?$skiptoken=next", path)).toBe(true);
+    expect(isMailPageForBox("https://graph.microsoft.com/v1.0/users/other@test/mailFolders('inbox')/messages", path)).toBe(false);
     expect(isMailPageForBox("https://graph.microsoft.com/v1.0/users/other@test/messages", path)).toBe(false);
     expect(isMailPageForBox("https://other.test/v1.0/me/mailFolders/inbox/messages", path)).toBe(false);
   });
