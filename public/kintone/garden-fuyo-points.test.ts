@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 const { buildQuery, applyResult } = createRequire(import.meta.url)("./garden-fuyo-points.js") as {
   buildQuery: (record: Record<string, { value: string }>) => string | null;
-  applyResult: (record: { 付与件数: { value: string } }, result: { points: number | null }, name: string) => string;
+  applyResult: (record: Record<string, { value: string }>, result: { points: number | null; toss?: number | null }, name: string) => string;
 };
 
 it("実績日を優先し、空の場合は受注日を使う", () => {
@@ -27,4 +27,14 @@ it("該当なしは現在の値を維持し、ゼロは反映する", () => {
   expect(record.付与件数.value).toBe("1.3");
   expect(applyResult(record, { points: 0 }, "商材A")).toBe("");
   expect(record.付与件数.value).toBe("0");
+});
+
+it("トス付与件数を表から入れ、トス分が無いときも空欄にせず 0 にする", () => {
+  const record = { 付与件数: { value: "" }, トス付与件数_Garden: { value: "" } };
+  applyResult(record, { points: 1.5, toss: 0.2 }, "商材A");
+  expect(record).toEqual({ 付与件数: { value: "1.5" }, トス付与件数_Garden: { value: "0.2" } });
+  applyResult(record, { points: 1.3, toss: 0 }, "商材A");
+  expect(record.トス付与件数_Garden.value).toBe("0");
+  applyResult(record, { points: 1.3 }, "商材A");
+  expect(record.トス付与件数_Garden.value).toBe("0");
 });

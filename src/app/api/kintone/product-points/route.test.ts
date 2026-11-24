@@ -30,7 +30,7 @@ it("失敗した読み取りは保持せず、並行リクエストでポイン�
   const [first, second] = await Promise.all([GET(request), GET(request)]);
   expect(first.headers.get("Cache-Control")).toBe("public, s-maxage=300, stale-while-revalidate=600");
   expect(first.headers.get("Access-Control-Allow-Origin")).toBe(origin);
-  expect(await first.json()).toEqual({ product: "商材A", channel: "hakuchi", points: 2 });
+  expect(await first.json()).toEqual({ product: "商材A", channel: "hakuchi", points: 2, toss: 0 });
   expect(second.status).toBe(200);
   expect((await GET(request)).status).toBe(200);
   expect(load).toHaveBeenCalledTimes(2);

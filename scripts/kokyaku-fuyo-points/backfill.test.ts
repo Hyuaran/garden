@@ -6,7 +6,7 @@ const record = {
   "$id": { value: "1" }, "$revision": { value: "2" },
   商材名区分2: { value: "" }, m_product: { value: "商材A" }, 事業名: { value: "自社" },
   B_リスト名: { value: "" }, 実績日: { value: "2026-11-20" },
-  受注日: { value: "2026-11-01" }, 付与件数: { value: "0.00" },
+  受注日: { value: "2026-11-01" }, 付与件数: { value: "0.00" }, トス付与件数_Garden: { value: "0" },
 };
 const row: PointRow = {
   id: "test", category: "kaisen", report_group: "collab", toss_points: 0,
@@ -28,5 +28,11 @@ it("数値が同じ場合や表に無い場合には更新せず、空欄には�
   expect(planRecord(record, [])).toMatchObject({ missing: true, update: null });
   expect(planRecord({ ...record, 付与件数: { value: "" } }, [row]).update).toEqual({
     id: "1", revision: "2", record: { 付与件数: { value: "0" } },
+  });
+  expect(planRecord({ ...record, トス付与件数_Garden: { value: "" } }, [row]).update).toEqual({
+    id: "1", revision: "2", record: { トス付与件数_Garden: { value: "0" } },
+  });
+  expect(planRecord(record, [{ ...row, total_points: 1.5, toss_points: 0.2 }]).update).toEqual({
+    id: "1", revision: "2", record: { 付与件数: { value: "1.5" }, トス付与件数_Garden: { value: "0.2" } },
   });
 });

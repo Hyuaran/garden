@@ -6,6 +6,7 @@
   'use strict';
 
   var output = '付与件数';
+  var tossOutput = 'トス付与件数_Garden';
   var changes = ['商材名区分2', '事業名', 'B_リスト名', '実績日', '受注日'];
 
   function buildQuery(record) {
@@ -25,6 +26,10 @@
   function applyResult(record, result, name) {
     if (Number.isFinite(result.points)) {
       record[output].value = String(result.points);
+      // トス分が無い商材・獲得方法も空欄にせず 0 を入れる（AP付与件数＝付与件数−トス付与件数）。
+      if (record[tossOutput]) {
+        record[tossOutput].value = String(Number.isFinite(result.toss) ? result.toss : 0);
+      }
     }
     return result.points === null
       ? '付与ポイント表に無い商材です（' + name + '）。Garden の付与ポイント表に追加してください。'
@@ -86,11 +91,19 @@
     return params.get('product') || params.get('master');
   }
 
+  kintone.events.on(['app.record.detail.show', 'mobile.app.record.detail.show'], function (event) {
+    var api = event.type.startsWith('mobile.') ? kintone.mobile.app.record : kintone.app.record;
+    api.setFieldShown?.(tossOutput, false);
+    return event;
+  });
+
   screens.forEach(function (screen) {
     var mobile = screen.startsWith('mobile.');
     var api = mobile ? kintone.mobile.app.record : kintone.app.record;
 
     kintone.events.on(screen + '.show', function (event) {
+      // Garden が書く内部の欄。画面にはトス付与件数（計算）を出す。
+      api.setFieldShown?.(tossOutput, false);
       if (controller) { controller.abort(); }
       generation++;
       showWarning(mobile, '');
@@ -111,8 +124,10 @@
           var current = api.get();
           if (!current || buildQuery(current.record) !== query) { return; }
           var previous = current.record[output].value;
+          var previousToss = current.record[tossOutput]?.value;
           showWarning(mobile, applyResult(current.record, result, requestedName(query)));
-          if (previous !== current.record[output].value) { api.set(current); }
+          if (previous !== current.record[output].value ||
+              previousToss !== current.record[tossOutput]?.value) { api.set(current); }
         } catch {
           // 編集画面を離れた場合など、現在の値を維持する。
         }

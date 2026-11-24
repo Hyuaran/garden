@@ -5,6 +5,7 @@ type Field = (typeof fields)[number];
 export type KintonePointInput = Record<Field, string>;
 export type KintonePointResult = {
   points: number | null;
+  toss: number | null;
   product: string | null;
   channel: Channel | null;
 };
@@ -31,5 +32,5 @@ export function resolveKintonePoints(
   const order = { channel, orderDate: input.date, productName };
   const row = (productName ? pointFor(rows, order) : null) ??
     (master ? pointFor(rows, { ...order, productName: master }) : null);
-  return { points: row?.total_points ?? null, product: row?.product ?? null, channel };
+  return { points: row?.total_points ?? null, toss: row ? Number(row.toss_points ?? 0) : null, product: row?.product ?? null, channel };
 }

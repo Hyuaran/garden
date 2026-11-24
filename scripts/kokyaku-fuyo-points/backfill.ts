@@ -10,10 +10,10 @@ const endpoint = "https://9j11u0q829lg.cybozu.com/k/v1/records.json";
 const app = 10;
 const fields = [
   "$id", "$revision", "商材名区分2", "m_product", "事業名", "B_リスト名",
-  "実績日", "受注日", "付与件数",
+  "実績日", "受注日", "付与件数", "トス付与件数_Garden",
 ];
 type RecordFields = Record<string, { value: string | null }>;
-type Update = { id: string; revision: string; record: { 付与件数: { value: string } } };
+type Update = { id: string; revision: string; record: Record<string, { value: string }> };
 
 export function parseArgs(args: string[]) {
   const fromIndex = args.indexOf("--from");
@@ -40,15 +40,23 @@ export function planRecord(record: RecordFields, rows: readonly PointRow[]) {
   const master = value("m_product");
   const date = value("実績日") || value("受注日");
   const previous = value("付与件数");
-  const { points } = resolveKintonePoints(rows, {
+  const previousToss = value("トス付与件数_Garden");
+  const { points, toss } = resolveKintonePoints(rows, {
     product, master, date, business: value("事業名"), list: value("B_リスト名"),
   });
-  const changed = points !== null && (previous === "" || Number(previous) !== points);
+  const tossValue = toss ?? 0;
+  const pointsChanged = points !== null && (previous === "" || Number(previous) !== points);
+  const tossChanged = points !== null && (previousToss === "" || Number(previousToss) !== tossValue);
+  const changed = pointsChanged || tossChanged;
   const update: Update | null = changed
-    ? { id, revision, record: { 付与件数: { value: String(points) } } }
+    ? { id, revision, record: {
+      ...(pointsChanged ? { 付与件数: { value: String(points) } } : {}),
+      ...(tossChanged ? { トス付与件数_Garden: { value: String(tossValue) } } : {}),
+    } }
     : null;
   return {
     csv: [id, date, product, master, previous, points === null ? "" : String(points),
+      previousToss, points === null ? "" : String(tossValue),
       points === null ? "表に該当なし" : changed ? "変更" : "変更なし"],
     missing: points === null,
     update,
@@ -115,7 +123,7 @@ async function main() {
     getSupabaseAdmin(),
     AbortSignal.any([deadline, AbortSignal.timeout(15_000)]),
   );
-  const csv = ["レコード番号,判定日,商材名区分2,m_product,現在の付与件数,表の付与件数,判定"];
+  const csv = ["レコード番号,判定日,商材名区分2,m_product,現在の付与件数,表の付与件数,現在のトス付与件数,表のトス付与件数,判定"];
   const updates: Update[] = [];
   let missing = 0;
   let lastId = "0";
