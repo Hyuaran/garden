@@ -2,6 +2,7 @@ import type { TableQuery } from "@/app/system/_components/DataTable/DataTable";
 import { ORDER_STATUSES, type OrderStatus, type StatusInput } from "@/lib/leaf-kanden/status";
 
 import type { PaymentSummary } from "../PaymentDetails";
+import type { SalesApplyCode } from "./sales";
 
 export const ENTRY_TITLE = "関電 事務入力";
 export const ENTRY_SCOPE = "leaf-kanden-entry";
@@ -58,6 +59,7 @@ export type EntryList = {
 export type EntryRecord = EntryDraft & StatusInput & {
   id: string;
   submission_id: string | null;
+  kanri_no_raw?: string | null;
   completed_on?: string | null;
   application_fields?: Partial<Pick<EntryDraft, typeof applicationFields[number]>>;
   garden_updated_at: string | null;
@@ -69,14 +71,17 @@ export type EntryRecord = EntryDraft & StatusInput & {
 };
 export type EntryTarget = { id: string; intake: boolean };
 export type SaveMode = "save" | "advance" | "entry" | "return" | "resume" | "complete";
-export type EntryPhoto = import("../cases").CasePhoto & { category: string };
+export const PHOTO_CATEGORIES = ["電灯", "動力", "ガス", "諸元", "受領", "未分類"] as const;
+export type PhotoCategory = typeof PHOTO_CATEGORIES[number];
+export type EntryPhoto = import("../cases").CasePhoto & { category: string; id: string; setId: string };
 export type EntryDetail = {
   draft: EntryDraft;
   status: OrderStatus;
   listValues: Partial<EntryDraft> | null;
   flow?: StatusInput;
   hasSpecs?: boolean;
-  sales?: { number: string | null; department: string | null };
+  sales?: { name?: string | null; number: string | null; department: string | null; applyCodes?: SalesApplyCode[] };
+  rawNumber?: string | null;
   related?: { id: string; number: string | null; name: string | null }[];
   version: string | null;
   reason: string | null;

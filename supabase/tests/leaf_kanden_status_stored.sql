@@ -10,6 +10,7 @@ declare
   newer_form_id uuid := gen_random_uuid();
   photo_id uuid := gen_random_uuid();
   photo_set uuid;
+  entry_set uuid;
   newer_set uuid;
   employee text;
   number text := '987554001';
@@ -59,10 +60,15 @@ begin
   assert (select computed_status = '諸元待ち' from public.leaf_kanden_orders where id = order_id), 'photo delete';
 
   insert into public.leaf_kanden_photo_sets (source, set_key, photo_count)
-  values ('form', 'entry/' || order_id, 1);
-  assert (select computed_status = 'エントリー待ち' from public.leaf_kanden_orders where id = order_id), 'entry photo set';
-  update public.leaf_kanden_photo_sets set photo_count = 0 where set_key = 'entry/' || order_id;
-  assert (select computed_status = '諸元待ち' from public.leaf_kanden_orders where id = order_id), 'entry photo count cleared';
+  values ('form', 'entry/' || order_id, 1) returning id into entry_set;
+  insert into public.leaf_kanden_photos (id, set_id, source, source_key, category, image_path)
+  values (photo_id, entry_set, 'form', photo_id::text, '未分類', 'entry.jpg');
+  assert (select computed_status = '諸元待ち' from public.leaf_kanden_orders where id = order_id), 'unclassified entry photo';
+  update public.leaf_kanden_photos set category = '諸元' where id = photo_id;
+  assert (select computed_status = 'エントリー待ち' from public.leaf_kanden_orders where id = order_id), 'entry photo classified as specs';
+  assert (select computed_status = '諸元待ち' from public.leaf_kanden_orders where id = fallback_id), 'private entry set only affects its order';
+  update public.leaf_kanden_photos set category = '受領' where id = photo_id;
+  assert (select computed_status = '諸元待ち' from public.leaf_kanden_orders where id = order_id), 'entry specs category removed';
 
   perform public.leaf_kanden_apply_timetree(jsonb_build_object(number, 'エントリー待ち'), false, true);
   assert (select computed_status = '諸元待ち' from public.leaf_kanden_orders where id = order_id), 'TimeTree dry run';

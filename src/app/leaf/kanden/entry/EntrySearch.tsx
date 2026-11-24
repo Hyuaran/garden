@@ -36,6 +36,7 @@ export default function EntrySearch({ requests, setRequests, active, setActive, 
       <ActionButton disabled={busy} onClick={onClose}>検索を閉じる</ActionButton>
     </ActionRow>
     <p>同じ条件内はすべて一致、複数の条件はどれかに一致する案件を表示します。</p>
+    <p>管理番号は「PD1617124」「1617124」「1617124(2)」のどの形式でも検索できます。</p>
     <p>前方一致、==（完全一致）、*（任意の文字列）、&gt;・&lt;・&gt;=・&lt;=、...（範囲）、!（除外）、//（今日）を指定できます。</p>
     {requests.length > 1 && <SystemTabs aria-label="検索条件" pageActions={false}>
       {requests.map((_, index) => <button key={index} type="button" role="tab" aria-selected={index === active}

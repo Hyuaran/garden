@@ -7,9 +7,11 @@ import { UUID } from "@/lib/leaf-kanden/submissions";
 import { normalizeKanriNo } from "@/lib/leaf-kanden/kanri-no";
 import { LEGACY_CANCEL_REASON, orderStatus } from "@/lib/leaf-kanden/status";
 import { supplyPoint } from "@/lib/leaf-kanden/supply-point";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import type { EntryTab, EntryQuery, EntryDetail, EntryDraft, EntryTarget, SaveMode, SupplyKey } from "./entry";
 import { ENTRY_TABS, applicationFields, booleanFields, dateFields, orderTextFields, serviceFields, textFields } from "./entry";
 import { readEntryCalendar, readEntryHistory, readEntryList, readEntryListValues, readEntryPhotos, readEntryRecord, requireEntry, signEntryPhotos } from "./queries.server";
+import { matchSalesEmployee, normalizeSalesName } from "./sales";
 
 const readError = "案件を読み込めませんでした。もう一度お試しください。";
 const photoError = "写メを読み込めませんでした。もう一度お試しください。";
@@ -126,6 +128,7 @@ async function readDetail(target: EntryTarget): ReturnType<typeof loadEntryDetai
       flow: { timetree_label: order?.timetree_label, cancel_reason: order?.cancel_reason },
       related,
       sales,
+      rawNumber: order?.kanri_no_raw ?? intake?.kanri_no_raw,
       history,
       duplicates,
       draft,
@@ -153,13 +156,15 @@ async function readDetail(target: EntryTarget): ReturnType<typeof loadEntryDetai
 
 async function readEntryContext(order: RecordData["order"], intake: RecordData["intake"], duplicates: EntryDetail["duplicates"]) {
   const numbers = [...new Set(Object.values(duplicates).flat())].slice(0, 50);
+  const salesName = order?.sales_name ?? intake?.employee_name ?? null;
   const [employee, related] = await Promise.all([
-    readSalesEmployee(intake?.employee_id, order?.sales_name),
+    readSalesEmployee(salesName ? undefined : intake?.employee_id, salesName),
     order && numbers.length ? getSupabaseAdmin().from("leaf_kanden_orders").select("id,kanri_no,customer_name")
       .in("kanri_no", numbers).neq("id", order.id).order("id").limit(50) : null,
   ]);
+  const applyCodes = await readSalesApplyCodes(employee?.employee_id, salesName, employee?.name);
   return {
-    sales: { number: intake?.employee_number ?? employee?.employee_number ?? null, department: employee?.current_team ?? null },
+    sales: { name: employee?.name, number: employee?.employee_number ?? null, department: employee?.current_team ?? null, applyCodes },
     related: related?.data?.map(row => ({ id: row.id, number: row.kanri_no, name: row.customer_name })),
   };
 }
@@ -167,16 +172,42 @@ async function readEntryContext(order: RecordData["order"], intake: RecordData["
 async function readSalesEmployee(employeeId?: string, salesName?: string | null) {
   if (!employeeId && !salesName) return null;
   const employees = () => getSupabaseAdmin().from("root_employees_with_team")
-    .select("employee_number,current_team,chatwork_account_id");
+    .select("employee_id,name,filemaker_employee_name,employee_number,current_team,chatwork_account_id,termination_date")
+    .eq("is_active", true).is("deleted_at", null);
   if (employeeId) {
     const result = await employees().eq("employee_id", employeeId).maybeSingle();
-    return result.error ? null : result.data;
+    return result.error || !isEmployeeActive(result.data) ? null : result.data;
   }
-  const byName = await employees().eq("name", salesName!).limit(2);
-  if (byName.error) return null;
-  if (byName.data.length) return byName.data.length === 1 ? byName.data[0] : null;
-  const byFileMakerName = await employees().eq("filemaker_employee_name", salesName!).limit(2);
-  return !byFileMakerName.error && byFileMakerName.data.length === 1 ? byFileMakerName.data[0] : null;
+  const today = japanDate();
+  const db = getSupabaseAdmin();
+  const candidates = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await db.from("root_employees").select("employee_id,name,filemaker_employee_name")
+      .eq("is_active", true).is("deleted_at", null)
+      .or(`termination_date.is.null,termination_date.gt.${today}`)
+      .order("employee_id").range(offset, offset + 499);
+    if (error) return null;
+    candidates.push(...data);
+    if (data.length < 500) break;
+  }
+  const employee = matchSalesEmployee(salesName ?? "", candidates);
+  if (!employee) return null;
+  const result = await employees().eq("employee_id", employee.employee_id).maybeSingle();
+  return result.error || !isEmployeeActive(result.data, today) ? null : result.data;
+}
+
+async function readSalesApplyCodes(employeeId?: string, ...names: (string | null | undefined)[]) {
+  const codes = () => getSupabaseAdmin().from("leaf_kanden_sales_apply_codes")
+    .select("id,apply_code,starts_on,ends_on,employee_id");
+  const namesToMatch = [...new Set(names.map(normalizeSalesName).filter(Boolean))];
+  const [byId, byName] = await Promise.all([
+    employeeId ? codes().eq("employee_id", employeeId) : null,
+    namesToMatch.length ? codes().in("sales_name_key", namesToMatch) : null,
+  ]);
+  const rules = [...(byId?.data ?? []), ...(byName?.data ?? [])];
+  return rules.sort((a, b) => (b.starts_on ?? "").localeCompare(a.starts_on ?? "") ||
+    Number(!!b.employee_id) - Number(!!a.employee_id) || a.id.localeCompare(b.id))
+    .map(({ apply_code, starts_on, ends_on }) => ({ apply_code, starts_on, ends_on }));
 }
 
 async function findEntryDuplicates(id: string, middles: string[]) {

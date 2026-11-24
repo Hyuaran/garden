@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { signCasePhotos } from "@/lib/leaf-kanden/submissions.server";
 import { UUID, type CustomerFields } from "@/lib/leaf-kanden/submissions";
 import { normalizeKanriNo } from "@/lib/leaf-kanden/kanri-no";
+import { normalizeEntrySearch } from "./search-query";
 import type { CalendarDay } from "@/lib/leaf-kanden/supply-point";
 import { paymentColumns } from "../PaymentDetails";
 import { DEFAULT_ENTRY_TAB, ENTRY_SCOPE, ENTRY_START, entryQuery, type EntryQuery, type EntryTab, type EntryHistory, type EntryDraft, type EntryList, type EntryRecord, type EntryTarget } from "./entry";
@@ -18,7 +19,7 @@ export async function requireEntry() {
 
 export async function readEntryList(tab: EntryTab, query: EntryQuery, counts: boolean) {
   const { data, error } = await getSupabaseAdmin().rpc("leaf_kanden_entry_page", {
-    p_tab: tab, p_query: query, p_counts: counts,
+    p_tab: tab, p_query: normalizeEntrySearch(query), p_counts: counts,
   });
   if (error) throw error;
   return data as EntryList;
@@ -82,10 +83,11 @@ function readCalendarDays(rows: Record<string, unknown>[]): CalendarDay[] | null
   return days.length === rows.length ? days : null;
 }
 
-const intakeFields = "id,set_id,employee_id,employee_name,employee_number,kanri_no,customer_name,acquisition,urgent_sw,sw_month,has_denki,has_douryoku,has_gas,note,updated_at,customer_fields";
+const intakeFields = "id,set_id,employee_id,employee_name,employee_number,kanri_no,kanri_no_raw,customer_name,acquisition,urgent_sw,sw_month,has_denki,has_douryoku,has_gas,note,updated_at,customer_fields";
 type Intake = Pick<EntryDraft, "kanri_no" | "customer_name" | "acquisition" | "urgent_sw" | "sw_month" |
   "has_denki" | "has_douryoku" | "has_gas" | "note"> & {
-  id: string; set_id: string; employee_id: string; employee_name: string; employee_number: string | null; updated_at: string; customer_fields?: CustomerFields | null;
+  id: string; set_id: string; employee_id: string; employee_name: string; employee_number: string | null; kanri_no_raw: string | null;
+  updated_at: string; customer_fields?: CustomerFields | null;
 };
 
 export async function readEntryRecord(target: EntryTarget) {
@@ -111,23 +113,27 @@ export async function readEntryRecord(target: EntryTarget) {
   return { order, intake: result.data as Intake | null };
 }
 
-export async function readEntryPhotos(kanriNo: string | null, setId: string | undefined, specsOnly = false, orderId?: string) {
+export async function entryPhotoScope(kanriNo: string | null, setId: string | undefined, orderId?: string) {
   kanriNo = kanriNo && normalizeKanriNo(kanriNo);
-  if (!kanriNo && !setId && !orderId) return [];
-  const photos: { image_path: string; category: string }[] = [];
   const db = getSupabaseAdmin();
   const attached = orderId ? await db.from("leaf_kanden_photo_sets").select("id")
     .eq("set_key", `entry/${orderId}`).maybeSingle() : null;
   if (attached?.error) throw attached.error;
-  const matches = [
+  return [
     kanriNo && `kanri_no.eq.${kanriNo}`,
     setId && `set_id.eq.${setId}`,
     attached?.data && `set_id.eq.${attached.data.id}`,
-  ].filter(Boolean);
-  if (!matches.length) return [];
+  ].filter(Boolean).join(",");
+}
+
+export async function readEntryPhotos(kanriNo: string | null, setId: string | undefined, specsOnly = false, orderId?: string) {
+  const scope = await entryPhotoScope(kanriNo, setId, orderId);
+  if (!scope) return [];
+  const photos: { image_path: string; category: string; id: string; set_id: string }[] = [];
+  const db = getSupabaseAdmin();
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
-    let query = db.from("leaf_kanden_photos").select("image_path,category").or(matches.join(","));
+    let query = db.from("leaf_kanden_photos").select("id,set_id,image_path,category").or(scope);
     if (specsOnly) query = query.eq("category", "諸元");
     const { data, error } = await query.order("event_date", { nullsFirst: false }).order("image_path")
       .order("id").range(offset, offset + pageSize - 1);
@@ -142,7 +148,9 @@ export async function signEntryPhotos(photos: Awaited<ReturnType<typeof readEntr
   for (let offset = 0; offset < photos.length; offset += 500) {
     const page = photos.slice(offset, offset + 500);
     const batch = await signCasePhotos(page.map(photo => photo.image_path), name, offset);
-    signed.push(...batch.map((photo, index) => ({ ...photo, category: page[index].category })));
+    signed.push(...batch.map((photo, index) => ({
+      ...photo, category: page[index].category, id: page[index].id, setId: page[index].set_id,
+    })));
   }
   return signed;
 }

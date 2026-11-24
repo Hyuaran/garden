@@ -23,7 +23,7 @@
   gap: .5rem 1rem;
 }
 
-.banner, .step {
+.banner {
   padding: .75rem;
   border: 1px solid var(--entry-border);
   border-radius: .5rem;
@@ -34,13 +34,75 @@
 
 .flow {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: .5rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  --arrow: 10px;
 }
 
-.step { display: grid; align-content: start; gap: .25rem; }
-.step[data-current="true"] { box-shadow: inset 0 -3px var(--entry-new); }
-.step input { width: 100%; min-width: 0; }
+.flow:has(.flowException) { grid-template-columns: repeat(7, minmax(0, 1fr)) auto; }
+.step {
+  --left: var(--arrow);
+  --right: var(--arrow);
+  display: grid;
+  grid-template-rows: auto 1.5rem;
+  align-content: center;
+  align-items: center;
+  justify-items: center;
+  min-inline-size: 0;
+  margin-inline-start: calc(-1 * var(--left));
+  padding: .4rem calc(var(--right) + 4px) .4rem calc(var(--left) + 4px);
+  gap: .15rem;
+  color: var(--sub);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--entry-border);
+  clip-path: polygon(0 0, calc(100% - var(--right)) 0, 100% 50%,
+    calc(100% - var(--right)) 100%, 0 100%, var(--left) 50%);
+  font-size: clamp(10px, 1.45cqi, 13px);
+  line-height: 1.2;
+  text-align: center;
+}
+.step:first-child { --left: 0px; }
+.step:nth-child(7) { --right: 0px; }
+.step[data-passed="true"] {
+  color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 12%, var(--card));
+}
+.step[aria-current="step"] {
+  color: var(--heading);
+  background: color-mix(in srgb, var(--teal) 24%, var(--card));
+  box-shadow: inset 0 0 0 2px var(--teal);
+}
+.step[data-waiting-specs="true"][aria-current="step"] {
+  background: color-mix(in srgb, var(--root-warning, var(--teal)) 20%, var(--card));
+  box-shadow: inset 0 0 0 2px var(--root-warning, var(--teal));
+}
+.step > span, .step input[type="date"] {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.step input[type="date"] {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  inline-size: 100%;
+  max-inline-size: 8rem;
+  min-block-size: 0;
+  block-size: 1.5rem;
+  padding: 0 .15rem;
+}
+.flowException { align-self: center; padding-inline-start: .4rem; }
+.photoCategory { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.photoCategory button {
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--entry-border);
+  border-radius: 4px;
+  padding: .2rem .55rem;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.photoCategory button[aria-checked="true"] { color: #fff; background: var(--teal); border-color: var(--teal); }
+.photoCategory button:disabled { cursor: default; opacity: .6; }
+.photoCategory button[aria-checked="true"]:disabled { opacity: 1; }
 
 .columns {
   display: grid;
@@ -116,10 +178,6 @@
   .columns[data-swapped="true"] { grid-template-columns: 680px 62px minmax(460px, 1fr); }
 }
 
-@container kanden-entry (width < 1100px) {
-  .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
 @container kanden-entry (width < 860px) {
   .columns, .columns[data-swapped="true"] {
     grid-template-columns: minmax(0, 1fr);
@@ -130,8 +188,18 @@
   .categories > button { width: 62px; }
 }
 
+/* 日付が切れない幅を保つため、狭いときは 4 つずつ 2 段にする */
+@container kanden-entry (width < 760px) {
+  .flow, .flow:has(.flowException) { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 4px; --arrow: 6px; }
+  .step:nth-child(4) { --right: 0px; }
+  .step:nth-child(5) { --left: 0px; }
+}
+
 @container kanden-entry (width < 540px) {
-  .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow, .flow:has(.flowException) { --arrow: 5px; }
+  .step > span, .step input[type="date"] { font-size: 10px; }
+  .step input[type="date"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0; }
+  .flowException { padding-inline-start: .2rem; }
   .statusTabs[role="tablist"] { flex-wrap: nowrap; overflow-x: auto; }
   .statusTabs[role="tablist"] > * { flex: none; }
   .field > button { min-width: 2.25rem; }

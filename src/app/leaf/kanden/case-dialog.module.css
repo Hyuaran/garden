@@ -39,6 +39,8 @@
   object-fit: contain;
 }
 
+.thumbnail { display: grid; gap: 4px; }
+
 .largePhoto {
   display: block;
   max-width: 100%;

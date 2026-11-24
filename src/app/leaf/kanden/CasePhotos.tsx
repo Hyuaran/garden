@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Modal from "@/app/system/_components/Modal/Modal";
 import { ActionButton, ActionRow, ResultMessage, TextField } from "@/app/system/forms/_components/form-kit";
 import { verifyKandenPhotoPassword } from "./photo-password-actions";
@@ -32,14 +32,16 @@ async function jpegBlob(photo: CasePhoto) {
   }
 }
 
-export default function CasePhotos({ photos, entry = false, emptyText = "写メはありません。" }: {
-  photos: CasePhoto[]; entry?: boolean; emptyText?: string;
+export default function CasePhotos<T extends CasePhoto>({ photos, entry = false, emptyText = "写メはありません。", photoControls }: {
+  photos: T[]; entry?: boolean; emptyText?: string; photoControls?: (photo: T, position: number) => ReactNode;
 }) {
-  const [index, setIndex] = useState<number | null>(entry && photos.length ? 0 : null);
+  const [shownUrl, setShownUrl] = useState<string | null>(entry ? photos[0]?.url ?? null : null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const position = photos.findIndex(item => item.url === shownUrl);
+  const index = position >= 0 ? position : entry && shownUrl && photos.length ? 0 : null;
   const photo = index === null ? undefined : photos[index];
   const [unlocked, setUnlocked] = useState(false);
   const [passwordDialog, setPasswordDialog] = useState(false);
@@ -81,7 +83,7 @@ export default function CasePhotos({ photos, entry = false, emptyText = "写メ�
     setError("");
     setZoom(1);
     setRotation(0);
-    setIndex(position);
+    setShownUrl(position === null ? null : photos[position]?.url ?? null);
   }
 
   async function save(image: CasePhoto) {
@@ -129,6 +131,7 @@ export default function CasePhotos({ photos, entry = false, emptyText = "写メ�
             <ActionButton disabled={index === photos.length - 1} onClick={() => show(index + 1)}>次の画像</ActionButton>
             <ActionButton disabled={saving} onClick={() => startSave(photo)}>画像を保存</ActionButton>
             {entry && <ActionButton onClick={() => setRotation((rotation + 90) % 360)}>90度回転</ActionButton>}
+            {photoControls?.(photo, index)}
           </ActionRow>
           {entry ? <div className={styles.photoViewport}>
             <div style={{ inlineSize: `${zoom * 100}%` }}>{preview}</div>
@@ -136,13 +139,14 @@ export default function CasePhotos({ photos, entry = false, emptyText = "写メ�
         </>
       ) : entry && !photos.length ? <p className={styles.photoEmpty}>{emptyText}</p> : (
         <div className={styles.thumbnails}>
-          {photos.map((item, position) => (
+          {photos.map((item, position) => <div key={item.filename} className={styles.thumbnail}>
             <ActionButton key={item.filename} aria-label={`写メ ${position + 1} を拡大`}
               onClick={() => show(position)}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={item.url} alt="" loading="lazy" />
             </ActionButton>
-          ))}
+            {photoControls?.(item, position)}
+          </div>)}
         </div>
       )}
       {passwordDialog && photo && <Modal title="画像保存のパスワード" size="sm"

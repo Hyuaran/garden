@@ -11,14 +11,18 @@ import SalesIcon from "@/app/system/forms/kanden/SalesIcon";
 import { compressKandenPhoto } from "@/app/system/forms/kanden/photo-client";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { orderStatus } from "@/lib/leaf-kanden/status";
+import { normalizeKanriNo } from "@/lib/leaf-kanden/kanri-no";
 import { supplyPoint, type CalendarDay } from "@/lib/leaf-kanden/supply-point";
 import shell from "@/app/soil/soil.module.css";
 import PaymentDetails from "../PaymentDetails";
 import CasePhotos from "../CasePhotos";
 import { checkEntryDuplicates, loadEntryDetail, loadEntryList, saveEntry } from "./actions";
 import { commitEntrySpecs, prepareEntrySpecs } from "./specs-actions";
-import { DEFAULT_ENTRY_TAB, ENTRY_TABS, ENTRY_TITLE, dateFields, entryQuery, serviceFields, type EntryDetail,
-  type EntryList, type EntryQuery, type EntryRow, type EntryTab, type SaveMode, type SearchRefinement } from "./entry";
+import { DEFAULT_ENTRY_TAB, ENTRY_TABS, ENTRY_TITLE, PHOTO_CATEGORIES, dateFields, entryQuery, serviceFields, type EntryDetail,
+  type EntryList, type EntryPhoto, type EntryQuery, type EntryRow, type EntryTab, type PhotoCategory, type SaveMode, type SearchRefinement } from "./entry";
+import EntryFlow from "./EntryFlow";
+import { saveEntryPhotoCategory } from "./photo-actions";
+import { normalizeSalesName, selectApplyCode } from "./sales";
 import EntryFields, { CheckIcon, CopyIcon, comparisonLabels, comparisonSymbols, searchSections } from "./EntryFields";
 import EntrySearch from "./EntrySearch";
 import styles from "./entry.module.css";
@@ -34,24 +38,18 @@ const columns: DataColumn<EntryRow>[] = [
   { id: "reason", label: "理由", type: "text", value: row => row[9] ?? "" },
 ];
 const rowKey = (row: EntryRow) => row[0];
-const categories = ["すべて", "電灯", "動力", "ガス", "諸元", "受領"] as const;
-const categoryIcons = { すべて: "folder", 電灯: "bolt", 動力: "plug", ガス: "flame", 諸元: "clip", 受領: "document" } as const;
-const categorySections = { すべて: null, 電灯: "has_denki", 動力: "has_douryoku", ガス: "has_gas", 諸元: null, 受領: null } as const;
-const dates = [
-  ["ordered_on", "諸元待ち", "受注日"], ["specs_on", "エントリー待ち", "諸元回収日"],
-  ["entered_on", "申込書待ち", "エントリー日"], ["application_received_on", "郵送待ち", "申込書受取日"],
-  ["mailed_on", "入金待ち", "郵送日"],
-] as const;
+const categories = ["すべて", ...PHOTO_CATEGORIES] as const;
+const categoryIcons = { すべて: "folder", 電灯: "bolt", 動力: "plug", ガス: "flame", 諸元: "clip", 受領: "document", 未分類: "folder" } as const;
+const categorySections = { すべて: null, 電灯: "has_denki", 動力: "has_douryoku", ガス: "has_gas", 諸元: null, 受領: null, 未分類: null } as const;
+const advanceStatuses = ["諸元待ち", "エントリー待ち", "申込書待ち", "郵送待ち"];
 const count = new Intl.NumberFormat("ja-JP");
 const historyDate = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", dateStyle: "short", timeStyle: "short" });
 const historyValue = (value: unknown) => value == null || value === "" ? "―" : typeof value === "object" ? JSON.stringify(value) : String(value);
 const firstCategory = (detail: EntryDetail | null) => {
   if (detail?.photos.length) {
     const hasPhoto = (category: typeof categories[number]) => detail.photos.some(photo => photo.category === category);
-    const application = (["電灯", "動力", "ガス"] as const).find(hasPhoto);
-    if (application) return application;
-    if (detail.photos.some(photo => !categories.some(category => category === photo.category))) return "すべて";
-    return categories.find(hasPhoto) ?? "すべて";
+    if (hasPhoto("未分類")) return "未分類";
+    return PHOTO_CATEGORIES.find(hasPhoto) ?? "すべて";
   }
   return categories.find(category => {
     const flag = categorySections[category];
@@ -107,12 +105,23 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
   const canEdit = !!draft && !blocked;
   const photos = loaded?.photos.filter(photo => category === "すべて" || photo.category === category) ?? [];
   const hasSpecs = loaded?.hasSpecs ?? loaded?.photos.some(photo => photo.category === "諸元") ?? false;
-  const status = draft && loaded ? orderStatus({
-    ...loaded.flow, ...draft, paid_on: loaded.paidOn, refunded_on: loaded.refundedOn,
+  const flowInput = draft && loaded ? { ...loaded.flow, ...draft, paid_on: loaded.paidOn, refunded_on: loaded.refundedOn } : null;
+  const status = flowInput && loaded ? orderStatus({
+    ...flowInput,
     status: loaded.status === "差し戻し" || loaded.status === "保留" ? loaded.status : null,
   }, hasSpecs) : null;
+  const progress = flowInput && orderStatus({ ...flowInput, cancelled_on: null, refunded_on: null,
+    cancel_reason: status === "キャンセル" ? null : flowInput.cancel_reason }, hasSpecs);
+  const sales = draft && loaded && normalizeSalesName(draft.sales_name) === normalizeSalesName(loaded.draft.sales_name)
+    ? loaded.sales : undefined;
+  const defaultCode = selectApplyCode(null, draft?.ordered_on ?? null, sales?.applyCodes ?? []);
+  const applyCode = selectApplyCode(draft?.apply_code ?? null, draft?.ordered_on ?? null, sales?.applyCodes ?? []);
+  const listValues = defaultCode ? { ...loaded?.listValues, apply_code: defaultCode } : loaded?.listValues ?? null;
+  const rawNumber = draft?.kanri_no === loaded?.draft.kanri_no ? loaded?.rawNumber : draft?.kanri_no;
+  const displayNumber = rawNumber && normalizeKanriNo(rawNumber) ? rawNumber.trim().replace(/^PD\s*/i, "") : draft?.kanri_no;
   const waitingDays = status === "諸元待ち" && draft?.ordered_on
     ? Math.max(0, Math.floor((Date.parse(today) - Date.parse(draft.ordered_on)) / 86_400_000)) : null;
+  const canResume = loaded?.status === "差し戻し" || loaded?.status === "保留";
   const copyKeys = searchSections.flatMap(section => section.fields.map(([key]) => key));
   const columnsWithOptions = columns.map(column => {
     const values = column.id === "status" ? ENTRY_TABS.filter(value => value !== "一覧")
@@ -267,6 +276,29 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
     }
   }
 
+  async function changePhotoCategory(photo: EntryPhoto, nextCategory: PhotoCategory) {
+    if (!loaded || !selectedId || blocked || pending.current || photo.category === nextCategory) return;
+    pending.current = true;
+    setSaving(true);
+    setError("");
+    const nextPhotos = loaded.photos.map(item => item.id === photo.id && item.setId === photo.setId
+      ? { ...item, category: nextCategory } : item);
+    const next = { ...loaded, photos: nextPhotos, hasSpecs: nextPhotos.some(item => item.category === "諸元") };
+    setLoaded(next);
+    if (category !== "すべて" && !nextPhotos.some(item => item.category === category)) setCategory(firstCategory(next));
+    try {
+      const result = await saveEntryPhotoCategory({ id: selectedId, intake: false }, photo.id, photo.setId, nextCategory);
+      if (result.error) throw new Error(result.error);
+    } catch {
+      setLoaded(loaded);
+      setCategory(category);
+      setError("写メの種類を保存できませんでした。もう一度お試しください。");
+    } finally {
+      pending.current = false;
+      setSaving(false);
+    }
+  }
+
   function jumpToDiff() {
     const candidates = Array.from(fieldset.current?.querySelectorAll<HTMLElement>('[data-comparison="different"]') ?? []);
     const activeField = document.activeElement?.closest("[data-comparison]");
@@ -346,18 +378,10 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
         }}>{label}{label !== "一覧" && <StatusBadge muted>{count.format(list?.counts?.[label] ?? 0)}</StatusBadge>}</button>)}
     </SystemTabs>
     <div data-loading={listBusy} aria-busy={listBusy}>
-      {!searching && !showList && draft && loaded && (
-        <div className={styles.flow} aria-label="業務ステータス" {...CLARITY_MASK}>
-          {dates.map(([key, step, label]) => <div key={key} className={styles.step} data-current={status === step}>
-            <strong>{step}</strong>
-            <FieldLabel label={label}><TextField type="date" aria-label={label} value={draft[key] ?? ""} disabled={!canEdit}
-              onChange={event => setDraft({ ...draft, [key]: event.target.value || null })} /></FieldLabel>
-          </div>)}
-          <div className={styles.step} data-current={status === "完了"}>
-            <strong>完了</strong><span>入金日　{loaded.paidOn ?? "―"}</span>
-          </div>
-        </div>
-      )}
+      {!searching && !showList && draft && loaded && status && progress &&
+        <EntryFlow draft={draft} paidOn={loaded.paidOn} status={status} progress={progress} canEdit={canEdit}
+          specsReady={hasSpecs || !!loaded.flow?.timetree_label?.trim() && loaded.flow.timetree_label.trim() !== "諸元待ち"}
+          setDraft={setDraft} />}
       <ResultMessage>{error || (!list && "案件一覧を読み込めませんでした。更新ボタンを押してください。")
         || (!calendar && "供給開始カレンダーを読み込めませんでした。")}</ResultMessage>
       <ResultMessage success>{success}</ResultMessage>
@@ -372,7 +396,7 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
           <DataTable rows={rows} columns={columnsWithOptions} rowKey={rowKey} defaultSort={entryQuery.sort} pageSize={50}
             loading={blocked} remote={{ query, total: list?.total ?? 0, onChange: next => {
               if (!blocked) void readList(tab, { ...query, ...next });
-            } }} searchPlaceholder="管理番号・お客様名・カナ・住所・電話・供給地点・理由"
+            } }} searchPlaceholder="PD番号・お客様名・カナ・住所・電話・供給地点・理由"
             onRowClick={row => { if (!blocked) void open(row[0]); }} emptyText="該当する案件はありません。" />
         </> : <>
           <div className={styles.toolbar}>
@@ -380,9 +404,9 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
               {tab === "一覧" && <ActionButton disabled={blocked} onClick={() => { if (canLeave()) display(null); }}>一覧へ戻る</ActionButton>}
               <ActionButton disabled={!canEdit} onClick={() => setReasonMode("complete")}>完了処理</ActionButton>
               <ActionButton disabled={!canEdit} onClick={() => { setReason(""); setNotify(true); setReasonMode("return"); }}>差し戻し</ActionButton>
-              <ActionButton disabled={!canEdit || !loaded?.listValues} onClick={() => {
-                if (draft && loaded?.listValues) setDraft({ ...draft, ...Object.fromEntries(copyKeys.flatMap(key => {
-                  const value = loaded.listValues?.[key];
+              <ActionButton disabled={!canEdit || !listValues} onClick={() => {
+                if (draft && listValues) setDraft({ ...draft, ...Object.fromEntries(copyKeys.flatMap(key => {
+                  const value = listValues[key];
                   return value == null || value === "" ? [] : [[key, value]];
                 })) });
               }}><CopyIcon />リスト全項目転記</ActionButton>
@@ -407,30 +431,35 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
           {!draft || !loaded ? <p>{blocked ? "読み込み中…" : "表示できる案件はありません。"}</p> : <div aria-busy={blocked} {...CLARITY_MASK}>
             {loaded.listValues === null && <p>リストに無い案件</p>}
             <div className={styles.banner}>
-              <span>獲得営業担当　{draft.sales_name || "―"}</span>
-              <span>社員番号　{loaded.sales?.number || "―"}</span>
-              <span>部署　{loaded.sales?.department || "―"}</span>
-              <span>申込コード　{draft.apply_code || "―"}</span>
-              <span>受注日　{draft.ordered_on || "―"}</span>
+              <span>PD番号　{displayNumber ? `PD${displayNumber}` : "―"}</span>
+              <span>獲得営業担当　{sales?.name || draft.sales_name || "―"}</span>
+              <span>社員番号　{sales?.number || "―"}</span>
+              <span>部署　{sales?.department || "―"}</span>
+              <span>申込コード　{applyCode || "―"}</span>
             </div>
             {!!loaded.related?.length && <div className={styles.banner}>関連案件
               {loaded.related.map(row => <ActionButton key={row.id} disabled={blocked} onClick={() => {
                 if (canLeave()) void open(row.id);
               }}>{row.number} {row.name}</ActionButton>)}
             </div>}
-            <div className={styles.banner}>
-              <StatusBadge>{status === "保留" ? "差し戻し" : status}</StatusBadge>
+            {(waitingDays !== null || loaded.reason || canResume) && <div className={styles.banner}>
               {waitingDays !== null && <span className={styles.stagnant} data-stagnant={waitingDays >= 30}>
                 諸元回収待ち {waitingDays}日{waitingDays >= 30 && "（30日以上経過）"}
               </span>}
               {loaded.reason && <span>理由　{loaded.reason}</span>}
-              {(loaded.status === "差し戻し" || loaded.status === "保留") &&
+              {canResume &&
                 <ActionButton disabled={!canEdit} onClick={() => void save("resume")}>再開</ActionButton>}
-            </div>
+            </div>}
             <div className={styles.columns} data-swapped={swapped}>
               <section className={styles.preview} aria-label="申込書プレビュー">
-                <CasePhotos key={`${selectedId}/${category}/${photos[0]?.url ?? ""}`} photos={photos}
-                  emptyText={`表示できる${category}の写メはありません。`} entry />
+                <CasePhotos key={`${selectedId}/${category}`} photos={photos}
+                  emptyText={`表示できる${category}の写メはありません。`} entry
+                  photoControls={(photo, position) => <div className={styles.photoCategory} role="radiogroup"
+                    aria-label={`写メ ${position + 1} の種類`}>
+                    {PHOTO_CATEGORIES.map(label => <button key={label} type="button" role="radio"
+                      aria-checked={photo.category === label} disabled={!canEdit || saving}
+                      onClick={() => void changePhotoCategory(photo, label)}>{label}</button>)}
+                  </div>} />
               </section>
               <div className={styles.categoryRail}>
                 <div role="tablist" aria-label="書類の種類" className={styles.categories}>
@@ -446,7 +475,7 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
               </div>
               <section className={styles.input} aria-label="入力">
                 <fieldset ref={fieldset} className={styles.fieldset} disabled={!canEdit}>
-                  <EntryFields key={selectedId} draft={draft} setDraft={setDraft} listValues={loaded.listValues}
+                  <EntryFields key={selectedId} draft={draft} setDraft={setDraft} listValues={listValues}
                     options={list?.options} calendar={calendar ?? []} today={today}
                     duplicateNumbers={middle => editedDuplicates[middle] ?? loaded.duplicates[middle] ?? []}
                     specsAlert={<div className={styles.banner}>
@@ -477,7 +506,7 @@ export default function EntryScreen({ list: initialList, initialQuery = entryQue
                   <ActionButton disabled={!canEdit} onClick={() => void save("entry")}><CheckIcon />エントリーして次へ（Ctrl+Enter）</ActionButton>
                   <ActionButton disabled={!canEdit} onClick={() => void save("save")}>保存（Ctrl+S）</ActionButton>
                   {status === "完了" ? <ActionButton disabled={!canEdit} onClick={() => setReasonMode("complete")}>完了処理</ActionButton>
-                    : loaded.status !== "完了" && dates.slice(0, 4).some(([, step]) => step === loaded.status) &&
+                    : advanceStatuses.includes(loaded.status) &&
                       <ActionButton disabled={!canEdit} onClick={() => void save("advance")}>保存して次のステータスへ</ActionButton>}
                 </ActionRow>
               </section>

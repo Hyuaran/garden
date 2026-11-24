@@ -1,12 +1,14 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import { loadEntryDetail, loadEntryList } from "./actions";
 import { entryQuery, type EntryDetail, type EntryDraft, type EntryList } from "./entry";
 import EntryScreen from "./EntryScreen";
+import { saveEntryPhotoCategory } from "./photo-actions";
 
 vi.mock("./actions", () => ({ checkEntryDuplicates: vi.fn(), loadEntryDetail: vi.fn(), loadEntryList: vi.fn(), saveEntry: vi.fn() }));
 vi.mock("./specs-actions", () => ({ commitEntrySpecs: vi.fn(), prepareEntrySpecs: vi.fn() }));
+vi.mock("./photo-actions", () => ({ saveEntryPhotoCategory: vi.fn() }));
 
 function detail(name: string): EntryDetail {
   return {
@@ -95,34 +97,34 @@ it("転記で照合差分が消え、日付入力で業務ステータスが進�
   expect(screen.getByDisplayValue("受注時の名義").closest("[data-comparison]")).toHaveAttribute("data-comparison", "match");
   fireEvent.change(screen.getByLabelText("エントリー日"), { target: { value: "2026-11-20" } });
   expect(within(screen.getByLabelText("業務ステータス")).getByText("申込書待ち").parentElement)
-    .toHaveAttribute("data-current", "true");
+    .toHaveAttribute("aria-current", "step");
 });
 
-it("リストに無い案件では転記を無効にし、未分類の写メをすべてタブで最初に開く", () => {
+it("リストに無い案件では転記を無効にし、未分類の写メを最初に開く", () => {
   const initialDetail = {
     ...detail("テスト案件"), listValues: null,
-    photos: [{ category: "未分類", url: "https://example.test/photo.jpg", filename: "photo.jpg", jpeg: true }],
+    photos: [{ id: "photo", setId: "set", category: "未分類", url: "https://example.test/photo.jpg", filename: "photo.jpg", jpeg: true }],
   };
   render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={initialDetail} />);
   expect(screen.getByText("リストに無い案件")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "リスト全項目転記" })).toBeDisabled();
   expect(screen.getByLabelText("ご契約名義").closest("[data-comparison]")).toHaveAttribute("data-comparison", "new");
   const tabs = within(screen.getByLabelText("書類の種類"));
-  expect(tabs.getByRole("tab", { name: "すべて" })).toHaveAttribute("aria-selected", "true");
+  expect(tabs.getByRole("tab", { name: "未分類" })).toHaveAttribute("aria-selected", "true");
   const preview = within(screen.getByLabelText("申込書プレビュー"));
   expect(preview.getByRole("img")).toHaveAttribute("src", "https://example.test/photo.jpg");
   fireEvent.click(tabs.getByRole("tab", { name: "電灯" }));
   expect(preview.queryByRole("img")).not.toBeInTheDocument();
 });
 
-it.each([["電灯", "電灯", "application"], ["未分類", "すべて", "specs"]])(
+it.each([["電灯", "電灯", "application"], ["未分類", "未分類", "application"]])(
   "諸元と%sの写メがある場合に%sタブを開く",
   (category, tab, firstPhoto) => {
     const initialDetail = {
       ...detail("テスト案件"),
       photos: [
-        { category: "諸元", url: "https://example.test/specs.jpg", filename: "specs.jpg", jpeg: true },
-        { category, url: "https://example.test/application.jpg", filename: "application.jpg", jpeg: true },
+        { id: "specs", setId: "set", category: "諸元", url: "https://example.test/specs.jpg", filename: "specs.jpg", jpeg: true },
+        { id: "application", setId: "set", category, url: "https://example.test/application.jpg", filename: "application.jpg", jpeg: true },
       ],
     };
     render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={initialDetail} />);
@@ -131,6 +133,58 @@ it.each([["電灯", "電灯", "application"], ["未分類", "すべて", "specs"
       .toHaveAttribute("src", `https://example.test/${firstPhoto}.jpg`);
   },
 );
+
+it("矢印の帯に受注から完了までの表示を並べ、日付に応じた文言を出す", () => {
+  const loaded = detail("案件");
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={{
+    ...loaded, draft: { ...loaded.draft, ordered_on: "2026-11-19", entered_on: "2026-11-20" },
+  }} />);
+  const flow = screen.getByLabelText("業務ステータス");
+  expect(Array.from(flow.querySelectorAll("strong"), item => item.textContent)).toEqual([
+    "受注", "諸元回収OK", "エントリーOK", "申込書待ち", "郵送待ち", "入金待ち", "完了",
+  ]);
+  expect(within(flow).getByLabelText("受注日")).toHaveValue("2026-11-19");
+  expect(within(flow).queryByText("受注日")).toBeNull();
+});
+
+it("営業の帯の枝番と申込コードを表示し、コードを欄に転記できる", () => {
+  const loaded = detail("案件");
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={{
+    ...loaded, listValues: null, rawNumber: "PD1617124(2)",
+    draft: { ...loaded.draft, kanri_no: "1617124", sales_name: "萩尾", ordered_on: "2026-11-19" },
+    sales: { name: "萩尾拓也", number: "1", department: "営業", applyCodes: [
+      { apply_code: "0281-30101", starts_on: null, ends_on: null },
+    ] },
+  }} />);
+  const banner = screen.getByText("PD番号 PD1617124(2)").parentElement!;
+  expect(Array.from(banner.children, item => item.textContent)).toEqual([
+    "PD番号　PD1617124(2)", "獲得営業担当　萩尾拓也", "社員番号　1", "部署　営業", "申込コード　0281-30101",
+  ]);
+  fireEvent.click(screen.getByRole("button", { name: "申込コードをリストから転記" }));
+  expect(screen.getByLabelText("申込コード")).toHaveValue("0281-30101");
+});
+
+it("サムネイルから分類を即時に反映し、拡大表示からの保存に失敗した場合は戻す", async () => {
+  const loaded = detail("案件");
+  const pending = Promise.withResolvers<Awaited<ReturnType<typeof saveEntryPhotoCategory>>>();
+  vi.mocked(saveEntryPhotoCategory).mockReturnValueOnce(pending.promise).mockResolvedValueOnce({ error: "保存失敗" });
+  render(<EntryScreen today="2026-11-20" calendar={[]} list={initial} initialDetail={{
+    ...loaded, draft: { ...loaded.draft, specs_on: null },
+    photos: [{ id: "photo", setId: "set", category: "未分類", url: "https://example.test/photo.jpg", filename: "photo.jpg", jpeg: true }],
+  }} />);
+  fireEvent.click(screen.getByRole("button", { name: "一覧に戻る" }));
+  fireEvent.click(within(screen.getByLabelText("写メ 1 の種類")).getByRole("radio", { name: "諸元" }));
+  expect(screen.getByRole("tab", { name: "諸元" })).toHaveAttribute("aria-selected", "true");
+  const flow = within(screen.getByLabelText("業務ステータス"));
+  expect(flow.getByText("諸元回収OK")).toBeInTheDocument();
+  expect(saveEntryPhotoCategory).toHaveBeenCalledExactlyOnceWith({ id: "entry", intake: false }, "photo", "set", "諸元");
+  pending.resolve({});
+  await waitFor(() => expect(within(screen.getByLabelText("写メ 1 の種類")).getByRole("radio", { name: "電灯" })).toBeEnabled());
+  fireEvent.click(within(screen.getByLabelText("写メ 1 の種類")).getByRole("radio", { name: "電灯" }));
+  expect(await screen.findByText("写メの種類を保存できませんでした。もう一度お試しください。")).toBeInTheDocument();
+  expect(within(screen.getByLabelText("写メ 1 の種類")).getByRole("radio", { name: "諸元" })).toHaveAttribute("aria-checked", "true");
+  expect(saveEntryPhotoCategory).toHaveBeenCalledTimes(2);
+});
 
 it("初期のリスト・選択案件・カレンダーの出力を200KB未満に収める", () => {
   const list: EntryList = { ...initial, total: 19_000,
